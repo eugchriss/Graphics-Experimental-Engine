@@ -1,0 +1,333 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\contrib\gtest\src\gtest-all.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\CCompilerTest.c">
+      <Filter>UnitTests\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\code\Common\Version.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utSimd.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utIOSystem.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utIOStreamBuffer.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utIssues.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utAnim.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\AssimpAPITest.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utBatchLoader.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utDefaultIOStream.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utFastAtof.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utMetadata.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\SceneDiffer.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\AbstractImportExportBase.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utTypes.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utVersion.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utProfiler.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utSharedPPData.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utStringUtils.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\Common\utLineSplitter.cpp">
+      <Filter>UnitTests\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utLWSImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utLWOImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utSMDImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utglTFImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utglTF2ImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utHMPImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utIFCImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utFBXImporterExporter.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utImporter.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ImportExport\utExporter.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ut3DImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ut3DSImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utACImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utAMFImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utASEImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utD3MFImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utQ3DImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utSTLImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utXImporterExporter.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utX3DImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utDXFImporterExporter.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utPMXImporter.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utPLYImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utObjImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utObjTools.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utOpenGEXImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utSIBImporter.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utBlenderIntermediate.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utBlendImportAreaLight.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utBlenderImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utBlendImportMaterials.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utBlenderWork.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utBVHImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utColladaExportCamera.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utColladaExportLight.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utColladaImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utCSMImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utB3DImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utMDCImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utAssbinImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ImportExport\utAssjsonImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ImportExport\utCOBImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ImportExport\utOgreImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ImportExport\utQ3BSPFileImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ImportExport\utOFFImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ImportExport\utNFFImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\ImportExport\utXGLImportExport.cpp">
+      <Filter>UnitTests\ImportExport</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utMaterialSystem.cpp">
+      <Filter>UnitTests\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utMatrix3x3.cpp">
+      <Filter>UnitTests\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utMatrix4x4.cpp">
+      <Filter>UnitTests\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utVector3.cpp">
+      <Filter>UnitTests\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utImproveCacheLocality.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utFixInfacingNormals.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utGenNormals.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utTriangulate.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utTextureTransform.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utRemoveRedundantMaterials.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utRemoveVCProcess.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utScaleProcess.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utJoinVertices.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utRemoveComments.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utRemoveComponent.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utVertexTriangleAdjacency.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utSplitLargeMeshes.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utFindDegenerates.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utFindInvalidData.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utLimitBoneWeights.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utPretransformVertices.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utScenePreprocessor.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utTargetAnimation.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utSortByPType.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utSceneCombiner.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\utGenBoundingBoxesProcess.cpp">
+      <Filter>UnitTests\PostProcess</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\SceneDiffer.h">
+      <Filter>UnitTests\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\UTLogStream.h">
+      <Filter>UnitTests\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\TestIOSystem.h">
+      <Filter>UnitTests\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\unit\TestModelFactory.h">
+      <Filter>UnitTests\Common</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\assimp\test\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{1BC1CC2B-8638-3F8E-BCAA-0F247EFAC445}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnitTests">
+      <UniqueIdentifier>{0220CD07-5A80-394F-84AB-E26D74B49639}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnitTests\Common">
+      <UniqueIdentifier>{4782DC1B-8D5E-3DE4-A297-F8EC44F7A726}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnitTests\Compiler">
+      <UniqueIdentifier>{658B5E08-5BF8-3970-9C97-6910BF97B069}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnitTests\ImportExport">
+      <UniqueIdentifier>{5816632F-1E0D-3737-9D96-397EC38552BA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnitTests\Material">
+      <UniqueIdentifier>{3F084848-05CB-3C8A-B88B-9E8996533803}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnitTests\Math">
+      <UniqueIdentifier>{D2E04D80-DEF4-3BED-8BA5-1747A2B162B4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnitTests\PostProcess">
+      <UniqueIdentifier>{3B592AD3-88BE-3C2A-ADCE-CD28EE22C1F6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

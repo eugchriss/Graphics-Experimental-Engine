@@ -1,0 +1,10 @@
+^C:\USERS\EUGCH\ONEDRIVE\DOCUMENTS\PROGRAMMATION\C++\VULKAN\GRAPHICS-EXPERIMENTAL-ENGINE\LIBS\GLM\GLM\CMAKELISTS.TXT
+setlocal
+C:\Users\eugch\OneDrive\Documents\programmation\C++\cmake\bin\cmake.exe -SC:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/Graphics-Experimental-Engine -BC:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/Graphics-Experimental-Engine --check-stamp-file C:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/Graphics-Experimental-Engine/libs/glm/glm/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

@@ -1,0 +1,18 @@
+﻿  Building Custom Rule C:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/Graphics-Experimental-Engine/libs/assimp/contrib/zlib/CMakeLists.txt
+  adler32.c
+  compress.c
+  crc32.c
+  deflate.c
+  gzclose.c
+  gzlib.c
+  gzread.c
+  gzwrite.c
+  inflate.c
+  infback.c
+  inftrees.c
+  inffast.c
+  trees.c
+  uncompr.c
+  zutil.c
+     Création de la bibliothèque C:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/Graphics-Experimental-Engine/lib/Debug/zlibd.lib et de l'objet C:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/Graphics-Experimental-Engine/lib/Debug/zlibd.exp
+  zlib.vcxproj -> C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\bin\Debug\zlibd.dll

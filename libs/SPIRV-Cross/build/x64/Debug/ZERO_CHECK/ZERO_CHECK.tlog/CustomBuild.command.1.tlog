@@ -1,0 +1,10 @@
+^C:\USERS\EUGCH\ONEDRIVE\DOCUMENTS\PROGRAMMATION\C++\VULKAN\SPIRV-CROSS-MASTER\BUILD\CMAKEFILES\DA81DD5C63F44D5CEE0B365CDC921FF2\GENERATE.STAMP.RULE
+setlocal
+C:\Users\eugch\OneDrive\Documents\programmation\C++\cmake\bin\cmake.exe -SC:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/SPIRV-Cross-master -BC:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/SPIRV-Cross-master/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/SPIRV-Cross-master/build/SPIRV-Cross.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

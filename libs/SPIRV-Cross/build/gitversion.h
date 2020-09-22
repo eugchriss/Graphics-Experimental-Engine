@@ -1,0 +1,6 @@
+#ifndef SPIRV_CROSS_GIT_VERSION_H_
+#define SPIRV_CROSS_GIT_VERSION_H_
+
+#define SPIRV_CROSS_GIT_REVISION "Git commit:  Timestamp: 2020-07-05T02:44:06"
+
+#endif
