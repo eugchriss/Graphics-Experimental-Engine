@@ -1,38 +1,30 @@
 #include <iostream>
-#define GLFW_INCLUDE_VULKAN
-#include "GLFW/glfw3.h"
-#include "glm/glm.hpp"
-
 #include <vector>
+#include "../headers/Application.h"
+#include "../headers/ResourceHolder.h"
+#include "../headers/Drawable.h"
+
 int main()
 {
 	glfwInit();
-	if (glfwVulkanSupported())
-	{
-		std::cout << "vulkan supported\n";
-	}
-	else
-	{
-		std::cout << "vulkan is not supported \n";
-		return 0;
-	}
-	VkInstance instance;
-	VkInstanceCreateInfo info{};
-	info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	info.pApplicationInfo = nullptr;
-	vkCreateInstance(&info, nullptr, &instance);
+	ResourceHolder<gee::Mesh> meshHolder;
+	auto& cubeMesh = meshHolder.get("box", "../assets/Meshs/box/box.obj");
+	auto& speakerMesh = meshHolder.get("speaker", "../assets/Meshs/speaker/scene.gltf");
+	auto& headphoneMesh = meshHolder.get("headphone", "../assets/Meshs/backpack/backpack.obj");
+	gee::Application app{ "Graphics's Experimental Engine", 800, 800 };
 
-	uint32_t count{};
-	vkEnumeratePhysicalDevices(instance, &count, nullptr);
-	std::vector<VkPhysicalDevice> devices(count);
-	vkEnumeratePhysicalDevices(instance, &count, std::data(devices));
-	std::cout << "Available graphics cards:\n";
-	for (const auto device : devices)
+	gee::Drawable cube{ cubeMesh };
+	gee::Drawable cube2{ cubeMesh, glm::vec3{-100.0f, 0.0f, 0.0f} };
+	gee::Drawable speaker{ speakerMesh, glm::vec3{000.0f, 20.0f, 50.0f} };
+	gee::Drawable headphone{ headphoneMesh, glm::vec3{20.0f, -20.0f, 50.0f} };
+
+	app.addDrawable(cube);
+	app.addDrawable(speaker);
+	app.addDrawable(headphone);
+	app.addDrawable(cube2);
+	while (app.isRunning())
 	{
-		VkPhysicalDeviceProperties props;
-		vkGetPhysicalDeviceProperties(device, &props);
-		std::cout << "\t-" << props.deviceName << "\n";
+
 	}
-	std::cin.get();
 	return 0;
 }

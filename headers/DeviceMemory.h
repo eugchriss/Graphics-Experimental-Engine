@@ -1,0 +1,43 @@
+#pragma once
+#include "vulkan/vulkan.hpp"
+#include "Gpu.h"
+#include "Device.h"
+#include <cassert>
+
+namespace vkn
+{
+	class DeviceMemory
+	{
+	public:
+		DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const VkMemoryPropertyFlagBits property, const VkDeviceSize size = 0);
+		DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const VkMemoryPropertyFlagBits property, const uint32_t memoryTypeBits, const VkDeviceSize size);
+		DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const uint32_t memoryTypeBits, const VkDeviceSize size);
+		DeviceMemory(DeviceMemory&&);
+		~DeviceMemory();
+
+		const VkDeviceSize bind(const VkBuffer buffer);
+		void bind(const VkImage image);
+		template<class T>
+		void update(const VkDeviceSize offset, const T data, const VkDeviceSize size);
+
+	private:
+		const vkn::Device& device_;
+		VkDeviceMemory memory_{ VK_NULL_HANDLE };
+		VkDeviceSize size_{};
+		VkDeviceSize offset_{};
+		uint32_t memoryIndex_{};
+
+		void checkAlignment(const VkDeviceSize aligment);
+
+		static uint32_t allocationCount;
+	};
+	template<class T>
+	inline void DeviceMemory::update(const VkDeviceSize offset, const T datas, const VkDeviceSize size)
+	{
+		assert(std::is_pointer<T>::value && "This function requires a pointer to the datas to update with");
+		void* ptr;
+		vkn::error_check(vkMapMemory(device_.device, memory_, offset, size, 0, &ptr), "Unabled to map memory to vulkan");
+		memcpy(ptr, datas, size);
+		vkUnmapMemory(device_.device, memory_);
+	}
+}

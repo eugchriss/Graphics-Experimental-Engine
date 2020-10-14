@@ -1,0 +1,18 @@
+#pragma once
+#include <string>
+#include <chrono>
+namespace gee
+{
+	class Timer
+	{
+	public:
+		Timer(const std::string& name);
+		const std::string& name() const;
+		void reset();
+		const long long ellapsedMs() const;
+		const long long ellapsedSec() const;
+	private:
+		std::string name_;
+		std::chrono::system_clock::time_point referenceTime_{};
+	};
+}
