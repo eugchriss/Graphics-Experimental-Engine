@@ -30,7 +30,11 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 		{
-			onMouseScrollEvent(x, y);
+			ImGuiIO& io = ImGui::GetIO();
+			if (!io.WantCaptureMouse)
+			{
+				onMouseScrollEvent(x, y);
+			}
 		});
 	eventDispatcher_.addMouseButtonCallback([&](uint32_t button, uint32_t action, uint32_t mods)
 		{
@@ -56,6 +60,8 @@ void gee::Application::addDrawable(Drawable& drawable)
 	if (drawbleResult == std::end(drawables_))
 	{
 		drawables_.emplace_back(std::ref(drawable));
+
+		drawablesInfos.emplace_back(drawable.name, drawable.mesh.name(), drawable.position, drawable.color, drawable.rotation);
 	}
 }
 
@@ -69,8 +75,32 @@ void gee::Application::updateGui()
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 	ImGui::ShowDemoWindow();
+	displayDrawableInfo();
 	camera_.imguiDisplay();
 	ImGui::Render();
+}
+
+void gee::Application::displayDrawableInfo()
+{
+	std::vector<const char*> names;
+	names.reserve(std::size(drawablesInfos));
+	for (const auto& drawableInfo : drawablesInfos)
+	{
+		names.push_back(drawableInfo.name.c_str());
+	}
+
+	ImGui::Begin("Drawables");
+	static int selected_drawable = 0;
+	ImGui::Combo("Names", &selected_drawable, std::data(names), std::size(names));
+	ImGui::SliderFloat3("position", &drawablesInfos[selected_drawable].position.x, -2.0_km, 2.0_km, "%.1f");
+	ImGui::ColorEdit4("color", &drawablesInfos[selected_drawable].color.x);
+
+	//the engine uses radians units in internal but degrees for display
+	glm::vec3 rotationDeg = glm::degrees(drawablesInfos[selected_drawable].rotation);
+	ImGui::SliderFloat3("rotation", &rotationDeg.x, 0.0f, 360.0f, "%.1f");
+	drawablesInfos[selected_drawable].rotation = glm::radians(rotationDeg);
+
+	ImGui::End();
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -142,4 +172,10 @@ bool gee::Application::isRunning()
 	}
 
 	return window_.isOpen();
+}
+
+gee::Application::DrawableInfo::DrawableInfo(const std::string& name_, const std::string& meshName_, glm::vec3& position_, glm::vec4& color_, glm::vec3& rot):
+	name{name_}, meshName{meshName_},
+	position{ position_ }, color{ color_ }, rotation{rot}
+{
 }

@@ -169,6 +169,7 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 			
 			bindTexture(textures_);
 			pipeline_->updateBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
+			pipeline_->updateBuffer("Colors", drawablesColors_ , VK_SHADER_STAGE_VERTEX_BIT);
 			record(sortedDrawables);
 			submit();
 		}
@@ -194,17 +195,6 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	info.projection = camera.perspectiveProjection(aspectRatio);
 	info.projection[1][1] *= -1;
 	pipeline_->updateBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
-}
-
-void vkn::Renderer::updateDrawable(const std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
-{
-	std::vector<glm::mat4> model_matrices(std::size(drawables), glm::mat4{ 1.0f });
-	for (auto i = 0u; i < std::size(drawables); ++i)
-	{
-		model_matrices[i] = glm::translate(model_matrices[i], drawables[i].get().position);
-	}
-
-	pipeline_->updateBuffer("Model_Matrix", model_matrices, VK_SHADER_STAGE_VERTEX_BIT);
 }
 
 void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
@@ -406,6 +396,7 @@ vkn::Image vkn::Renderer::createImageFromTexture(const gee::Texture& texture)
 const std::unordered_map<size_t, uint64_t> vkn::Renderer::createSortedDrawables(std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
 {
 	modelMatrices_.clear();
+	drawablesColors_.clear();
 	modelMatrices_.reserve(std::size(drawables));
 	std::unordered_map<size_t, uint64_t> sortedDrawables;
 	std::sort(std::begin(drawables), std::end(drawables), [&](const auto& lhs, const auto& rhs)
@@ -417,6 +408,7 @@ const std::unordered_map<size_t, uint64_t> vkn::Renderer::createSortedDrawables(
 	{
 		const auto& drawable = drawableRef.get();
 		modelMatrices_.emplace_back(getModelMatrix(drawable));
+		drawablesColors_.emplace_back(drawable.color);
 		if (addMesh(drawable.mesh))
 		{
 			sortedDrawables[drawable.mesh.hash()] = 1;
@@ -432,5 +424,10 @@ const std::unordered_map<size_t, uint64_t> vkn::Renderer::createSortedDrawables(
 
 const glm::mat4 vkn::Renderer::getModelMatrix(const gee::Drawable& drawable) const
 {
-	return glm::translate(glm::mat4{ 1.0f }, drawable.position);
+	glm::mat4 mat{ 1.0f };
+	mat = glm::translate(mat, drawable.position);
+	mat = glm::rotate(mat, drawable.rotation.x, glm::vec3{ 1.0, 0.0f, 0.0f });
+	mat = glm::rotate(mat, drawable.rotation.y, glm::vec3{ 0.0, 1.0f, 0.0f });
+	mat = glm::rotate(mat, drawable.rotation.z, glm::vec3{ 0.0, 0.0f, 1.0f });
+	return mat;
 }

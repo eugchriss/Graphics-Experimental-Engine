@@ -39,7 +39,6 @@ namespace vkn
 		void updateGui(std::function<void()> guiContent);
 		void draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void updateCamera(const gee::Camera& camera, const float aspectRatio);
-		void updateDrawable(const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 
 	private:
 		std::unique_ptr<vkn::Instance> instance_;
@@ -86,6 +85,7 @@ namespace vkn
 		const std::unordered_map<size_t, uint64_t> createSortedDrawables(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		const glm::mat4 getModelMatrix(const gee::Drawable& drawable) const;
 		std::vector<glm::mat4> modelMatrices_{};
+		std::vector<glm::vec4> drawablesColors_{};
 		std::unordered_map<size_t, vkn::MemoryLocation> meshesMemory_;
 		std::unordered_map<size_t, vkn::Image> textures_;
 

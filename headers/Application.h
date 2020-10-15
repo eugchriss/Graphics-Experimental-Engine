@@ -31,6 +31,7 @@ namespace gee
 		Camera camera_;
 
 		void updateGui();
+		void displayDrawableInfo();
 		void onMouseMoveEvent(double x, double y);
 		void onMouseScrollEvent(double x, double y);
 		void onMouseButtonEvent(uint32_t button, uint32_t action, uint32_t mods);
@@ -40,5 +41,19 @@ namespace gee
 		bool rightButtonPressed_{ false };
 		bool firstMouseUse_{ true };
 		glm::vec2 lastPos_{};
+
+
+		//
+		struct DrawableInfo
+		{
+			DrawableInfo(const std::string& name_, const std::string& meshName_, glm::vec3& position_, glm::vec4& color_, glm::vec3& rot);
+			const std::string& name;
+			const std::string& meshName;
+			glm::vec3& position;
+			glm::vec3& rotation;
+			glm::vec4& color;
+		};
+
+		std::vector<DrawableInfo> drawablesInfos;
 	};
 }
