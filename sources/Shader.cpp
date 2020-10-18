@@ -25,6 +25,8 @@ vkn::Shader::Shader(Shader&& other): device_{other.device_}
 	stage_ = other.stage_;
 	/*not neccesary but for rigor	*/
 	bindings_ = std::move(other.bindings_);
+	pushConstants_ = std::move(other.pushConstants_);
+	outputAttachmentsFormats_ = std::move(other.outputAttachmentsFormats_);
 	spirv_ = std::move(other.spirv_);
 	/*****/
 
@@ -93,6 +95,11 @@ const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> vkn::S
 	return std::make_pair(attributeDescriptions, offset);
 }
 
+const std::vector<VkFormat>& vkn::Shader::outputAttachmentsFormats() const
+{
+	return outputAttachmentsFormats_;
+}
+
 const std::vector<char> vkn::Shader::readFile(const std::string& path)
 {
 	std::ifstream file{ path, std::ios::ate | std::ios::binary };
@@ -139,7 +146,11 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 	{
 		pushConstants_.push_back(parsePushConstant(resource, stage_));
 	}
-	outputCount = std::size(resources.stage_outputs);
+	for (const auto& resource : resources.stage_outputs)
+	{
+		auto spirvType = spirv_->get_type(resource.type_id);
+		outputAttachmentsFormats_.push_back(vkn::getFormat(spirvType).format);
+	}
 }
 
 const vkn::Shader::Binding vkn::Shader::parseBinding(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage, const VkDescriptorType type)

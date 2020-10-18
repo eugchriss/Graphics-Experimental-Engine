@@ -40,13 +40,14 @@ namespace vkn
 		const std::vector<PushConstant>& pushConstants() const;
 		const std::vector<VkDescriptorPoolSize> poolSize() const;
 		const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributeDescriptions() const;
-		uint32_t outputCount{};
+		const std::vector<VkFormat>& outputAttachmentsFormats() const;
 	private:
 		vkn::Device& device_;
 		VkShaderModule module_{ VK_NULL_HANDLE };
 		VkShaderStageFlagBits stage_;
 		std::vector<Binding> bindings_;
 		std::vector<PushConstant> pushConstants_;
+		std::vector<VkFormat> outputAttachmentsFormats_;
 		std::unique_ptr<spirv_cross::CompilerGLSL> spirv_;
 
 		const std::vector<char> readFile(const std::string& path);

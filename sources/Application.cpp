@@ -61,7 +61,7 @@ void gee::Application::addDrawable(Drawable& drawable)
 	{
 		drawables_.emplace_back(std::ref(drawable));
 
-		drawablesInfos.emplace_back(drawable.name, drawable.mesh.name(), drawable.position, drawable.color, drawable.rotation);
+		drawablesInfos.emplace_back(drawable.name, drawable.mesh.name(), drawable.position, drawable.color, drawable.rotation, drawable.scaleFactor, drawable.size);
 	}
 }
 
@@ -92,14 +92,25 @@ void gee::Application::displayDrawableInfo()
 	ImGui::Begin("Drawables");
 	static int selected_drawable = 0;
 	ImGui::Combo("Names", &selected_drawable, std::data(names), std::size(names));
-	ImGui::SliderFloat3("position", &drawablesInfos[selected_drawable].position.x, -2.0_km, 2.0_km, "%.1f");
-	ImGui::ColorEdit4("color", &drawablesInfos[selected_drawable].color.x);
+	auto& drawable = drawablesInfos[selected_drawable];
+	ImGui::SliderFloat3("position", &drawable.position.x, -50.0_m, 50.0_m, "%.1f");
+	ImGui::ColorEdit4("color", &drawable.color.x);
 
 	//the engine uses radians units in internal but degrees for display
-	glm::vec3 rotationDeg = glm::degrees(drawablesInfos[selected_drawable].rotation);
+	glm::vec3 rotationDeg = glm::degrees(drawable.rotation);
 	ImGui::SliderFloat3("rotation", &rotationDeg.x, 0.0f, 360.0f, "%.1f");
-	drawablesInfos[selected_drawable].rotation = glm::radians(rotationDeg);
+	drawable.rotation = glm::radians(rotationDeg);
+	
+	auto lastScaleFactor = drawable.scaleFactor;
+	ImGui::SliderFloat("scale factor", &drawable.scaleFactor, 0.0f, 10.0f, "%.1f");
+	if (drawable.scaleFactor == 0.0f)
+	{
+		drawable.scaleFactor = lastScaleFactor;
+	}
+	drawable.updateSize(drawable.scaleFactor / lastScaleFactor);
 
+	auto sizeStr = std::string{ "x = " } + std::to_string(drawable.size.x) + std::string{ " y = " } + std::to_string(drawable.size.y) + std::string{ " z = " } + std::to_string(drawable.size.z);
+	ImGui::LabelText("size", sizeStr.c_str());
 	ImGui::End();
 }
 
@@ -174,8 +185,14 @@ bool gee::Application::isRunning()
 	return window_.isOpen();
 }
 
-gee::Application::DrawableInfo::DrawableInfo(const std::string& name_, const std::string& meshName_, glm::vec3& position_, glm::vec4& color_, glm::vec3& rot):
+gee::Application::DrawableInfo::DrawableInfo(const std::string& name_, const std::string& meshName_, glm::vec3& position_, glm::vec4& color_, glm::vec3& rot, float& scaleFactor_, glm::vec3& size_):
 	name{name_}, meshName{meshName_},
-	position{ position_ }, color{ color_ }, rotation{rot}
+	position{ position_ }, color{ color_ }, rotation{rot},
+	scaleFactor{scaleFactor_}, size{size_}
 {
+}
+
+void gee::Application::DrawableInfo::updateSize(float factor)
+{
+	size *= factor;
 }

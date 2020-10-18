@@ -46,12 +46,16 @@ namespace gee
 		//
 		struct DrawableInfo
 		{
-			DrawableInfo(const std::string& name_, const std::string& meshName_, glm::vec3& position_, glm::vec4& color_, glm::vec3& rot);
+			DrawableInfo(const std::string& name_, const std::string& meshName_, glm::vec3& position_, glm::vec4& color_, glm::vec3& rot, float& scaleFactor_, glm::vec3& size_);
 			const std::string& name;
 			const std::string& meshName;
 			glm::vec3& position;
 			glm::vec3& rotation;
 			glm::vec4& color;
+			glm::vec3& size;
+			float& scaleFactor;
+
+			void updateSize(float factor);
 		};
 
 		std::vector<DrawableInfo> drawablesInfos;

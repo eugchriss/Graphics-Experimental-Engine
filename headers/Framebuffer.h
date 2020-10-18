@@ -13,12 +13,15 @@ namespace vkn
 	class Framebuffer
 	{
 	public:
-		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Swapchain& swapchain, const vkn::Renderpass& renderpass);
+
+		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, const vkn::Swapchain& swapchain);
+		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, const VkExtent2D& sz);
 		Framebuffer(Framebuffer&& other);
 		~Framebuffer();
 		const VkImageView attachment(const uint32_t index) const;
 		const VkFramebuffer frame(const uint32_t index) const;
 		VkExtent2D size;
+
 
 	private:
 		vkn::Device& device_;

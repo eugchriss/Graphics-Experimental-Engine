@@ -24,6 +24,7 @@
 #include "MemoryLocation.h"
 #include "Texture.h"
 #include "Camera.h"
+#include "ShaderTechnique.h"
 
 namespace vkn
 {
@@ -48,18 +49,15 @@ namespace vkn
 		std::unique_ptr<vkn::QueueFamily> queueFamily_;
 		std::unique_ptr<vkn::Device> device_;
 		std::unique_ptr<vkn::Swapchain> swapchain_;
-		std::unique_ptr<vkn::Renderpass> renderpass_;
-		std::unique_ptr<vkn::Framebuffer> framebuffer_;
 		std::unique_ptr<vkn::Queue> graphicsQueue_;
 		std::unique_ptr<vkn::Queue> transferQueue_;
-		std::unique_ptr<vkn::Pipeline> pipeline_;
 		VkSampler sampler_{ VK_NULL_HANDLE };
 		std::unique_ptr<vkn::CommandPool> cbPool_;
 		std::vector<vkn::CommandBuffer> cbs_;
 		std::vector<vkn::Signal> imageAvailableSignals_;
 		std::vector<vkn::Signal> renderingFinishedSignals_;
 		bool isWindowMinimized_{};
-
+		std::unique_ptr<vkn::ShaderTechnique> forwardRendering_;
 		//imgui variables
 		VkDescriptorPool imguiDescriptorPool_{ VK_NULL_HANDLE };
 		std::unique_ptr<vkn::Renderpass> imguiRenderpass_;	
@@ -70,8 +68,7 @@ namespace vkn
 		VkRect2D renderArea_;
 
 		void checkGpuCompability(const vkn::Gpu& gpu);
-		void buildRenderpasses();
-		void buildPipeline();
+		void buildShaderTechnique();
 		void createSampler();
 		void buildImguiContext(const gee::Window& window);
 		void record(const std::unordered_map<size_t, uint64_t>& sortedDrawables);

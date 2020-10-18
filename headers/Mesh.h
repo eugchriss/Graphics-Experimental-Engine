@@ -27,6 +27,7 @@ namespace gee
 		const std::vector<uint32_t>& indices() const;
 		const std::string& name() const;
 		const size_t hash() const;
+
 	private:
 		std::string name_;
 		std::vector<Vertex> vertices_;

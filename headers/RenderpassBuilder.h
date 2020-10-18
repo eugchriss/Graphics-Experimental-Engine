@@ -28,8 +28,9 @@ namespace vkn
 			struct Requirement
 			{
 				void addInputAttachment(const uint32_t, const VkImageLayout layout);
-				void addColorAttachment(const uint32_t, const VkImageLayout layout);
-				void addDepthStencilAttachment(const uint32_t, const VkImageLayout layout);
+				void addColorAttachments(std::vector<uint32_t>& attachments);
+				void addColorAttachment(const uint32_t);
+				void addDepthStencilAttachment(const uint32_t);
 				std::vector<VkAttachmentReference> inputAttachments{};
 				std::vector<VkAttachmentReference> colorAttachments{};
 				std::vector<VkAttachmentReference> depthStencilAttacments;
@@ -46,6 +47,7 @@ namespace vkn
 		};
 
 		RenderpassBuilder(vkn::Device& device);
+		const std::vector<uint32_t> addAttachments(const std::vector<VkFormat>& formats, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout);
 		const uint32_t addAttachment(const VkFormat format, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout);
 		const uint32_t addSubpass(Subpass::Requirement& requiments);
 		void addDependecy(const Dependency::Subpass& scr, const Dependency::Subpass& dst);

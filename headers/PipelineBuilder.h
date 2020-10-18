@@ -22,6 +22,7 @@ namespace vkn
 		~PipelineBuilder();
 		vkn::Pipeline get();
 		void addShaderStage(const VkShaderStageFlagBits stage, const std::string& path);
+		void addShaderStage(vkn::Shader&& shader);
 		void setInputBindingRate(const uint32_t binding, const VkVertexInputRate rate);
 		void addAssemblyStage(const VkPrimitiveTopology primitive, const VkBool32 restart = VK_FALSE);
 		void addTesselationStage(const uint32_t controlPoints);
@@ -33,15 +34,16 @@ namespace vkn
 		void addColorBlendStage(const VkBool32 logicEnabled = VK_FALSE, const VkLogicOp op = VK_LOGIC_OP_OR);
 		void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment);
 		void addDynamicState(const VkDynamicState state);
+		const std::vector<VkFormat>& getColorOutputFormats() const;
 
 		VkFrontFace frontFace;
 		VkCullModeFlags cullMode;
 		float lineWidth;
 		VkRenderPass renderpass;
 		uint32_t subpass;
-	private:
 		vkn::Gpu& gpu_;
 		vkn::Device& device_;
+	private:
 
 		VkPipelineVertexInputStateCreateInfo vertexInput_{};
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyCI_{};
@@ -57,7 +59,7 @@ namespace vkn
 		std::vector<RenderArea> renderAreas_{};
 		std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments_{};
 		std::vector<VkDynamicState> dynamicStates_{};
-		std::vector < std::pair < VkShaderStageFlagBits, std::string>> shaders_{};
+		std::vector<vkn::Shader> shaders_{};
 
 	};
 }

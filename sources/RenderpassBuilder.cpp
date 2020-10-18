@@ -5,6 +5,30 @@ vkn::RenderpassBuilder::RenderpassBuilder(vkn::Device& device) : device_{ device
 {
 }
 
+const std::vector<uint32_t> vkn::RenderpassBuilder::addAttachments(const std::vector<VkFormat>& formats, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout)
+{
+	std::vector<uint32_t> attachments;
+	attachments.reserve(std::size(formats));
+
+	for (const auto format : formats)
+	{
+		VkAttachmentDescription attachment{};
+		attachment.flags = 0;
+		attachment.format = format;
+		attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		attachment.loadOp = colorDepthOp.load;
+		attachment.storeOp = colorDepthOp.store;
+		attachment.stencilLoadOp = stencilOp.load;
+		attachment.stencilStoreOp = stencilOp.store;
+		attachment.initialLayout = layout.initial;
+		attachment.finalLayout = layout.final;
+
+		attachments_.push_back(attachment);
+	}
+	attachments.push_back(std::size(attachments_) - 1);
+	return attachments;
+}
+
 const uint32_t vkn::RenderpassBuilder::addAttachment(const VkFormat format, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout)
 {
 	VkAttachmentDescription attachment{};
@@ -91,12 +115,20 @@ void vkn::RenderpassBuilder::Subpass::Requirement::addInputAttachment(const uint
 	inputAttachments.push_back(VkAttachmentReference{ attachment, layout });
 }
 
-void vkn::RenderpassBuilder::Subpass::Requirement::addColorAttachment(const uint32_t attachment, const VkImageLayout layout)
+void vkn::RenderpassBuilder::Subpass::Requirement::addColorAttachments(std::vector<uint32_t>& attachments)
 {
-	colorAttachments.emplace_back(VkAttachmentReference{ attachment, layout });
+	for (const auto attachment : attachments)
+	{
+		colorAttachments.emplace_back(VkAttachmentReference{ attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+	}
 }
 
-void vkn::RenderpassBuilder::Subpass::Requirement::addDepthStencilAttachment(const uint32_t attachment, const VkImageLayout layout)
+void vkn::RenderpassBuilder::Subpass::Requirement::addColorAttachment(const uint32_t attachment)
 {
-	depthStencilAttacments.emplace_back(VkAttachmentReference{ attachment, layout });
+	colorAttachments.emplace_back(VkAttachmentReference{ attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+}
+
+void vkn::RenderpassBuilder::Subpass::Requirement::addDepthStencilAttachment(const uint32_t attachment)
+{
+	depthStencilAttacments.emplace_back(VkAttachmentReference{ attachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
 }

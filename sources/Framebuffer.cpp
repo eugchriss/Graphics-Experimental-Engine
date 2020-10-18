@@ -2,7 +2,7 @@
 #include "../headers/vulkan_utils.h"
 #include <cassert>
 
-vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Swapchain& swapchain, const vkn::Renderpass& renderpass) : device_{ device }, size{swapchain.extent()}
+vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, const vkn::Swapchain& swapchain) : device_{ device }, size{ swapchain.extent() }
 {
 	VkFramebufferCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -12,7 +12,7 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Swa
 	info.height = size.height;
 	info.width = size.width;
 	info.renderPass = renderpass.renderpass();
-	
+
 	const auto& swapchainImages = swapchain.images();
 	const auto& renderpassAttachments = renderpass.attachments();
 	uint32_t renderpassAttachmentsSize{};
@@ -44,7 +44,38 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Swa
 	}
 }
 
-vkn::Framebuffer::Framebuffer(Framebuffer&& other): device_{other.device_}
+vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, const VkExtent2D& sz) : device_{ device }, size{ sz }
+{
+	VkFramebufferCreateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	info.pNext = nullptr;
+	info.flags = 0;
+	info.layers = 1;
+	info.height = size.height;
+	info.width = size.width;
+	info.renderPass = renderpass.renderpass();
+
+	const auto& renderpassAttachments = renderpass.attachments();
+	std::vector<VkImageView> attachmentViews;
+	for (const auto& attachment : renderpassAttachments)
+	{
+		auto imageAspect = getAspectFlag(attachment);
+		images_.emplace_back(gpu, device_, imageAspect, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, attachment.format, VkExtent3D{ size.width, size.height, 1 });
+		attachmentViews.push_back(images_.back().view);
+	}
+
+	info.attachmentCount = std::size(attachmentViews);
+	info.pAttachments = std::data(attachmentViews);
+	for (const auto& image : images_)
+	{
+		VkFramebuffer fb{ VK_NULL_HANDLE };
+		vkn::error_check(vkCreateFramebuffer(device_.device, &info, nullptr, &fb), "Failed to create the framebuffer");
+		framebuffers_.emplace_back(fb);
+	}
+
+}
+
+vkn::Framebuffer::Framebuffer(Framebuffer&& other) : device_{ other.device_ }
 {
 	framebuffers_ = std::move(other.framebuffers_);
 	images_ = std::move(other.images_);

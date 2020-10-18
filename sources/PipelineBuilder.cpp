@@ -44,19 +44,16 @@ vkn::PipelineBuilder::~PipelineBuilder()
 vkn::Pipeline vkn::PipelineBuilder::get()
 {
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages{};
-	std::vector<vkn::Shader> shaders;
 	//create shaders
 	{
-		for (const auto& pair : shaders_)
+		for (const auto& shader : shaders_)
 		{
-			shaders.emplace_back(device_, pair.first, pair.second);
-
 			VkPipelineShaderStageCreateInfo stageInfo{};
 			stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			stageInfo.pNext = nullptr;
 			stageInfo.flags = 0;
-			stageInfo.stage = pair.first;
-			stageInfo.module = shaders.back().module();
+			stageInfo.stage = shader.stage();
+			stageInfo.module = shader.module();
 			stageInfo.pName = "main";
 			stageInfo.pSpecializationInfo = nullptr;
 
@@ -65,8 +62,8 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 	}
 	std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributesDesc;
 	std::vector<VkVertexInputBindingDescription> bindingsDescriprion;
-	auto shader = std::find_if(std::begin(shaders), std::end(shaders), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_VERTEX_BIT; });
-	if (shader != std::end(shaders))
+	auto shader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_VERTEX_BIT; });
+	if (shader != std::end(shaders_))
 	{
 		if (!std::empty(shader->attributeDescriptions().first) && !std::empty(shader->bindings()))
 		{
@@ -115,10 +112,10 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 		//create the blend attachements based on the retrospection of the frag shader
 		if (std::empty(colorBlendAttachments_))
 		{
-			auto shader = std::find_if(std::begin(shaders), std::end(shaders), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
-			assert(shader != std::end(shaders) && "Modern pipeline required a fragment shader");
+			auto shader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
+			assert(shader != std::end(shaders_) && "Modern pipeline required a fragment shader");
 
-			for (auto i = 0u; i < shader->outputCount; ++i)
+			for (auto i = 0u; i < std::size(shader->outputAttachmentsFormats()); ++i)
 			{
 				VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 				colorBlendAttachment.blendEnable = VK_FALSE;
@@ -136,7 +133,7 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 		dynamicStateCI_.pDynamicStates = std::data(dynamicStates_);
 	}
 	//create the pipeline
-	vkn::PipelineLayout pipelineLayout{ device_, shaders };
+	vkn::PipelineLayout pipelineLayout{ device_, shaders_ };
 	VkPipeline pipeline{ VK_NULL_HANDLE };
 	{
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -164,12 +161,27 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 		vkn::error_check(vkCreateGraphicsPipelines(device_.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "Failed to create the pipeline");
 	}
 
-	return vkn::Pipeline{ gpu_, device_, pipeline, std::move(shaders) };
+	return vkn::Pipeline{ gpu_, device_, pipeline, std::move(shaders_) };
 }
 
 void vkn::PipelineBuilder::addShaderStage(const VkShaderStageFlagBits stage, const std::string& path)
 {
-	shaders_.emplace_back(stage, path);
+	auto result = std::find_if(std::begin(shaders_), std::end(shaders_), [&](const auto& shader) { return shader.stage() == stage; });
+	if (result != std::end(shaders_))
+	{
+		throw std::runtime_error{ "There is already a code for this shader stage" };
+	}
+	shaders_.emplace_back(device_, stage, path);
+}
+
+void vkn::PipelineBuilder::addShaderStage(vkn::Shader&& shader)
+{
+	auto result = std::find_if(std::begin(shaders_), std::end(shaders_), [&](const auto& s) { return s.stage() == shader.stage(); });
+	if (result != std::end(shaders_))
+	{
+		throw std::runtime_error{ "There is already a code for this shader stage" };
+	}
+	shaders_.emplace_back(std::move(shader));
 }
 
 void vkn::PipelineBuilder::setInputBindingRate(const uint32_t binding, const VkVertexInputRate rate)
@@ -268,4 +280,14 @@ void vkn::PipelineBuilder::addColorBlendAttachment(const VkPipelineColorBlendAtt
 void vkn::PipelineBuilder::addDynamicState(const VkDynamicState state)
 {
 	dynamicStates_.push_back(state);
+}
+
+const std::vector<VkFormat>& vkn::PipelineBuilder::getColorOutputFormats() const
+{
+	auto result = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
+	if (result == std::end(shaders_))
+	{
+		return {};
+	}
+	return result->outputAttachmentsFormats();
 }

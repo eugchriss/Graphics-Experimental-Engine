@@ -18,12 +18,17 @@ namespace gee
 		void setRotation(const glm::vec3& rot);
 		const size_t hash() const;
 		glm::vec3 position;
+		glm::vec3 size;
 		glm::vec4 color;
 		glm::vec3 rotation;
 		std::string name;
+		float scaleFactor{ 1.0f };
 		const gee::Mesh& mesh;
 	private:
 		static uint32_t count; //solely used for default naming
+
+		//normalize the scale factor so that the mesh bounding box volume is always 1m3
+		const float normalizedScaleFactor(const gee::Mesh& mesh);
 	};
 
 }

@@ -37,9 +37,7 @@ vkn::Renderer::Renderer(gee::Window& window):renderArea_{ 0, 0, window.size().x,
 	graphicsQueue_ = queueFamily_->getQueue(*device_);
 	transferQueue_ = queueFamily_->getQueue(*device_);
 	swapchain_ = std::make_unique<vkn::Swapchain>(*gpu_, *device_, surface_);
-	buildRenderpasses();
-	buildPipeline();
-	framebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, *swapchain_, *renderpass_);
+	buildShaderTechnique();
 	cbPool_ = std::make_unique<vkn::CommandPool>(*device_, queueFamily_->familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	createSampler();
 
@@ -92,9 +90,7 @@ void vkn::Renderer::resize()
 	vkn::Signal layoutTransitionned{ *device_ };
 	transferQueue_->submit(cb, layoutTransitionned);
 	
-	buildRenderpasses();
-	buildPipeline();
-	framebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, *swapchain_, *renderpass_);
+	buildShaderTechnique();
 	imageAvailableSignals_.clear();
 	renderingFinishedSignals_.clear();
 	imageCount_ = std::size(swapchain_->images());
@@ -168,8 +164,9 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 			const auto& sortedDrawables = createSortedDrawables(drawables);
 			
 			bindTexture(textures_);
-			pipeline_->updateBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
-			pipeline_->updateBuffer("Colors", drawablesColors_ , VK_SHADER_STAGE_VERTEX_BIT);
+			forwardRendering_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
+			forwardRendering_->updatePipelineBuffer("Colors", drawablesColors_, VK_SHADER_STAGE_VERTEX_BIT);
+			
 			record(sortedDrawables);
 			submit();
 		}
@@ -185,7 +182,7 @@ void vkn::Renderer::bindTexture(const std::unordered_map<size_t, vkn::Image>& te
 	{
 		textureViews.push_back(texture.view);
 	}
-	pipeline_->updateTextures("diffuseTex", sampler_, textureViews, VK_SHADER_STAGE_FRAGMENT_BIT);
+	forwardRendering_->updatePipelineTextures("diffuseTex", sampler_, textureViews, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRatio)
@@ -194,7 +191,7 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	info.view = camera.pointOfView();
 	info.projection = camera.perspectiveProjection(aspectRatio);
 	info.projection[1][1] *= -1;
-	pipeline_->updateBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
+	forwardRendering_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
 }
 
 void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
@@ -208,31 +205,17 @@ void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
 	}
 }
 
-void vkn::Renderer::buildRenderpasses()
-{
-	vkn::RenderpassBuilder builder{ *device_ };
-	auto colorAttachment = builder.addAttachment(swapchain_->imageFormat(), { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED ,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
-	auto depthAttachment = builder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
 
+void vkn::Renderer::buildShaderTechnique()
+{
+	vkn::RenderpassBuilder rpbuilder{ *device_ };
+	auto colorAttachment = rpbuilder.addAttachment(swapchain_->imageFormat(), { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED ,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+	auto depthAttachment = rpbuilder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
 	vkn::RenderpassBuilder::Subpass::Requirement requirements{};
-	requirements.addColorAttachment(colorAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	requirements.addDepthStencilAttachment(depthAttachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-	builder.addSubpass(requirements);
-	renderpass_ = std::make_unique<vkn::Renderpass>(builder.get());
+	requirements.addColorAttachment(colorAttachment);
+	requirements.addDepthStencilAttachment(depthAttachment);
+	rpbuilder.addSubpass(requirements);
 
-
-	builder.reset();
-	colorAttachment = builder.addAttachment(swapchain_->imageFormat(), { VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL , VK_IMAGE_LAYOUT_PRESENT_SRC_KHR });
-	depthAttachment = builder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
-
-	//uses the same requirement than the revious renderpass
-	builder.addSubpass(requirements);
-	
-	imguiRenderpass_ = std::make_unique<vkn::Renderpass>(builder.get());
-}
-
-void vkn::Renderer::buildPipeline()
-{
 	vkn::PipelineBuilder builder{ *gpu_, *device_ };
 	builder.addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, "../assets/Shaders/vert.spv");
 	builder.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, "../assets/Shaders/frag.spv");
@@ -243,9 +226,15 @@ void vkn::Renderer::buildPipeline()
 	builder.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
 	builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 	builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-	builder.renderpass = renderpass_->renderpass();
-	builder.subpass = 0;
-	pipeline_ = std::make_unique<vkn::Pipeline>(builder.get());
+
+	forwardRendering_ = std::make_unique<vkn::ShaderTechnique>(rpbuilder, builder, *swapchain_);
+
+	rpbuilder.reset();
+	colorAttachment = rpbuilder.addAttachment(swapchain_->imageFormat(), { VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL , VK_IMAGE_LAYOUT_PRESENT_SRC_KHR });
+	depthAttachment = rpbuilder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
+	//uses the same requirement than the revious renderpass
+	rpbuilder.addSubpass(requirements);
+	imguiRenderpass_ = std::make_unique<vkn::Renderpass>(rpbuilder.get());
 }
 
 void vkn::Renderer::createSampler()
@@ -331,29 +320,26 @@ void vkn::Renderer::record(const std::unordered_map<size_t, uint64_t>& sortedDra
 {
 	auto& cb = cbs_[currentFrame_];
 	cb.begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
-	
-	renderpass_->begin(cb, framebuffer_->frame(currentFrame_), renderArea_, VK_SUBPASS_CONTENTS_INLINE);
-	pipeline_->bind(cb);
-	vkCmdSetViewport(cb.commandBuffer(), 0, 1, &viewport_);
-	vkCmdSetScissor(cb.commandBuffer(), 0, 1, &renderArea_);
-	
-	uint32_t firstInstanceIndex{ 0 };
-	uint32_t textureIndex{ 0 };
-	for (const auto [meshHashKey, instanceCount] : sortedDrawables)
-	{
-		VkDeviceSize offset{ 0 };
-		auto& memoryLocation = meshesMemory_.at(meshHashKey);
 
-		pipeline_->pushConstant(cb, "pushConstant", textureIndex);
-		vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
-		vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, firstInstanceIndex);
-		firstInstanceIndex += instanceCount;
-		++textureIndex;
-	}
-	renderpass_->end(cb);
+	forwardRendering_->execute(cb, currentFrame_, viewport_, renderArea_, [&]()
+		{
+			uint32_t firstInstanceIndex{ 0 };
+			uint32_t textureIndex{ 0 };
+			for (const auto [meshHashKey, instanceCount] : sortedDrawables)
+			{
+				VkDeviceSize offset{ 0 };
+				auto& memoryLocation = meshesMemory_.at(meshHashKey);
 
-	imguiRenderpass_->begin(cb, framebuffer_->frame(currentFrame_), renderArea_, VK_SUBPASS_CONTENTS_INLINE);
+				forwardRendering_->pipelinePushConstant(cb, "pushConstant", textureIndex);
+				vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
+				vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, firstInstanceIndex);
+				firstInstanceIndex += instanceCount;
+				++textureIndex;
+			}
+		});
+
+	imguiRenderpass_->begin(cb, forwardRendering_->framebuffer(currentFrame_), renderArea_, VK_SUBPASS_CONTENTS_INLINE);
 	guiContent_();
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
 	imguiRenderpass_->end(cb);
@@ -429,5 +415,6 @@ const glm::mat4 vkn::Renderer::getModelMatrix(const gee::Drawable& drawable) con
 	mat = glm::rotate(mat, drawable.rotation.x, glm::vec3{ 1.0, 0.0f, 0.0f });
 	mat = glm::rotate(mat, drawable.rotation.y, glm::vec3{ 0.0, 1.0f, 0.0f });
 	mat = glm::rotate(mat, drawable.rotation.z, glm::vec3{ 0.0, 0.0f, 1.0f });
+	mat = glm::scale(mat, drawable.size);
 	return mat;
 }
