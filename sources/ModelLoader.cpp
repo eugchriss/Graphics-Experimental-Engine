@@ -16,8 +16,7 @@ gee::Mesh gee::ModelLoader::load(const std::string& path)
 		throw std::runtime_error{ "Assimp loader failed: " + error };
 	}
 	processNode(scene, scene->mRootNode);
-	assert(!std::empty(textures_) && "The mesh doesn t have any texture attached");
-	return Mesh{scene->GetShortFilename(path.c_str()), std::move(vertices_), std::move(indices_), std::move(textures_) };
+	return Mesh{ scene->GetShortFilename(path.c_str()), std::move(vertices_), std::move(indices_), std::move(material_) };
 }
 
 void gee::ModelLoader::processNode(const aiScene* scene, const aiNode* node)
@@ -40,7 +39,7 @@ void gee::ModelLoader::processMesh(const aiScene* scene, const aiMesh* mesh)
 		vertex.position = glm::vec3{ mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
 		if (mesh->HasVertexColors(0))
 		{
-			vertex.color = glm::vec3{ mesh->mColors[0][i].r, mesh->mColors[0][i].g, mesh->mColors[0][i].b};
+			vertex.color = glm::vec3{ mesh->mColors[0][i].r, mesh->mColors[0][i].g, mesh->mColors[0][i].b };
 		}
 		if (mesh->HasTextureCoords(0))
 		{
@@ -66,20 +65,31 @@ void gee::ModelLoader::processMesh(const aiScene* scene, const aiMesh* mesh)
 	}
 }
 
-void gee::ModelLoader::processMaterial(const aiMaterial* material)
+void gee::ModelLoader::processMaterial(const aiMaterial* mat)
 {
-	std::vector<aiTextureType> textureTypes{ aiTextureType_DIFFUSE, aiTextureType_HEIGHT, aiTextureType_SPECULAR };
-	for (auto texture_t : textureTypes)
+	const auto& diffuseTexPath = getTexturePath(*mat, aiTextureType_DIFFUSE, "../assets/default_textures/diffuse.png");
+	const auto& normalTexPath = getTexturePath(*mat, aiTextureType_NORMALS, "../assets/default_textures/normal.png");
+	const auto& specularTexPath = getTexturePath(*mat, aiTextureType_SPECULAR, "../assets/default_textures/specular.png");
+	material_ = gee::Material{ diffuseTexPath, normalTexPath, specularTexPath };
+}
+
+const std::string gee::ModelLoader::getTexturePath(const aiMaterial& material, const aiTextureType type, const std::string& defaultTexPath) const
+{
+	const auto textCount = material.GetTextureCount(type);
+	if (textCount == 0)
 	{
-		auto textCount = material->GetTextureCount(texture_t);
-		if (textCount > 0)
-		{
-			aiString relativeTexturePath;
-			material->GetTexture(texture_t, 0, &relativeTexturePath);
-			fs::path texturePath{ meshPath_.parent_path() };
-			texturePath += "/";
-			texturePath += relativeTexturePath.C_Str();
-			textures_.emplace(std::make_pair(texture_t, texturePath.string()));
-		}
+		return defaultTexPath;
 	}
+	else if (textCount > 1)
+	{
+		throw std::runtime_error{ "This loader doesn t support multi material meshes" };
+	}
+
+	aiString relativeTexturePath;
+	//only using the first texture for now
+	material.GetTexture(type, 0, &relativeTexturePath);
+	fs::path texturePath{ meshPath_.parent_path() };
+	texturePath += "/";
+	texturePath += relativeTexturePath.C_Str();
+	return texturePath.string();
 }

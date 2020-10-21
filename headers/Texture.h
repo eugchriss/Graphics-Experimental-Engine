@@ -8,7 +8,8 @@ namespace gee
 	{
 	public:
 		Texture(const std::string& path);
-		Texture(Texture&& other);
+		Texture(Texture&& other) = default;
+		Texture& operator=(Texture&&) = default;
 		const std::vector<unsigned char>& pixels() const;
 		const size_t hash() const;
 		const uint32_t width() const;

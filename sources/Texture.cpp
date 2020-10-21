@@ -18,11 +18,6 @@ gee::Texture::Texture(const std::string& path): path_{path}
 	stbi_image_free(pixels);
 }
 
-gee::Texture::Texture(Texture&& other)
-{
-	pixels_ = std::move(other.pixels_);
-}
-
 const std::vector<unsigned char>& gee::Texture::pixels() const
 {
 	return pixels_;

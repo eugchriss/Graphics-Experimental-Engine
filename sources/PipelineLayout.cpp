@@ -93,9 +93,9 @@ void vkn::PipelineLayout::createPushConstantRanges(const std::vector<vkn::Shader
 		for (const auto& pushConstant : pushConstants)
 		{
 			VkPushConstantRange range{};
+			range.stageFlags = pushConstant.stageFlag;	
 			range.offset = pushConstant.offset;
 			range.size = pushConstant.size;
-			range.stageFlags = pushConstant.stageFlag;
 			pushConstantRanges_.push_back(range);
 		}
 	}

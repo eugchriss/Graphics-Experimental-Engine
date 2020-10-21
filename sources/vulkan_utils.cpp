@@ -29,11 +29,15 @@ const vkn::Format vkn::getFormat(const spirv_cross::SPIRType& type)
 		}
 		else
 		{
-			throw std::runtime_error{ "Untreated format" };
+			throw std::runtime_error{ "vkn::getFormat received an untreated format \n" };
 		}
+	}
+	else if(type.basetype == spirv_cross::SPIRType::UInt)
+	{
+		return { VK_FORMAT_R8G8B8A8_UINT, sizeof(uint32_t) };
 	}
 	else
 	{
-		throw std::runtime_error{ "Untreated format" };
+		throw std::runtime_error{ "vkn::getFormat received an untreated spirvType format \n" };
 	}
 }

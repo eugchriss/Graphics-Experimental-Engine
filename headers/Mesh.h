@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include "glm/glm.hpp"
+#include "material.h"
 #include "Texture.h"
 #include "assimp/material.h"
 namespace gee
@@ -19,10 +20,10 @@ namespace gee
 	class Mesh
 	{
 	public:
-		Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices, std::unordered_map<aiTextureType, Texture>&& textures);
+		Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices, gee::Material&& material);
 		~Mesh() = default;
 		Mesh(Mesh&&) = default;
-		const Texture& texture(const aiTextureType& type) const;
+		const Material& material() const;
 		const std::vector<Vertex>& vertices() const;
 		const std::vector<uint32_t>& indices() const;
 		const std::string& name() const;
@@ -32,7 +33,7 @@ namespace gee
 		std::string name_;
 		std::vector<Vertex> vertices_;
 		std::vector<uint32_t> indices_;
-		std::unordered_map<aiTextureType, Texture> textures_;
+		Material material_;
 		uint32_t rendererID_{};
 	};
 }

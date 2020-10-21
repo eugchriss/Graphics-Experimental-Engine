@@ -4,12 +4,13 @@
 #include "assimp/scene.h"
 #include "Mesh.h"
 #include "Texture.h"
+#include "Material.h"
 
 #include <vector>
 #include <memory>
 #include <string>
 #include <filesystem>
-#include <unordered_map>
+#include <vector>
 
 namespace fs = std::filesystem;
 namespace gee
@@ -27,11 +28,13 @@ namespace gee
 		fs::path meshPath_;
 		std::vector<Vertex> vertices_;
 		std::vector<uint32_t> indices_;
-		std::unordered_map<aiTextureType, Texture> textures_;
+		Material material_{};
 		unsigned int flags_;
 
 		void processNode(const aiScene* scene, const aiNode* node);
 		void processMesh(const aiScene* scene, const aiMesh* mesh);
 		void processMaterial(const aiMaterial* material);
+
+		const std::string getTexturePath(const aiMaterial& material, const aiTextureType type, const std::string& defaultTexPath) const;
 	};
 }

@@ -1,4 +1,4 @@
-#version 450
+ #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec3 inPosition;
@@ -25,8 +25,12 @@ layout(binding = 2) uniform Colors
      vec4[100] color;
 }colors;
 
+layout( push_constant ) uniform PushConstant{ 
+    uint index;
+} modelIndex; 
+
 void main() {
-    gl_Position = camera.proj * camera.view * models.matrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
-    fragColor = colors.color[gl_InstanceIndex];
+    gl_Position = camera.proj * camera.view * models.matrices[modelIndex.index + gl_InstanceIndex] * vec4(inPosition, 1.0);
+    fragColor = colors.color[modelIndex.index + gl_InstanceIndex];
     texCoord = inTexCoord;
 }

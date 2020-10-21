@@ -9,7 +9,7 @@
 
 
 #define ENABLE_VALIDATION_LAYERS
-vkn::Renderer::Renderer(gee::Window& window):renderArea_{ 0, 0, window.size().x, window.size().y }
+vkn::Renderer::Renderer(gee::Window& window) :renderArea_{ 0, 0, window.size().x, window.size().y }
 {
 	viewport_ = VkViewport{ 0.0f, 0.0f, static_cast<float>(window.size().x), static_cast<float>(window.size().y), 0.0f, 1.0f };
 	isWindowMinimized_ = viewport_.width == 0 && viewport_.height == 0;
@@ -33,7 +33,7 @@ vkn::Renderer::Renderer(gee::Window& window):renderArea_{ 0, 0, window.size().x,
 
 	vkn::error_check(glfwCreateWindowSurface(instance_->instance, window.window(), nullptr, &surface_), "unable to create a presentable surface for the window");
 	queueFamily_ = std::make_unique<vkn::QueueFamily>(*gpu_, VK_QUEUE_GRAPHICS_BIT & VK_QUEUE_TRANSFER_BIT, surface_, 2);
-	device_ = std::make_unique<vkn::Device>(*gpu_, std::initializer_list<const char*>{"VK_KHR_swapchain", "VK_EXT_descriptor_indexing", "VK_KHR_maintenance3"}, *queueFamily_);
+	device_ = std::make_unique<vkn::Device>(*gpu_, std::initializer_list<const char*>{"VK_KHR_swapchain", "VK_EXT_descriptor_indexing", "VK_KHR_maintenance3"}, * queueFamily_);
 	graphicsQueue_ = queueFamily_->getQueue(*device_);
 	transferQueue_ = queueFamily_->getQueue(*device_);
 	swapchain_ = std::make_unique<vkn::Swapchain>(*gpu_, *device_, surface_);
@@ -80,21 +80,21 @@ void vkn::Renderer::resize()
 	auto newExtent = surfaceCapabilities.currentExtent;
 	renderArea_ = VkRect2D{ 0, 0, newExtent };
 	viewport_ = VkViewport{ 0.0f, 0.0f, static_cast<float>(newExtent.width), static_cast<float>(newExtent.height), 0.0f, 1.0f };
-	
+
 	cbPool_ = std::make_unique<vkn::CommandPool>(*device_, queueFamily_->familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	cbs_.clear();
 	auto cb = cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	cb.begin();
-		swapchain_->resize(cb, newExtent);
+	swapchain_->resize(cb, newExtent);
 	cb.end();
 	vkn::Signal layoutTransitionned{ *device_ };
 	transferQueue_->submit(cb, layoutTransitionned);
-	
+
 	buildShaderTechnique();
 	imageAvailableSignals_.clear();
 	renderingFinishedSignals_.clear();
 	imageCount_ = std::size(swapchain_->images());
-	for (auto & image : swapchain_->images())
+	for (auto& image : swapchain_->images())
 	{
 		cbs_.emplace_back(cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY));
 		imageAvailableSignals_.emplace_back(*device_, true);
@@ -139,14 +139,33 @@ bool vkn::Renderer::addMesh(const gee::Mesh& mesh)
 	return false;
 }
 
-void vkn::Renderer::addTexture(const gee::Texture& texture)
+const size_t vkn::Renderer::addMaterial(const gee::Material& material)
+{
+	auto result = shaderMaterials_.find(material.hash);
+	if (result == std::end(shaderMaterials_))
+	{
+		gee::ShaderMaterial shaderMaterial{};
+
+		shaderMaterial.diffuseIndex = addTexture(material.diffuseTex);
+		shaderMaterial.normalIndex = addTexture(material.normalTex);
+		shaderMaterial.specularIndex = addTexture(material.specularTex);
+
+		shaderMaterials_.emplace(material.hash, shaderMaterial);
+		return std::size(shaderMaterials_) - 1;
+	}
+	return std::distance(std::begin(shaderMaterials_), result);
+}
+
+const size_t vkn::Renderer::addTexture(const gee::Texture& texture)
 {
 	auto result = textures_.find(texture.hash());
 	if (result == std::end(textures_))
 	{
 		auto& image = createImageFromTexture(texture);
 		textures_.emplace(texture.hash(), std::move(image));
+		return std::size(textures_) - 1;
 	}
+	return std::distance(std::begin(textures_), result);
 }
 
 void vkn::Renderer::updateGui(std::function<void()> guiContent)
@@ -162,11 +181,11 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 		{
 			renderingFinishedSignals_[currentFrame_].reset();
 			const auto& sortedDrawables = createSortedDrawables(drawables);
-			
+
 			bindTexture(textures_);
+			bindShaderMaterial(shaderMaterials_);
 			forwardRendering_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
 			forwardRendering_->updatePipelineBuffer("Colors", drawablesColors_, VK_SHADER_STAGE_VERTEX_BIT);
-			
 			record(sortedDrawables);
 			submit();
 		}
@@ -182,7 +201,18 @@ void vkn::Renderer::bindTexture(const std::unordered_map<size_t, vkn::Image>& te
 	{
 		textureViews.push_back(texture.view);
 	}
-	forwardRendering_->updatePipelineTextures("diffuseTex", sampler_, textureViews, VK_SHADER_STAGE_FRAGMENT_BIT);
+	forwardRendering_->updatePipelineTextures("textures", sampler_, textureViews, VK_SHADER_STAGE_FRAGMENT_BIT);
+}
+
+void vkn::Renderer::bindShaderMaterial(const std::unordered_map<size_t, gee::ShaderMaterial>& materials)
+{
+	std::vector<gee::ShaderMaterial> shaderMaterials;
+	shaderMaterials.reserve(std::size(materials));
+	for (const auto& [hashID, material] : materials)
+	{
+		shaderMaterials.push_back(material);
+	}
+	forwardRendering_->updatePipelineBuffer("Materials", shaderMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRatio)
@@ -204,7 +234,6 @@ void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
 		throw std::runtime_error{ "There is no compatible gpu available." };
 	}
 }
-
 
 void vkn::Renderer::buildShaderTechnique()
 {
@@ -263,7 +292,7 @@ void vkn::Renderer::buildImguiContext(const gee::Window& window)
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	
+
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
 
@@ -310,7 +339,7 @@ void vkn::Renderer::buildImguiContext(const gee::Window& window)
 
 	auto cb = cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	cb.begin();
-		ImGui_ImplVulkan_CreateFontsTexture(cb.commandBuffer());
+	ImGui_ImplVulkan_CreateFontsTexture(cb.commandBuffer());
 	cb.end();
 	graphicsQueue_->submit(cb);
 	graphicsQueue_->idle();
@@ -320,22 +349,20 @@ void vkn::Renderer::record(const std::unordered_map<size_t, uint64_t>& sortedDra
 {
 	auto& cb = cbs_[currentFrame_];
 	cb.begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
-
 	forwardRendering_->execute(cb, currentFrame_, viewport_, renderArea_, [&]()
 		{
-			uint32_t firstInstanceIndex{ 0 };
-			uint32_t textureIndex{ 0 };
+			uint32_t instanceIndex{ 0 };
 			for (const auto [meshHashKey, instanceCount] : sortedDrawables)
 			{
 				VkDeviceSize offset{ 0 };
 				auto& memoryLocation = meshesMemory_.at(meshHashKey);
 
-				forwardRendering_->pipelinePushConstant(cb, "pushConstant", textureIndex);
+				forwardRendering_->pipelinePushConstant(cb, "modelIndex", meshesShaderIndices_[instanceIndex].modelIndices);
+				forwardRendering_->pipelinePushConstant(cb, "materialIndex", meshesShaderIndices_[instanceIndex].materialIndex);
 				vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
 				vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-				vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, firstInstanceIndex);
-				firstInstanceIndex += instanceCount;
-				++textureIndex;
+				vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, 0);
+				instanceIndex += instanceCount;
 			}
 		});
 
@@ -383,6 +410,7 @@ const std::unordered_map<size_t, uint64_t> vkn::Renderer::createSortedDrawables(
 {
 	modelMatrices_.clear();
 	drawablesColors_.clear();
+	meshesShaderIndices_.clear();
 	modelMatrices_.reserve(std::size(drawables));
 	std::unordered_map<size_t, uint64_t> sortedDrawables;
 	std::sort(std::begin(drawables), std::end(drawables), [&](const auto& lhs, const auto& rhs)
@@ -403,7 +431,12 @@ const std::unordered_map<size_t, uint64_t> vkn::Renderer::createSortedDrawables(
 		{
 			++sortedDrawables[drawable.mesh.hash()];
 		}
-		addTexture(drawable.mesh.texture(aiTextureType_DIFFUSE));
+		const auto materialIndice = addMaterial(drawable.mesh.material());
+
+		MeshIndices shaderIndice;
+		shaderIndice.modelIndices = std::size(modelMatrices_) - 1;
+		shaderIndice.materialIndex = materialIndice;
+		meshesShaderIndices_.emplace_back(shaderIndice);
 	}
 	return std::move(sortedDrawables);
 }

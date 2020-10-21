@@ -76,16 +76,25 @@ namespace vkn
 		std::function<void()> guiContent_;
 
 		bool addMesh(const gee::Mesh& mesh);
-		void addTexture(const gee::Texture& texture);
+		const size_t addMaterial(const gee::Material& material);
+		const size_t addTexture(const gee::Texture& texture);
 		void bindTexture(const std::unordered_map<size_t, vkn::Image>& textures);
+		void bindShaderMaterial(const std::unordered_map<size_t, gee::ShaderMaterial>& materials);
 		vkn::Image createImageFromTexture(const gee::Texture& texture);
 		const std::unordered_map<size_t, uint64_t> createSortedDrawables(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		const glm::mat4 getModelMatrix(const gee::Drawable& drawable) const;
 		std::vector<glm::mat4> modelMatrices_{};
 		std::vector<glm::vec4> drawablesColors_{};
 		std::unordered_map<size_t, vkn::MemoryLocation> meshesMemory_;
+		std::unordered_map<size_t, gee::ShaderMaterial> shaderMaterials_;
 		std::unordered_map<size_t, vkn::Image> textures_;
 
+		struct MeshIndices
+		{
+			uint32_t modelIndices{};
+			uint32_t materialIndex{};
+		};
+		std::vector<MeshIndices> meshesShaderIndices_;
 		struct CameraShaderInfo
 		{
 			glm::mat4 view{};

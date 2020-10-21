@@ -49,7 +49,8 @@ set(SOURCES	"sources/main.cpp"
 			"sources/units.cpp"
 			"sources/eventDispatcher.cpp"
 			"sources/drawable.cpp"
-			"sources/shaderTechnique.cpp")
+			"sources/shaderTechnique.cpp"
+			"sources/material.cpp")
 			
 
 set(HEADERS	"headers/gpu.h"
@@ -93,7 +94,8 @@ set(HEADERS	"headers/gpu.h"
 			"headers/units.h"
 			"headers/eventDispatcher.h"
 			"headers/drawable.h"
-			"headers/shaderTechnique.h")
+			"headers/shaderTechnique.h"
+			"headers/material.h")
 
 add_executable(gee ${SOURCES} ${HEADERS})
 

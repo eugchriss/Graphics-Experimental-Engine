@@ -1,23 +1,14 @@
 #include <stdexcept>
 #include "../headers/Mesh.h"
 
-gee::Mesh::Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices, std::unordered_map<aiTextureType, Texture>&& textures) :
+gee::Mesh::Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices, gee::Material&& material) :
 	name_{ name }, vertices_{ std::move(vertices) },
-	indices_{ std::move(indices) }, textures_{std::move(textures)}
+	indices_{ std::move(indices) }, material_{std::move(material)}
 {
 }
-const gee::Texture& gee::Mesh::texture(const aiTextureType& type) const
+const gee::Material& gee::Mesh::material() const
 {
-	auto result = textures_.find(type);
-	if (result != std::end(textures_))
-	{
-		return result->second;
-	}
-	else
-	{
-		throw std::runtime_error{ "The mesh doesn t provide the requested texture type" };
-	}
-
+	return material_;
 }
 const std::vector<gee::Vertex>& gee::Mesh::vertices() const
 {

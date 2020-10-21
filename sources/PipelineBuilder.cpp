@@ -1,6 +1,7 @@
 #include "../headers/PipelineBuilder.h"
 #include "../headers/vulkan_utils.h"
 
+#include <iostream>
 #include <stdexcept>
 #include <fstream>
 
@@ -113,7 +114,7 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 		if (std::empty(colorBlendAttachments_))
 		{
 			auto shader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
-			assert(shader != std::end(shaders_) && "Modern pipeline required a fragment shader");
+			assert(shader != std::end(shaders_) && "Modern pipeline requires  a fragment shader");
 
 			for (auto i = 0u; i < std::size(shader->outputAttachmentsFormats()); ++i)
 			{
