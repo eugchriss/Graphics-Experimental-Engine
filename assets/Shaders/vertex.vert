@@ -8,9 +8,12 @@ layout(location = 3) in vec3 inNormal;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec2 texCoord;
+layout(location = 2) out vec4 fragPos;
+layout(location = 3) out vec4 viewPos;
 
 layout(binding = 0) uniform Camera
 {
+    vec4 pos;
     mat4 view;
     mat4 proj;
 }camera;	
@@ -33,4 +36,6 @@ void main() {
     gl_Position = camera.proj * camera.view * models.matrices[modelIndex.index + gl_InstanceIndex] * vec4(inPosition, 1.0);
     fragColor = colors.color[modelIndex.index + gl_InstanceIndex];
     texCoord = inTexCoord;
+    fragPos = models.matrices[modelIndex.index + gl_InstanceIndex] * vec4(inPosition, 1.0);
+    viewPos = camera.pos;
 }

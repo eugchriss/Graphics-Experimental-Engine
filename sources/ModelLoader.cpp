@@ -68,7 +68,7 @@ void gee::ModelLoader::processMesh(const aiScene* scene, const aiMesh* mesh)
 void gee::ModelLoader::processMaterial(const aiMaterial* mat)
 {
 	const auto& diffuseTexPath = getTexturePath(*mat, aiTextureType_DIFFUSE, "../assets/default_textures/diffuse.png");
-	const auto& normalTexPath = getTexturePath(*mat, aiTextureType_NORMALS, "../assets/default_textures/normal.png");
+	const auto& normalTexPath = getTexturePath(*mat, aiTextureType_HEIGHT, "../assets/default_textures/normal.png");
 	const auto& specularTexPath = getTexturePath(*mat, aiTextureType_SPECULAR, "../assets/default_textures/specular.png");
 	material_ = gee::Material{ diffuseTexPath, normalTexPath, specularTexPath };
 }

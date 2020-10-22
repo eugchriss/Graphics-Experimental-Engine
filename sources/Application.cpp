@@ -69,6 +69,13 @@ void gee::Application::addCamera(const Camera& camera)
 {
 }
 
+void gee::Application::addLight(PointLight& light)
+{
+	pointLights_.emplace_back(std::ref(light));
+	pointLightInfos_.emplace_back(light.name, light.position, light.ambient, light.diffuse, light.specular, light.linear, light.quadratic);
+	addDrawable(light);
+}
+
 void gee::Application::updateGui()
 {
 	ImGui_ImplVulkan_NewFrame();
@@ -76,6 +83,7 @@ void gee::Application::updateGui()
 	ImGui::NewFrame();
 	ImGui::ShowDemoWindow();
 	displayDrawableInfo();
+	displayPointLightInfo();
 	camera_.imguiDisplay();
 	ImGui::Render();
 }
@@ -111,6 +119,30 @@ void gee::Application::displayDrawableInfo()
 
 	auto sizeStr = std::string{ "x = " } + std::to_string(drawable.size.x) + std::string{ " y = " } + std::to_string(drawable.size.y) + std::string{ " z = " } + std::to_string(drawable.size.z);
 	ImGui::LabelText("size", sizeStr.c_str());
+	ImGui::End();
+}
+
+void gee::Application::displayPointLightInfo()
+{
+	std::vector<const char*> names;
+	names.reserve(std::size(pointLightInfos_));
+	for (const auto& light : pointLightInfos_)
+	{
+		names.push_back(light.name.c_str());
+	}
+
+	ImGui::Begin("PointLights");
+	static int selected_pointLight = 0;
+	ImGui::Combo("Names", &selected_pointLight, std::data(names), std::size(names));
+	auto& light = pointLightInfos_[selected_pointLight];
+	ImGui::SliderFloat3("position", &light.position.x, -50.0_m, 50.0_m, "%.1f");
+	ImGui::ColorEdit3("ambient", &light.ambient.x);
+	ImGui::ColorEdit3("diffuse", &light.diffuse.x);
+	ImGui::SliderFloat("specular", &light.specular.x, 0.0f, 256.0f , "%f");
+	light.specular.y = light.specular.x;
+	light.specular.z = light.specular.x;
+	ImGui::SliderFloat("linear", &light.linear, 0.0014f, 0.7, "%.4f");
+	ImGui::SliderFloat("quadratic", &light.quadratic, 0.0000007f, 1.8, "%.7f");
 	ImGui::End();
 }
 
@@ -177,7 +209,7 @@ bool gee::Application::isRunning()
 		/* for now the texture IS the material
 		renderer_->bindMaterial(materials_);
 		*/
-		renderer_->draw(drawables_);
+		renderer_->draw(drawables_, pointLights_);
 
 		renderingtimer_.reset();
 	}
@@ -195,4 +227,10 @@ gee::Application::DrawableInfo::DrawableInfo(const std::string& name_, const std
 void gee::Application::DrawableInfo::updateSize(float factor)
 {
 	size *= factor;
+}
+
+gee::Application::PointLightInfo::PointLightInfo(const std::string& name_, glm::vec3& pos, glm::vec3& amb, glm::vec3& diff, glm::vec3& spec, float& lin, float& quad): 
+	name{name_}, position{pos}, ambient{amb}, diffuse{diff}, specular{spec},
+	 linear{lin}, quadratic{quad}
+{
 }

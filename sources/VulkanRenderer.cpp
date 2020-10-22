@@ -173,7 +173,7 @@ void vkn::Renderer::updateGui(std::function<void()> guiContent)
 	guiContent_ = guiContent;
 }
 
-void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
+void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, std::vector<std::reference_wrapper<gee::PointLight>>& pointLights)
 {
 	if (!isWindowMinimized_)
 	{
@@ -184,6 +184,7 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 
 			bindTexture(textures_);
 			bindShaderMaterial(shaderMaterials_);
+			bindLights(pointLights);
 			forwardRendering_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
 			forwardRendering_->updatePipelineBuffer("Colors", drawablesColors_, VK_SHADER_STAGE_VERTEX_BIT);
 			record(sortedDrawables);
@@ -215,9 +216,30 @@ void vkn::Renderer::bindShaderMaterial(const std::unordered_map<size_t, gee::Sha
 	forwardRendering_->updatePipelineBuffer("Materials", shaderMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
+void vkn::Renderer::bindLights(std::vector<std::reference_wrapper<gee::PointLight>>& lights)
+{
+	std::vector<gee::ShaderPointLight> shaderLights;
+	shaderLights.reserve(std::size(lights));
+	for (const auto& lightRef : lights)
+	{
+		const auto& light = lightRef.get();
+		gee::ShaderPointLight l;
+		l.position = glm::vec4{ light.position, 1.0f };
+		l.ambient = glm::vec4{ light.ambient, 1.0f };
+		l.diffuse = glm::vec4{ light.diffuse, 1.0f };
+		l.specular = glm::vec4{ light.specular, 1.0f };
+		l.linear = light.linear;
+		l.quadratic = light.quadratic;
+		shaderLights.push_back(l);
+
+	}
+	forwardRendering_->updatePipelineBuffer("PointLights", shaderLights, VK_SHADER_STAGE_FRAGMENT_BIT);
+}
+
 void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRatio)
 {
-	CameraShaderInfo info{};
+	ShaderCamera info{};
+	info.position = glm::vec4{camera.position_, 1.0f};
 	info.view = camera.pointOfView();
 	info.projection = camera.perspectiveProjection(aspectRatio);
 	info.projection[1][1] *= -1;

@@ -25,6 +25,7 @@
 #include "Texture.h"
 #include "Camera.h"
 #include "ShaderTechnique.h"
+#include "PointLight.h"
 
 namespace vkn
 {
@@ -38,7 +39,7 @@ namespace vkn
 		void setWindowMinimized(const bool value);
 		void setRenderArea(const VkRect2D renderArea);
 		void updateGui(std::function<void()> guiContent);
-		void draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
+		void draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, std::vector<std::reference_wrapper<gee::PointLight>>& pointLights);
 		void updateCamera(const gee::Camera& camera, const float aspectRatio);
 
 	private:
@@ -80,6 +81,7 @@ namespace vkn
 		const size_t addTexture(const gee::Texture& texture);
 		void bindTexture(const std::unordered_map<size_t, vkn::Image>& textures);
 		void bindShaderMaterial(const std::unordered_map<size_t, gee::ShaderMaterial>& materials);
+		void bindLights(std::vector<std::reference_wrapper<gee::PointLight>>& lights);
 		vkn::Image createImageFromTexture(const gee::Texture& texture);
 		const std::unordered_map<size_t, uint64_t> createSortedDrawables(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		const glm::mat4 getModelMatrix(const gee::Drawable& drawable) const;
@@ -95,8 +97,9 @@ namespace vkn
 			uint32_t materialIndex{};
 		};
 		std::vector<MeshIndices> meshesShaderIndices_;
-		struct CameraShaderInfo
+		struct ShaderCamera
 		{
+			glm::vec4 position{};
 			glm::mat4 view{};
 			glm::mat4 projection{};
 		};

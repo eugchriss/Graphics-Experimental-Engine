@@ -9,6 +9,7 @@
 #include "Timer.h"
 #include "Camera.h"
 #include "EventDispatcher.h"
+#include "PointLight.h"
 
 namespace gee
 {
@@ -19,7 +20,7 @@ namespace gee
 		bool gee::Application::isRunning();
 		void addDrawable(Drawable& drawable);
 		void addCamera(const Camera& camera);
-
+		void addLight(PointLight& light);
 	private: 
 		gee::Window window_;
 		gee::EventDispatcher eventDispatcher_;
@@ -27,11 +28,13 @@ namespace gee
 		std::vector<std::reference_wrapper<gee::Drawable>> drawables_;
 		std::vector<std::reference_wrapper<const Mesh>> meshes_;
 		std::vector<std::reference_wrapper<gee::Texture>> textures_;
+		std::vector<std::reference_wrapper<gee::PointLight>> pointLights_;
 		Timer renderingtimer_;
 		Camera camera_;
 
 		void updateGui();
 		void displayDrawableInfo();
+		void displayPointLightInfo();
 		void onMouseMoveEvent(double x, double y);
 		void onMouseScrollEvent(double x, double y);
 		void onMouseButtonEvent(uint32_t button, uint32_t action, uint32_t mods);
@@ -57,7 +60,18 @@ namespace gee
 
 			void updateSize(float factor);
 		};
-
+		struct PointLightInfo
+		{
+			PointLightInfo(const std::string& name_, glm::vec3& pos, glm::vec3& amb, glm::vec3& diff, glm::vec3& spec, float& lin, float& quad);
+			const std::string& name;
+			glm::vec3& position;
+			glm::vec3& ambient;
+			glm::vec3& diffuse;
+			glm::vec3& specular;
+			float& linear;
+			float& quadratic;
+		};
 		std::vector<DrawableInfo> drawablesInfos;
+		std::vector<PointLightInfo> pointLightInfos_;
 	};
 }
