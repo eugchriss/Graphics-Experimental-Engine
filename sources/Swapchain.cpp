@@ -44,7 +44,7 @@ void vkn::Swapchain::resize(vkn::CommandBuffer& cb, const VkExtent2D& extent)
 	retrieveImages();
 	for (auto& image : images_)
 	{
-		image.transitionLayout(cb, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+		image.transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}
 }
 
@@ -74,7 +74,7 @@ const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(vkn::Signal& waitOn) con
 	return presentInfo;
 }
 
-const std::vector<vkn::Image>& vkn::Swapchain::images() const
+std::vector<vkn::Image>& vkn::Swapchain::images()
 {
 	return images_;
 }

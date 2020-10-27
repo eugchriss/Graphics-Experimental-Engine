@@ -1,6 +1,6 @@
 #include "..\headers\ShaderTechnique.h"
 
-vkn::ShaderTechnique::ShaderTechnique(vkn::RenderpassBuilder& renderpassBuilder, vkn::PipelineBuilder& pipelineBuilder, const vkn::Swapchain& swapchain)
+vkn::ShaderTechnique::ShaderTechnique(vkn::RenderpassBuilder& renderpassBuilder, vkn::PipelineBuilder& pipelineBuilder, vkn::Swapchain& swapchain)
 {
 	renderpass_ = std::make_unique<vkn::Renderpass>(renderpassBuilder.get());
 

@@ -1,17 +1,24 @@
 #include "../headers/Image.h"
 #include "../headers/vulkan_utils.h"
 
-vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageAspectFlags aspect, VkImageUsageFlags usage, VkFormat format, VkExtent3D extent) : device_{ device }, aspect_{ aspect }, extent_{ extent }
+vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags usage, VkFormat format, VkExtent3D extent, const uint32_t layerCount) : device_{ device }, extent_{ extent }, format_{format}, layerCount_{layerCount}
 {
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.pNext = nullptr;
-	imageInfo.flags = 0;
+	if (layerCount_ == 6)
+	{
+		imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+	}
+	else
+	{
+		imageInfo.flags = 0;
+	}
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.format = format;
+	imageInfo.format = format_;
 	imageInfo.extent = extent;
 	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
+	imageInfo.arrayLayers = layerCount_;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageInfo.usage = usage;
@@ -23,33 +30,30 @@ vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageAspectFlags a
 	vkGetImageMemoryRequirements(device_.device, image, &memRequirements);
 	memory_ = std::make_unique<vkn::DeviceMemory>(gpu.device, device_, memRequirements.memoryTypeBits, memRequirements.size);
 	memory_->bind(image);
-
-	createView(format, aspect_);
 }
 
-vkn::Image::Image(vkn::Device& device, const VkImage image, const VkFormat format, const VkImageAspectFlags aspect, bool owned) : device_{ device }, owned_{owned},	aspect_{aspect}
+vkn::Image::Image(vkn::Device& device, const VkImage image, const VkFormat format, const uint32_t layerCount, bool owned) : device_{ device }, owned_{owned}, format_{format}, layerCount_{layerCount}
 {
 	this->image = image;
-	createView(format, aspect_);
 }
 
 vkn::Image::Image(Image&& other): device_{other.device_}
 {
 	memory_ = std::move(other.memory_);
+	views_ = std::move(other.views_);
 	image = other.image;
-	view = other.view;
 	owned_ = other.owned_;
-	aspect_ = other.aspect_;
+	format_ = other.format_;
 	extent_ = other.extent_;
 	layout_ = other.layout_;
+	layerCount_ = other.layerCount_;
 
 	other.image = VK_NULL_HANDLE;
-	other.view = VK_NULL_HANDLE;
 }
 
 vkn::Image::~Image()
 {
-	if (view != VK_NULL_HANDLE)
+	for(auto& [viewType, view] : views_)
 	{
 		vkDestroyImageView(device_.device, view, nullptr);
 	}
@@ -62,21 +66,25 @@ vkn::Image::~Image()
 	}
 }
 
-void vkn::Image::createView(const VkFormat format, const VkImageAspectFlags aspect)
+VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 {
 	VkImageViewCreateInfo viewInfo{};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	viewInfo.pNext = nullptr;
 	viewInfo.flags = 0;
 	viewInfo.image = image;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = format;
+	viewInfo.viewType = viewType.type;
+	viewInfo.format = viewType.format;
 	viewInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
-	viewInfo.subresourceRange = { aspect, 0, 1, 0, 1 };
+	viewInfo.subresourceRange = { viewType.aspect, 0, 1, 0, viewType.layerCount };
+
+	VkImageView view{};
 	vkn::error_check(vkCreateImageView(device_.device, &viewInfo, nullptr, &view), "Failed to create the view");
+	return view;
 }
 
-void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageLayout newLayout)
+
+void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const VkImageLayout newLayout)
 {
 	VkPipelineStageFlagBits srcStage{};
 	VkPipelineStageFlagBits dstStage{};
@@ -134,24 +142,70 @@ void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageLayout ne
 	}
 
 	imageBarrier.image = image;
-	imageBarrier.subresourceRange = { aspect_, 0, 1, 0, 1 };
+	imageBarrier.subresourceRange = { aspect, 0, 1, 0, 1 };
 
 	vkCmdPipelineBarrier(cb.commandBuffer(), srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
 	
 	layout_ = newLayout;
 }
 
-void vkn::Image::copyFromBuffer(vkn::CommandBuffer& cb, const vkn::Buffer& buffer, const VkDeviceSize offset)
+void vkn::Image::copyFromBuffer(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const vkn::Buffer& buffer, const VkDeviceSize offset)
 {
 	if (layout_ != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	{
-		transitionLayout(cb, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		transitionLayout(cb, aspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	}
 
 	VkBufferImageCopy copy{};
 	copy.bufferOffset = offset;
 	copy.imageExtent = extent_;
-	copy.imageSubresource = { aspect_, 0, 0, 1 };
+	copy.imageSubresource = { aspect, 0, 0, layerCount_ };
 
 	vkCmdCopyBufferToImage(cb.commandBuffer(), buffer.buffer, image, layout_, 1, &copy);
+}
+
+const VkImageView vkn::Image::getView(const VkImageAspectFlags aspect, const VkImageViewType viewType, const uint32_t layerCount)
+{
+	assert(layerCount <= layerCount_ && "the view layer count must be less or equal to the image layer count");
+	ViewType view;
+	view.type = viewType;
+	view.aspect = aspect;
+	view.format = format_;
+	view.layerCount = layerCount;
+	size_t hash{ 0 };
+	gee::hash_combine(hash, static_cast<size_t>(viewType), static_cast<size_t>(aspect), static_cast<size_t>(format_), layerCount);
+	auto result = views_.find(hash);
+	if (result != std::end(views_))
+	{
+		return result->second;
+	}
+	else
+	{
+		auto imageView = createView(view);
+		views_[hash] = imageView;
+		return imageView;
+	}
+}
+
+const VkImageView vkn::Image::getView(const VkImageAspectFlags aspect, const VkImageViewType viewType, const VkFormat format, const uint32_t layerCount)
+{
+	ViewType view;
+	view.type = viewType;
+	view.aspect = aspect;
+	view.format = format;
+	view.layerCount = layerCount;
+	size_t hash{ 0 };
+	gee::hash_combine(hash, static_cast<size_t>(viewType), static_cast<size_t>(aspect), static_cast<size_t>(format_), layerCount);
+
+	auto result = views_.find(hash);
+	if (result != std::end(views_))
+	{
+		return result->second;
+	}
+	else
+	{
+		auto imageView = createView(view);
+		views_[hash] = imageView;
+		return imageView;
+	}
 }

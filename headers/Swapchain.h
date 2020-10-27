@@ -18,7 +18,7 @@ namespace vkn
 		const VkExtent2D extent() const;
 		void setImageAvailableSignal(vkn::Signal& signal, const uint64_t timeout = UINT64_MAX);
 		const VkPresentInfoKHR imagePresentInfo(vkn::Signal& waitOn) const;
-		const std::vector<vkn::Image>& images() const;
+		std::vector<vkn::Image>& images();
 		const VkFormat imageFormat() const;
 	private:
 		vkn::Device& device_;

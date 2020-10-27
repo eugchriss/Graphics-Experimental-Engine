@@ -199,14 +199,14 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 	}
 }
 
-void vkn::Renderer::bindTexture(const std::unordered_map<size_t, vkn::Image>& textures)
+void vkn::Renderer::bindTexture(std::unordered_map<size_t, vkn::Image>& textures)
 {
 	std::vector<VkImageView> textureViews;
 	textureViews.reserve(std::size(textures));
 
-	for (const auto& [hashKey, texture] : textures)
+	for (auto& [hashKey, texture] : textures)
 	{
-		textureViews.push_back(texture.view);
+		textureViews.push_back(texture.getView(VK_IMAGE_ASPECT_COLOR_BIT));
 	}
 	forwardRendering_->updatePipelineTextures("textures", sampler_, textureViews, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
@@ -425,13 +425,13 @@ vkn::Image vkn::Renderer::createImageFromTexture(const gee::Texture& texture)
 	temp.bind(memory);
 	temp.add(datas);
 
-	vkn::Image image{ *gpu_, *device_, VK_IMAGE_ASPECT_COLOR_BIT,  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VkExtent3D{texture.width(), texture.height(), 1} };
+	vkn::Image image{ *gpu_, *device_, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VkExtent3D{texture.width(), texture.height(), 1} };
 
 	auto cb = cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	cb.begin();
-	image.copyFromBuffer(cb, temp, 0);
-	image.transitionLayout(cb, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	image.copyFromBuffer(cb, VK_IMAGE_ASPECT_COLOR_BIT, temp, 0);
+	image.transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	cb.end();
 
 	vkn::Signal imageReady{ *device_ };

@@ -1,4 +1,5 @@
 #include "..\headers\Material.h"
+#include "../headers/vulkan_utils.h"
 
 gee::Material::Material(const std::string& diffusePath, const std::string& normalPath, const std::string& specularPath) :
 	diffuseTex{ diffusePath }, normalTex{normalPath},

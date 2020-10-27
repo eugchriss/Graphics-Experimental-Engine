@@ -18,7 +18,7 @@ namespace vkn
 	class ShaderTechnique
 	{
 	public:
-		ShaderTechnique(vkn::RenderpassBuilder& renderpassBuilder, vkn::PipelineBuilder& pipelineBuilder, const vkn::Swapchain& swapchain);
+		ShaderTechnique(vkn::RenderpassBuilder& renderpassBuilder, vkn::PipelineBuilder& pipelineBuilder, vkn::Swapchain& swapchain);
 		ShaderTechnique(vkn::RenderpassBuilder& renderpassBuilder, vkn::PipelineBuilder& pipelineBuilder, const VkExtent2D& size);
 		ShaderTechnique(ShaderTechnique&&) = default;
 		

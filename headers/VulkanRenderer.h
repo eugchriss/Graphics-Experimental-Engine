@@ -81,7 +81,7 @@ namespace vkn
 		bool addMesh(const gee::Mesh& mesh);
 		const size_t addMaterial(const gee::Material& material);
 		const size_t addTexture(const gee::Texture& texture);
-		void bindTexture(const std::unordered_map<size_t, vkn::Image>& textures);
+		void bindTexture(std::unordered_map<size_t, vkn::Image>& textures);
 		void bindShaderMaterial(const std::unordered_map<size_t, gee::ShaderMaterial>& materials);
 		void bindLights(std::vector<std::reference_wrapper<gee::PointLight>>& lights);
 		vkn::Image createImageFromTexture(const gee::Texture& texture);
