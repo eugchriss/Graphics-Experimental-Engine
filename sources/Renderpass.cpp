@@ -8,6 +8,7 @@ vkn::Renderpass::Renderpass(vkn::Device& device, const VkRenderPass& renderpass,
 	{
 		if (isColorAttachment(attachment))
 		{
+			colorClearValuesIndices_.push_back(std::size(clearValues_));
 			VkClearValue clear{};
 			clear.color = { 0.2f, 0.2f, 0.2f, 1.0f };
 			clearValues_.push_back(clear);
@@ -61,6 +62,7 @@ vkn::Renderpass::Renderpass(Renderpass&& other): device_{other.device_}
 	renderpass_ = other.renderpass_;
 	attachments_ = std::move(other.attachments_);
 	clearValues_ = std::move(other.clearValues_);
+	colorClearValuesIndices_ = std::move(other.colorClearValuesIndices_);
 	other.renderpass_ = VK_NULL_HANDLE;
 }
 
@@ -69,6 +71,14 @@ vkn::Renderpass::~Renderpass()
 	if (renderpass_ != VK_NULL_HANDLE)
 	{
 		vkDestroyRenderPass(device_.device, renderpass_, nullptr);
+	}
+}
+
+void vkn::Renderpass::setClearColor(const glm::vec3& color)
+{
+	for (auto& index : colorClearValuesIndices_)
+	{
+		clearValues_[index].color = { color.x, color.y, color.z, 1.0f };
 	}
 }
 

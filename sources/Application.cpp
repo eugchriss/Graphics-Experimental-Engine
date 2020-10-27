@@ -13,6 +13,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	renderer_ = std::make_unique<vkn::Renderer>(window_);
 	std::ostringstream os;
 	renderer_->getGpuInfo(os);
+	renderer_->setBackgroundColor(glm::vec3{0.2f});
 	window_.setTitle(name + ": " + os.str());
 
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
@@ -82,8 +83,15 @@ void gee::Application::updateGui()
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 	ImGui::ShowDemoWindow();
-	displayDrawableInfo();
-	displayPointLightInfo();
+	if (std::size(drawablesInfos) > 0)
+	{
+		displayDrawableInfo();
+	}
+
+	if (std::size(pointLightInfos_) > 0)
+	{
+		displayPointLightInfo();
+	}
 	camera_.imguiDisplay();
 	ImGui::Render();
 }

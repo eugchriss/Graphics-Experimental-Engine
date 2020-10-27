@@ -41,6 +41,7 @@ namespace vkn
 		void updateGui(std::function<void()> guiContent);
 		void draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, std::vector<std::reference_wrapper<gee::PointLight>>& pointLights);
 		void updateCamera(const gee::Camera& camera, const float aspectRatio);
+		void setBackgroundColor(const glm::vec3& color);
 
 	private:
 		std::unique_ptr<vkn::Instance> instance_;
@@ -67,6 +68,7 @@ namespace vkn
 		uint8_t imageCount_{};
 		VkViewport viewport_;
 		VkRect2D renderArea_;
+		glm::vec3 backgroundColor_{};
 
 		void checkGpuCompability(const vkn::Gpu& gpu);
 		void buildShaderTechnique();

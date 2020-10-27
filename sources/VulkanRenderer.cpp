@@ -91,6 +91,7 @@ void vkn::Renderer::resize()
 	transferQueue_->submit(cb, layoutTransitionned);
 
 	buildShaderTechnique();
+	setBackgroundColor(backgroundColor_);
 	imageAvailableSignals_.clear();
 	renderingFinishedSignals_.clear();
 	imageCount_ = std::size(swapchain_->images());
@@ -181,12 +182,17 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 		{
 			renderingFinishedSignals_[currentFrame_].reset();
 			const auto& sortedDrawables = createSortedDrawables(drawables);
-
-			bindTexture(textures_);
-			bindShaderMaterial(shaderMaterials_);
-			bindLights(pointLights);
-			forwardRendering_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
-			forwardRendering_->updatePipelineBuffer("Colors", drawablesColors_, VK_SHADER_STAGE_VERTEX_BIT);
+			if(std::size(pointLights) > 0)
+			{
+				bindLights(pointLights);
+			}
+			if (std::size(drawables) > 0)
+			{
+				bindTexture(textures_);
+				bindShaderMaterial(shaderMaterials_);
+				forwardRendering_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
+				forwardRendering_->updatePipelineBuffer("Colors", drawablesColors_, VK_SHADER_STAGE_VERTEX_BIT);
+			}
 			record(sortedDrawables);
 			submit();
 		}
@@ -244,6 +250,12 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	info.projection = camera.perspectiveProjection(aspectRatio);
 	info.projection[1][1] *= -1;
 	forwardRendering_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
+}
+
+void vkn::Renderer::setBackgroundColor(const glm::vec3& color)
+{
+	backgroundColor_ = color;
+	forwardRendering_->setClearColor(backgroundColor_);
 }
 
 void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)

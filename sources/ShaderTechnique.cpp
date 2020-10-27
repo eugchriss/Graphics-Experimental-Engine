@@ -21,6 +21,11 @@ vkn::ShaderTechnique::ShaderTechnique(vkn::RenderpassBuilder& renderpassBuilder,
 	framebuffer_ = std::make_unique<vkn::Framebuffer>(pipelineBuilder.gpu_, pipelineBuilder.device_, *renderpass_, size);
 }
 
+void vkn::ShaderTechnique::setClearColor(const glm::vec3& color)
+{
+	renderpass_->setClearColor(color);
+}
+
 void vkn::ShaderTechnique::updatePipelineTexture(const std::string& resourceName, const VkSampler& sampler, const VkImageView& view, const VkShaderStageFlagBits stage)
 {
 	pipeline_->updateTexture(resourceName, sampler, view, stage);

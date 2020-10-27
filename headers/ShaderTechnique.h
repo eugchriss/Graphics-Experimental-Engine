@@ -1,3 +1,5 @@
+#pragma once
+#include "glm/glm.hpp"
 #include "vulkan/vulkan.hpp"
 #include "CommandBuffer.h"
 #include "RenderpassBuilder.h"
@@ -20,6 +22,7 @@ namespace vkn
 		ShaderTechnique(vkn::RenderpassBuilder& renderpassBuilder, vkn::PipelineBuilder& pipelineBuilder, const VkExtent2D& size);
 		ShaderTechnique(ShaderTechnique&&) = default;
 		
+		void setClearColor(const glm::vec3& color);
 		void updatePipelineTexture(const std::string& resourceName, const VkSampler& sampler, const VkImageView& view, const VkShaderStageFlagBits stage);
 		void updatePipelineTextures(const std::string& resourceName, const VkSampler& sampler, const std::vector<VkImageView>& views, const VkShaderStageFlagBits stage);
 		VkFramebuffer framebuffer(const uint32_t index);
