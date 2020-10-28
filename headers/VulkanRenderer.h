@@ -3,6 +3,9 @@
 #include <unordered_map>
 #include <functional>
 #include <utility>
+#include <array>
+#include <string>
+
 #include "vulkan/vulkan.hpp"
 #include "glm/glm.hpp"
 #include "window.h"
@@ -26,6 +29,7 @@
 #include "Camera.h"
 #include "ShaderTechnique.h"
 #include "PointLight.h"
+#include "Skybox.h"
 
 namespace vkn
 {
@@ -36,6 +40,8 @@ namespace vkn
 		~Renderer();
 		std::ostream& getGpuInfo(std::ostream& os) const;
 		void resize();
+		void enableSkybox(bool value);
+		void setSkybox(const std::array<std::string, 6>& skyboxPaths_);
 		void setWindowMinimized(const bool value);
 		void setRenderArea(const VkRect2D renderArea);
 		void updateGui(std::function<void()> guiContent);
@@ -59,10 +65,12 @@ namespace vkn
 		std::vector<vkn::Signal> imageAvailableSignals_;
 		std::vector<vkn::Signal> renderingFinishedSignals_;
 		bool isWindowMinimized_{};
+		std::unique_ptr<vkn::Skybox> skybox_;
 		std::unique_ptr<vkn::ShaderTechnique> forwardRendering_;
+		std::unique_ptr<vkn::ShaderTechnique> skyboxTechnique_;
 		//imgui variables
 		VkDescriptorPool imguiDescriptorPool_{ VK_NULL_HANDLE };
-		std::unique_ptr<vkn::Renderpass> imguiRenderpass_;	
+		std::unique_ptr<vkn::Renderpass> imguiRenderpass_;
 
 		uint8_t currentFrame_{};
 		uint8_t imageCount_{};
@@ -92,7 +100,7 @@ namespace vkn
 		std::unordered_map<size_t, vkn::MemoryLocation> meshesMemory_;
 		std::unordered_map<size_t, gee::ShaderMaterial> shaderMaterials_;
 		std::unordered_map<size_t, vkn::Image> textures_;
-
+		bool skyboxEnbaled_{ true };
 		struct MeshIndices
 		{
 			uint32_t modelIndices{};

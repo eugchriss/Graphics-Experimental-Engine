@@ -142,7 +142,7 @@ void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFla
 	}
 
 	imageBarrier.image = image;
-	imageBarrier.subresourceRange = { aspect, 0, 1, 0, 1 };
+	imageBarrier.subresourceRange = { aspect, 0, 1, 0, layerCount_ };
 
 	vkCmdPipelineBarrier(cb.commandBuffer(), srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
 	
@@ -162,6 +162,27 @@ void vkn::Image::copyFromBuffer(vkn::CommandBuffer& cb, const VkImageAspectFlags
 	copy.imageSubresource = { aspect, 0, 0, layerCount_ };
 
 	vkCmdCopyBufferToImage(cb.commandBuffer(), buffer.buffer, image, layout_, 1, &copy);
+}
+
+void vkn::Image::copyFromBuffer(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const vkn::Buffer& buffer, const std::vector<VkDeviceSize>& offsets)
+{
+	if (layout_ != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+	{
+		transitionLayout(cb, aspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	}
+
+	std::vector<VkBufferImageCopy> copyRegions;	
+	uint32_t layerIndex{};
+	for (const auto offset : offsets)
+	{
+		VkBufferImageCopy copy{};
+		copy.bufferOffset = offset;
+		copy.imageExtent = extent_;
+		copy.imageSubresource = { aspect, 0, layerIndex, 1 };
+		copyRegions.push_back(copy);
+		++layerIndex;
+	}
+	vkCmdCopyBufferToImage(cb.commandBuffer(), buffer.buffer, image, layout_, std::size(copyRegions), std::data(copyRegions));
 }
 
 const VkImageView vkn::Image::getView(const VkImageAspectFlags aspect, const VkImageViewType viewType, const uint32_t layerCount)

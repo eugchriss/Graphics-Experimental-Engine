@@ -92,6 +92,7 @@ void vkn::Renderer::resize()
 
 	buildShaderTechnique();
 	setBackgroundColor(backgroundColor_);
+	skyboxTechnique_->updatePipelineTexture("skybox", sampler_, skybox_->getView(), VK_SHADER_STAGE_FRAGMENT_BIT);
 	imageAvailableSignals_.clear();
 	renderingFinishedSignals_.clear();
 	imageCount_ = std::size(swapchain_->images());
@@ -102,6 +103,17 @@ void vkn::Renderer::resize()
 		renderingFinishedSignals_.emplace_back(*device_, true);
 	}
 	layoutTransitionned.waitForSignal();
+}
+
+void vkn::Renderer::enableSkybox(bool value)
+{
+	skyboxEnbaled_ = value;
+}
+
+void vkn::Renderer::setSkybox(const std::array<std::string, 6>& skyboxPaths)
+{
+	skybox_ = std::make_unique<vkn::Skybox>(*gpu_, *device_, skyboxPaths);
+	skyboxTechnique_->updatePipelineTexture("skybox", sampler_, skybox_->getView(), VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 void vkn::Renderer::setWindowMinimized(const bool value)
@@ -250,6 +262,11 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	info.projection = camera.perspectiveProjection(aspectRatio);
 	info.projection[1][1] *= -1;
 	forwardRendering_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
+	if (skyboxEnbaled_)
+	{
+		info.view = glm::mat4{ glm::mat3{camera.pointOfView()} };
+		skyboxTechnique_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
+	}
 }
 
 void vkn::Renderer::setBackgroundColor(const glm::vec3& color)
@@ -271,33 +288,22 @@ void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
 
 void vkn::Renderer::buildShaderTechnique()
 {
-	vkn::RenderpassBuilder rpbuilder{ *device_ };
-	auto colorAttachment = rpbuilder.addAttachment(swapchain_->imageFormat(), { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED ,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
-	auto depthAttachment = rpbuilder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
-	vkn::RenderpassBuilder::Subpass::Requirement requirements{};
-	requirements.addColorAttachment(colorAttachment);
-	requirements.addDepthStencilAttachment(depthAttachment);
-	rpbuilder.addSubpass(requirements);
-
-	vkn::PipelineBuilder builder{ *gpu_, *device_ };
-	builder.addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, "../assets/Shaders/vert.spv");
-	builder.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, "../assets/Shaders/frag.spv");
-	builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
-	builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
-	builder.addDepthStage(VK_COMPARE_OP_LESS);
-	builder.addColorBlendStage();
-	builder.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
-	builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-	builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-
-	forwardRendering_ = std::make_unique<vkn::ShaderTechnique>(rpbuilder, builder, *swapchain_);
-
-	rpbuilder.reset();
-	colorAttachment = rpbuilder.addAttachment(swapchain_->imageFormat(), { VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL , VK_IMAGE_LAYOUT_PRESENT_SRC_KHR });
-	depthAttachment = rpbuilder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
-	//uses the same requirement than the revious renderpass
-	rpbuilder.addSubpass(requirements);
-	imguiRenderpass_ = std::make_unique<vkn::Renderpass>(rpbuilder.get());
+	VkImageLayout initialLayout{VK_IMAGE_LAYOUT_UNDEFINED};
+	VkAttachmentLoadOp loadOp{ VK_ATTACHMENT_LOAD_OP_CLEAR };
+	if (skyboxEnbaled_)
+	{
+		auto renderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), loadOp, initialLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		auto pipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/skybox/vert.spv", "../assets/Shaders/skybox/frag.spv");
+		skyboxTechnique_ = std::make_unique<vkn::ShaderTechnique>(renderpassBuilder, pipelineBuilder, *swapchain_);
+		initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	}
+	auto renderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), loadOp, initialLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	auto pipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/vert.spv", "../assets/Shaders/frag.spv");
+	forwardRendering_ = std::make_unique<vkn::ShaderTechnique>(renderpassBuilder, pipelineBuilder, *swapchain_);
+	
+	auto imguiRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), loadOp, initialLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	imguiRenderpass_ = std::make_unique<vkn::Renderpass>(imguiRenderpassBuilder.get());
 }
 
 void vkn::Renderer::createSampler()
@@ -383,6 +389,17 @@ void vkn::Renderer::record(const std::unordered_map<size_t, uint64_t>& sortedDra
 {
 	auto& cb = cbs_[currentFrame_];
 	cb.begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+	if (skyboxEnbaled_)
+	{
+		skyboxTechnique_->execute(cb, currentFrame_, viewport_, renderArea_, [&]() 
+			{
+				VkDeviceSize offset{ 0 };
+				vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &skybox_->vertexBuffer(), &offset);
+				vkCmdBindIndexBuffer(cb.commandBuffer(), skybox_->indexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(cb.commandBuffer(), skybox_->indexCount(), 1, 0, 0, 0);
+			});
+	}
+
 	forwardRendering_->execute(cb, currentFrame_, viewport_, renderArea_, [&]()
 		{
 			uint32_t instanceIndex{ 0 };

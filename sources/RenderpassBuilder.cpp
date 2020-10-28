@@ -46,21 +46,10 @@ const uint32_t vkn::RenderpassBuilder::addAttachment(const VkFormat format, cons
 	return std::size(attachments_) - 1;
 }
 
-const uint32_t vkn::RenderpassBuilder::addSubpass(Subpass::Requirement& requiments)
+const uint32_t vkn::RenderpassBuilder::addSubpass(Subpass::Requirement& requiment)
 {
-	VkSubpassDescription subpass{};
-	subpass.flags = 0;
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.inputAttachmentCount = std::size(requiments.inputAttachments);
-	subpass.pInputAttachments = std::data(requiments.inputAttachments);
-	subpass.colorAttachmentCount = std::size(requiments.colorAttachments);
-	subpass.pColorAttachments = std::data(requiments.colorAttachments);
-	subpass.pDepthStencilAttachment = std::data(requiments.depthStencilAttacments);
-	subpass.pResolveAttachments = nullptr;
-	subpass.preserveAttachmentCount = 0;
-
-	subpasses_.push_back(subpass);
-	return std::size(subpasses_) - 1;
+	subpassesRequirements_.push_back(requiment);
+	return std::size(subpassesRequirements_) - 1;
 }
 
 void vkn::RenderpassBuilder::addDependecy(const Dependency::Subpass& src, const Dependency::Subpass& dst)
@@ -78,7 +67,21 @@ void vkn::RenderpassBuilder::addDependecy(const Dependency::Subpass& src, const 
 
 vkn::Renderpass vkn::RenderpassBuilder::get()
 {
-	VkRenderPass renderpass{ VK_NULL_HANDLE };
+	std::vector<VkSubpassDescription> subpasses_;
+	for (const auto& requirement : subpassesRequirements_)
+	{
+		VkSubpassDescription subpass{};
+		subpass.flags = 0;
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.inputAttachmentCount = std::size(requirement.inputAttachments);
+		subpass.pInputAttachments = std::data(requirement.inputAttachments);
+		subpass.colorAttachmentCount = std::size(requirement.colorAttachments);
+		subpass.pColorAttachments = std::data(requirement.colorAttachments);
+		subpass.pDepthStencilAttachment = std::data(requirement.depthStencilAttacments);
+		subpass.pResolveAttachments = nullptr;
+		subpass.preserveAttachmentCount = 0;
+		subpasses_.push_back(subpass);
+	}
 	VkRenderPassCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	info.pNext = nullptr;
@@ -90,6 +93,7 @@ vkn::Renderpass vkn::RenderpassBuilder::get()
 	info.dependencyCount = std::size(dependencies_);
 	info.pDependencies = std::data(dependencies_);
 
+	VkRenderPass renderpass{ VK_NULL_HANDLE };
 	vkn::error_check(vkCreateRenderPass(device_.device, &info, nullptr, &renderpass), "Failed to create the render pass");
 
 	std::vector<vkn::Renderpass::Attachment> attachments;
@@ -105,9 +109,21 @@ vkn::Renderpass vkn::RenderpassBuilder::get()
 
 void vkn::RenderpassBuilder::reset()
 {
-	attachments_.resize(0);
-	subpasses_.resize(0);
-	dependencies_.resize(0);
+	attachments_.clear();
+	subpassesRequirements_.clear();
+	dependencies_.clear();
+}
+
+vkn::RenderpassBuilder vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(vkn::Device& device, const VkFormat attachmentFormat, const VkAttachmentLoadOp loadOp, const VkImageLayout initialLayout, const VkImageLayout finalLayout)
+{
+	RenderpassBuilder builder{ device };
+	auto colorAttachment = builder.addAttachment(attachmentFormat, { loadOp, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { initialLayout, finalLayout });
+	auto depthAttachment = builder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
+	vkn::RenderpassBuilder::Subpass::Requirement requirements{};
+	requirements.addColorAttachment(colorAttachment);
+	requirements.addDepthStencilAttachment(depthAttachment);
+	builder.addSubpass(requirements);
+	return std::move(builder);
 }
 
 void vkn::RenderpassBuilder::Subpass::Requirement::addInputAttachment(const uint32_t attachment, const VkImageLayout layout)

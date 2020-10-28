@@ -14,6 +14,14 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	std::ostringstream os;
 	renderer_->getGpuInfo(os);
 	renderer_->setBackgroundColor(glm::vec3{0.2f});
+	std::array<std::string, 6> skyboxPaths{ 
+	"../assets/skybox/textures/right.jpg",
+	"../assets/skybox/textures/left.jpg",
+	"../assets/skybox/textures/top.jpg",
+	"../assets/skybox/textures/bottom.jpg",
+	"../assets/skybox/textures/front.jpg",
+	"../assets/skybox/textures/back.jpg" };
+	renderer_->setSkybox(skyboxPaths);
 	window_.setTitle(name + ": " + os.str());
 
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)

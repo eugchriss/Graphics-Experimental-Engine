@@ -47,17 +47,19 @@ namespace vkn
 		};
 
 		RenderpassBuilder(vkn::Device& device);
+		RenderpassBuilder(RenderpassBuilder&&) = default;
 		const std::vector<uint32_t> addAttachments(const std::vector<VkFormat>& formats, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout);
 		const uint32_t addAttachment(const VkFormat format, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout);
 		const uint32_t addSubpass(Subpass::Requirement& requiments);
 		void addDependecy(const Dependency::Subpass& scr, const Dependency::Subpass& dst);
 		vkn::Renderpass get();
 		void reset();
+		static RenderpassBuilder getDefaultColorDepthResolveRenderpass(vkn::Device& device, const VkFormat attachmentFormat, const VkAttachmentLoadOp loadOp, const VkImageLayout initialLayout, const VkImageLayout finalLayout);
 
 	private:
 		vkn::Device& device_;
 		std::vector<VkAttachmentDescription> attachments_;
-		std::vector<VkSubpassDescription> subpasses_;
+		std::vector<RenderpassBuilder::Subpass::Requirement> subpassesRequirements_;
 		std::vector<VkSubpassDependency> dependencies_;
 	};
 }

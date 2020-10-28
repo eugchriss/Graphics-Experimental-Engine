@@ -19,6 +19,7 @@ namespace vkn
 		};
 
 		PipelineBuilder(vkn::Gpu& gpu, vkn::Device& device);
+		PipelineBuilder(PipelineBuilder&&) = default;
 		~PipelineBuilder();
 		vkn::Pipeline get();
 		void addShaderStage(const VkShaderStageFlagBits stage, const std::string& path);
@@ -36,6 +37,7 @@ namespace vkn
 		void addDynamicState(const VkDynamicState state);
 		const std::vector<VkFormat>& getColorOutputFormats() const;
 
+		static PipelineBuilder getDefault3DPipeline(vkn::Gpu& gpu, vkn::Device& device, const std::string& vertexPath, const std::string& fragmentPath);
 		VkFrontFace frontFace;
 		VkCullModeFlags cullMode;
 		float lineWidth;

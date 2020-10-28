@@ -292,3 +292,18 @@ const std::vector<VkFormat>& vkn::PipelineBuilder::getColorOutputFormats() const
 	}
 	return result->outputAttachmentsFormats();
 }
+
+vkn::PipelineBuilder vkn::PipelineBuilder::getDefault3DPipeline(vkn::Gpu& gpu, vkn::Device& device, const std::string& vertexPath, const std::string& fragmentPath)
+{
+	vkn::PipelineBuilder builder{gpu, device};
+	builder.addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, vertexPath);
+	builder.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentPath);
+	builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
+	builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
+	builder.addDepthStage(VK_COMPARE_OP_LESS);
+	builder.addColorBlendStage();
+	builder.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
+	builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+	builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
+	return std::move(builder);
+}
