@@ -8,6 +8,9 @@
 #include "../headers/CommandPool.h"
 #include "../headers/CommandBuffer.h"
 #include "glm/glm.hpp"
+
+#include <future>
+
 vkn::Skybox::Skybox(vkn::Gpu& gpu, vkn::Device& device, const std::array<std::string, 6>& paths)
 {
 	buildImage(gpu, device, paths);
@@ -42,7 +45,6 @@ void vkn::Skybox::buildImage(vkn::Gpu& gpu, vkn::Device& device, const std::arra
 		textures.emplace_back(path);
 	}
 
-	std::vector<unsigned char> datas;
 	std::vector<VkDeviceSize> texturesOffsets;
 	size_t datasSize{};
 	for (const auto& texture : textures)
@@ -50,11 +52,17 @@ void vkn::Skybox::buildImage(vkn::Gpu& gpu, vkn::Device& device, const std::arra
 		texturesOffsets.push_back(datasSize);
 		datasSize += std::size(texture.pixels());
 	}
-	datas.reserve(datasSize);
+
+	std::vector<unsigned char> datas(datasSize);
+	uint32_t offset{};
 	for (const auto& texture : textures)
 	{
 		const auto& textureDatas = texture.pixels();
-		std::copy(std::begin(textureDatas), std::end(textureDatas), std::back_inserter(datas));
+		std::async(std::launch::async, [&]()
+		{
+			std::copy_n(std::begin(textureDatas), std::size(textureDatas), std::begin(datas) + offset);
+		});
+		offset += std::size(textureDatas);
 	}
 
 	vkn::Buffer buffer{ device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, datasSize };
