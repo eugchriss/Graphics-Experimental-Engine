@@ -83,7 +83,6 @@ VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 	return view;
 }
 
-
 void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const VkImageLayout newLayout)
 {
 	VkPipelineStageFlagBits srcStage{};
@@ -181,6 +180,7 @@ void vkn::Image::copyFromBuffer(vkn::CommandBuffer& cb, const VkImageAspectFlags
 		copy.imageSubresource = { aspect, 0, layerIndex, 1 };
 		copyRegions.push_back(copy);
 		++layerIndex;
+		assert(layerIndex <= layerCount_ && "Buffer copy layer is more than the image total layer count");
 	}
 	vkCmdCopyBufferToImage(cb.commandBuffer(), buffer.buffer, image, layout_, std::size(copyRegions), std::data(copyRegions));
 }

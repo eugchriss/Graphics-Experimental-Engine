@@ -5,14 +5,16 @@
 #include "../headers/vulkan_utils.h"
 namespace vkn
 {
+	class Queue;
 	class Buffer
 	{
 	public:
-		Buffer(const vkn::Device& device, const VkBufferUsageFlags usage, const VkDeviceSize size);
+		Buffer(vkn::Device& device, const VkBufferUsageFlags usage, const VkDeviceSize size);
 		Buffer(Buffer&&);
 		~Buffer();
 		const VkDeviceSize getMemorySize() const;
 		void bind(DeviceMemory& memory);
+		void moveTo(Queue& queue, DeviceMemory& memory);
 
 		template<class T>
 		VkDeviceSize add(const T& data);
@@ -26,7 +28,9 @@ namespace vkn
 		Observer_ptr<vkn::DeviceMemory> memory_{};
 		VkDeviceSize memoryOffset_{};
 		VkDeviceSize offset_{};
-		const vkn::Device& device_;
+		vkn::Device& device_;
+		VkDeviceSize size_{};
+		VkBufferUsageFlags usage_;
 	};
 
 	template<class T>

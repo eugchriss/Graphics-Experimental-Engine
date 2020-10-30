@@ -4,7 +4,7 @@
 
 uint32_t vkn::DeviceMemory::allocationCount = 0;
 
-vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const VkMemoryPropertyFlagBits property, const VkDeviceSize size) : device_{ device }, size_{ size }
+vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const VkMemoryPropertyFlagBits property, const VkDeviceSize size) : device_{ device }, size_{ size }, location_{ static_cast<VkMemoryPropertyFlags>(property)}
 {
 	auto memProps = gpu.memoryProperties();
 	bool found{ false };
@@ -46,7 +46,7 @@ vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, 
 	++allocationCount;
 }
 
-vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const VkMemoryPropertyFlagBits property, const uint32_t memoryTypeBits, const VkDeviceSize size) : device_{ device }, size_{ size }
+vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const VkMemoryPropertyFlagBits property, const uint32_t memoryTypeBits, const VkDeviceSize size) : device_{ device }, size_{ size }, location_{ static_cast<VkMemoryPropertyFlags>(property) }
 {
 	auto memProps = gpu.memoryProperties();
 	bool found{ false };
@@ -87,6 +87,7 @@ vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, 
 			{
 				found = true;
 				memoryIndex_ = i;
+				location_ = memProps.memoryTypes[i].propertyFlags;
 				break;
 			}
 		}
@@ -110,6 +111,7 @@ vkn::DeviceMemory::DeviceMemory(DeviceMemory&& other): device_{other.device_}
 	size_ = other.size_;
 	memoryIndex_ = other.memoryIndex_;
 	offset_ = other.offset_;
+	location_ = other.location_;
 
 	other.memory_ = VK_NULL_HANDLE;
 }

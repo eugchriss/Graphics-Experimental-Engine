@@ -26,6 +26,7 @@ namespace vkn
 		VkDeviceSize size_{};
 		VkDeviceSize offset_{};
 		uint32_t memoryIndex_{};
+		VkMemoryPropertyFlags location_;
 
 		void checkAlignment(const VkDeviceSize aligment);
 
@@ -34,10 +35,17 @@ namespace vkn
 	template<class T>
 	inline void DeviceMemory::update(const VkDeviceSize offset, const T datas, const VkDeviceSize size)
 	{
-		assert(std::is_pointer<T>::value && "This function requires a pointer to the datas to update with");
-		void* ptr;
-		vkn::error_check(vkMapMemory(device_.device, memory_, offset, size, 0, &ptr), "Unabled to map memory to vulkan");
-		memcpy(ptr, datas, size);
-		vkUnmapMemory(device_.device, memory_);
+		if (((location_ & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT)))
+		{
+			assert(std::is_pointer<T>::value && "This function requires a pointer to the datas to update with");
+			void* ptr;
+			vkn::error_check(vkMapMemory(device_.device, memory_, offset, size, 0, &ptr), "Unabled to map memory to vulkan");
+			memcpy(ptr, datas, size);
+			vkUnmapMemory(device_.device, memory_);
+		}
+		else
+		{
+			throw std::runtime_error{ "Attempting to map a non mappable memory type" };
+		}
 	}
 }

@@ -26,8 +26,8 @@ namespace vkn
 		std::unique_ptr<vkn::Buffer> indexBuffer_;
 		std::unique_ptr<vkn::DeviceMemory> hostVisibleMemory_;
 		uint32_t indexCount_;
-		void buildImage(vkn::Gpu& gpu, vkn::Device& device, const std::array<std::string, 6>& paths);
-		void buildMesh(vkn::Gpu& gpu, vkn::Device& device);
+		void buildImage(vkn::Gpu& gpu, vkn::Device& device, vkn::Queue& queue, const std::array<std::string, 6>& paths);
+		void buildMesh(vkn::Gpu& gpu, vkn::Device& device, vkn::Queue& queue);
 	};
 
 }
