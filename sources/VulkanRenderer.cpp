@@ -186,7 +186,7 @@ void vkn::Renderer::updateGui(std::function<void()> guiContent)
 	guiContent_ = guiContent;
 }
 
-void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, std::vector<std::reference_wrapper<gee::PointLight>>& pointLights)
+void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, std::vector<std::reference_wrapper<gee::Drawable>>& lights)
 {
 	if (!isWindowMinimized_)
 	{
@@ -194,9 +194,9 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 		{
 			renderingFinishedSignals_[currentFrame_].reset();
 			const auto& sortedDrawables = createSortedDrawables(drawables);
-			if(std::size(pointLights) > 0)
+			if(std::size(lights) > 0)
 			{
-				bindLights(pointLights);
+				bindLights(lights);
 			}
 			if (std::size(drawables) > 0)
 			{
@@ -234,13 +234,13 @@ void vkn::Renderer::bindShaderMaterial(const std::unordered_map<size_t, gee::Sha
 	forwardRendering_->updatePipelineBuffer("Materials", shaderMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
-void vkn::Renderer::bindLights(std::vector<std::reference_wrapper<gee::PointLight>>& lights)
+void vkn::Renderer::bindLights(std::vector<std::reference_wrapper<gee::Drawable>>& lights)
 {
 	std::vector<gee::ShaderPointLight> shaderLights;
 	shaderLights.reserve(std::size(lights));
 	for (const auto& lightRef : lights)
 	{
-		const auto& light = lightRef.get();
+		const auto& light = lightRef.get().light();
 		gee::ShaderPointLight l;
 		l.position = glm::vec4{ light.position, 1.0f };
 		l.ambient = glm::vec4{ light.ambient, 1.0f };

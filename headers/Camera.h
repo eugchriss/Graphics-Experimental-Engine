@@ -23,23 +23,23 @@ namespace gee
 		RIGHT
 	};
 
-	class Plane
-	{
-	public:
-		Plane() = default;
-		Plane(const glm::vec3& normal, const glm::vec3 point);
-		inline float distanceToPoint(const glm::vec3& point) const
-		{
-			return normal.x * point.x + normal.y * point.y + normal.z * point.z + d;
-		}
-		Plane& operator = (const Plane& other);
-	private:
-		glm::vec3 normal{};
-		float d{};
-	};
-
 	struct ViewFrustum
 	{
+		class Plane
+		{
+		public:
+			Plane() = default;
+			Plane(const glm::vec3& normal, const glm::vec3 point);
+			inline float distanceToPoint(const glm::vec3& point) const
+			{
+				return normal.x * point.x + normal.y * point.y + normal.z * point.z + d;
+			}
+			Plane& operator = (const Plane& other);
+		private:
+			glm::vec3 normal{};
+			float d{};
+		};
+
 		Plane nearPlane;
 		Plane farPlane;
 		Plane leftPlane;
@@ -106,7 +106,7 @@ namespace gee
 
 
 		//Gui elements
-		float speed{ 100.0_m };
+		float speed{ 1.0_m };
 		bool synchronizeSensibility_{ true };
 
 		void synchronizeSensibility(const float value);

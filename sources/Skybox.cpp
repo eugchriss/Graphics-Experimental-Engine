@@ -7,7 +7,7 @@
 #include "../headers/Queue.h"
 #include "../headers/CommandPool.h"
 #include "../headers/CommandBuffer.h"
-#include "glm/glm.hpp"
+#include "../headers/utility.h"
 
 #include <future>
 
@@ -85,37 +85,18 @@ void vkn::Skybox::buildImage(vkn::Gpu& gpu, vkn::Device& device, vkn::Queue& que
 
 void vkn::Skybox::buildMesh(vkn::Gpu& gpu, vkn::Device& device, vkn::Queue& queue)
 {
-	std::vector<glm::vec3> vertices
-	{
-		glm::vec3{-1.0f, 1.0f, 1.0f},
-		glm::vec3{1.0f, 1.0f, 1.0f},
-		glm::vec3{1.0f, -1.0f, 1.0f},
-		glm::vec3{-1.0f, -1.0f, 1.0f},
-		glm::vec3{-1.0f, 1.0f, -1.0f},
-		glm::vec3{1.0f, 1.0f, -1.0f},
-		glm::vec3{1.0f, -1.0f, -1.0f},
-		glm::vec3{-1.0f, -1.0f, -1.0f}
-	};
-	vertexBuffer_ = std::make_unique<vkn::Buffer>(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, std::size(vertices) * sizeof(glm::vec3));
+	gee::Cube cube;
+	vertexBuffer_ = std::make_unique<vkn::Buffer>(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, std::size(cube.vertices) * sizeof(gee::Vertex));
 
-	std::vector<uint32_t> indices
-	{
-		0, 1, 3, 1, 2, 3, //front
-		4, 5, 7, 5, 6, 7, //back
-		4, 0, 7, 0, 3, 7, //left
-		1, 5, 2, 5, 6, 2, //right 
-		4, 5, 0, 5, 1, 0, //up
-		7, 6, 3, 6, 2, 3 // bottom
-	};
-	indexCount_ = std::size(indices);
-	indexBuffer_ = std::make_unique<vkn::Buffer>(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, std::size(indices) * sizeof(uint32_t));
+	indexCount_ = std::size(cube.indices);
+	indexBuffer_ = std::make_unique<vkn::Buffer>(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, std::size(cube.indices) * sizeof(uint32_t));
 
 	vkn::DeviceMemory temp{ gpu, device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer_->getMemorySize() + vertexBuffer_->getMemorySize() };
 	vertexBuffer_->bind(temp);
 	indexBuffer_->bind(temp);
 
-	vertexBuffer_->add(vertices);
-	indexBuffer_->add(indices);
+	vertexBuffer_->add(cube.vertices);
+	indexBuffer_->add(cube.indices);
 	
 	hostVisibleMemory_ = std::make_unique<vkn::DeviceMemory>(gpu, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer_->getMemorySize() + vertexBuffer_->getMemorySize());
 	vertexBuffer_->moveTo(queue, *hostVisibleMemory_);

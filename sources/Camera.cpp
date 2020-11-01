@@ -97,12 +97,12 @@ const gee::ViewFrustum gee::Camera::getViewFrustum()
 	auto nearSide = std::tan(fov_ / 2.0f) * viewRange_;
 
 	ViewFrustum viewFrustum{};
-	viewFrustum.nearPlane = Plane(front_, nearCenter);
-	viewFrustum.farPlane = Plane(-front_, farCenter);
-	viewFrustum.leftPlane = Plane(glm::rotate(right_, fov_ / 2.0f, up_), farCenter - right_ * nearSide);
-	viewFrustum.rightPlane = Plane(-glm::rotate(right_, fov_ / 2.0f, -up_), farCenter + right_ * nearSide);
-	viewFrustum.topPlane = Plane(-glm::rotate(up_, fov_ / 2.0f, right_), farCenter + up_ * nearSide);
-	viewFrustum.bottomPlane = Plane(glm::rotate(up_, fov_ / 2.0f, -right_), farCenter - up_ * nearSide);
+	viewFrustum.nearPlane = ViewFrustum::Plane(front_, nearCenter);
+	viewFrustum.farPlane = ViewFrustum::Plane(-front_, farCenter);
+	viewFrustum.leftPlane = ViewFrustum::Plane(glm::rotate(right_, fov_ / 2.0f, up_), farCenter - right_ * nearSide);
+	viewFrustum.rightPlane = ViewFrustum::Plane(-glm::rotate(right_, fov_ / 2.0f, -up_), farCenter + right_ * nearSide);
+	viewFrustum.topPlane = ViewFrustum::Plane(-glm::rotate(up_, fov_ / 2.0f, right_), farCenter + up_ * nearSide);
+	viewFrustum.bottomPlane = ViewFrustum::Plane(glm::rotate(up_, fov_ / 2.0f, -right_), farCenter - up_ * nearSide);
 	return viewFrustum;
 }
 
@@ -146,12 +146,12 @@ bool gee::ViewFrustum::isInside(const glm::vec3& pos) const
 
 }
 
-gee::Plane::Plane(const glm::vec3& norm, const glm::vec3 point) : normal(norm)
+gee::ViewFrustum::Plane::Plane(const glm::vec3& norm, const glm::vec3 point) : normal(norm)
 {
 	d = -normal.x * point.x - normal.y * point.y - normal.z * point.z;
 }
 
-gee::Plane& gee::Plane::operator=(const Plane& other)
+gee::ViewFrustum::Plane& gee::ViewFrustum::Plane::operator=(const Plane& other)
 {
 	normal = other.normal;
 	d = other.d;

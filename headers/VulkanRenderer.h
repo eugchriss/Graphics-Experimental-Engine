@@ -28,7 +28,6 @@
 #include "Texture.h"
 #include "Camera.h"
 #include "ShaderTechnique.h"
-#include "PointLight.h"
 #include "Skybox.h"
 
 namespace vkn
@@ -45,7 +44,7 @@ namespace vkn
 		void setWindowMinimized(const bool value);
 		void setRenderArea(const VkRect2D renderArea);
 		void updateGui(std::function<void()> guiContent);
-		void draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, std::vector<std::reference_wrapper<gee::PointLight>>& pointLights);
+		void draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, std::vector<std::reference_wrapper<gee::Drawable>>& lights);
 		void updateCamera(const gee::Camera& camera, const float aspectRatio);
 		void setBackgroundColor(const glm::vec3& color);
 
@@ -91,7 +90,7 @@ namespace vkn
 		const size_t addTexture(const gee::Texture& texture);
 		void bindTexture(std::unordered_map<size_t, vkn::Image>& textures);
 		void bindShaderMaterial(const std::unordered_map<size_t, gee::ShaderMaterial>& materials);
-		void bindLights(std::vector<std::reference_wrapper<gee::PointLight>>& lights);
+		void bindLights(std::vector<std::reference_wrapper<gee::Drawable>>& lights);
 		vkn::Image createImageFromTexture(const gee::Texture& texture);
 		const std::unordered_map<size_t, uint64_t> createSortedDrawables(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		const glm::mat4 getModelMatrix(const gee::Drawable& drawable) const;

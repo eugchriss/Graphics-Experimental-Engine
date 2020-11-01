@@ -15,12 +15,12 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	renderer_->getGpuInfo(os);
 	renderer_->setBackgroundColor(glm::vec3{0.2f});
 	std::array<std::string, 6> skyboxPaths{ 
-	"../assets/skybox/textures/right.jpg",
-	"../assets/skybox/textures/left.jpg",
-	"../assets/skybox/textures/top.jpg",
-	"../assets/skybox/textures/bottom.jpg",
-	"../assets/skybox/textures/front.jpg",
-	"../assets/skybox/textures/back.jpg" };
+	"../assets/skybox/space/right.png",
+	"../assets/skybox/space/left.png",
+	"../assets/skybox/space/top.png",
+	"../assets/skybox/space/bottom.png",
+	"../assets/skybox/space/front.png",
+	"../assets/skybox/space/back.png" };
 	renderer_->setSkybox(skyboxPaths);
 	window_.setTitle(name + ": " + os.str());
 
@@ -63,26 +63,25 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		});
 }
 
+void gee::Application::setCameraPosition(const glm::vec3& position)
+{
+	camera_.position_ = position;
+}
+
 void gee::Application::addDrawable(Drawable& drawable)
 {
-	auto drawbleResult = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
-	if (drawbleResult == std::end(drawables_))
+	if (drawable.hasLightComponent())
 	{
-		drawables_.emplace_back(std::ref(drawable));
-
-		drawablesInfos.emplace_back(drawable.name, drawable.mesh.name(), drawable.position, drawable.color, drawable.rotation, drawable.scaleFactor, drawable.size);
+		addDrawable(drawable, pointLightInfos_);
+	}
+	else
+	{
+		addDrawable(drawable, drawablesInfos);
 	}
 }
 
 void gee::Application::addCamera(const Camera& camera)
 {
-}
-
-void gee::Application::addLight(PointLight& light)
-{
-	pointLights_.emplace_back(std::ref(light));
-	pointLightInfos_.emplace_back(light.name, light.position, light.ambient, light.diffuse, light.specular, light.linear, light.quadratic);
-	addDrawable(light);
 }
 
 void gee::Application::updateGui()
@@ -215,6 +214,27 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 	}
 }
 
+void gee::Application::addDrawable(Drawable& drawable, std::vector<PointLightInfo>& infos)
+{
+	auto result = std::find_if(std::begin(lightsDrawables_), std::end(lightsDrawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
+	if (result == std::end(lightsDrawables_))
+	{
+		auto& light = drawable.light();
+		lightsDrawables_.emplace_back(std::ref(drawable));
+		infos.emplace_back(drawable.name, drawable.light().position, drawable.light().ambient, drawable.light().diffuse, drawable.light().specular, drawable.light().linear, drawable.light().quadratic);
+	}
+}
+
+void gee::Application::addDrawable(Drawable& drawable, std::vector<DrawableInfo>& infos)
+{
+	auto drawbleResult = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
+	if (drawbleResult == std::end(drawables_))
+	{
+		drawables_.emplace_back(std::ref(drawable));
+		infos.emplace_back(drawable.name, drawable.mesh.name(), drawable.position, drawable.color, drawable.rotation, drawable.scaleFactor, drawable.size);
+	}
+}
+
 bool gee::Application::isRunning()
 {
 	if (renderingtimer_.ellapsedMs() >= 1000 / 60.0f)
@@ -222,10 +242,7 @@ bool gee::Application::isRunning()
 		renderer_->updateGui([&]() { updateGui(); });
 		renderer_->updateCamera(camera_, window_.aspectRatio());
 
-		/* for now the texture IS the material
-		renderer_->bindMaterial(materials_);
-		*/
-		renderer_->draw(drawables_, pointLights_);
+		renderer_->draw(drawables_, lightsDrawables_);
 
 		renderingtimer_.reset();
 	}
