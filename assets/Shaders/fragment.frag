@@ -3,8 +3,10 @@
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 texCoord;
-layout(location = 2) in vec4 fragPos;
+layout(location = 2) in vec3 fragPos;
 layout(location = 3) in vec4 viewPos;
+layout(location = 4) in mat3 TBN;
+
 layout(location = 0) out vec4 outColor;
 
 layout(binding = 3) uniform sampler2D textures[10];
@@ -42,34 +44,40 @@ layout( push_constant ) uniform PushConstant{
 } materialIndex;
 
 
-vec4 computePointLight(PointLight light, vec4 normal, vec4 fragPos, vec4 viewDir);
+vec4 computePointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
 void main() 
 {
-    vec4 normal = texture(textures[materials.values[materialIndex.index].normal], texCoord);
-    normal = normalize(normal);
-    vec4 viewDir = normalize(viewPos - fragPos);
+    vec3 normal = texture(textures[materials.values[materialIndex.index].normal], texCoord).rgb;
+    vec3 viewDir = normalize(viewPos.xyz - fragPos.xyz);
 
     outColor = computePointLight(pointLights.values[0], normal, fragPos, viewDir);
 }
 
-vec4 computePointLight(PointLight light, vec4 normal, vec4 pos, vec4 viewDir)
+vec4 computePointLight(PointLight light, vec3 normal, vec3 pos, vec3 viewDir)
 {
-    vec4 lightDir = normalize(light.position - pos);
+    vec3 tangentLightPos = TBN * light.position.xyz;
+    vec3 tangentFragPos = TBN * pos;
+    vec3 lightDir = normalize(tangentLightPos - tangentFragPos);
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    
     // diffuse shading
-    float diff = max(dot(normal, lightDir), 0.0);
+    float diff = max(dot(lightDir, normal), 0.0);
+    
     // specular shading
-    vec4 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    float spec = pow(max(dot(normal.xyz, halfwayDir), 0.0), 8.0);
+    
     // attenuation
-    float distance    = length(light.position - pos);
+    float distance    = length(light.position.xyz - pos);
     float attenuation = 1.0 / (1 + light.linear * distance + light.quadratic * (distance * distance));    
+    
     // combine results
-    vec4 ambient  = light.ambient  * vec4(texture(textures[materials.values[materialIndex.index].diffuse], texCoord));
+    vec4 ambient  = light.ambient * vec4(texture(textures[materials.values[materialIndex.index].diffuse], texCoord));
     vec4 diffuse  = light.diffuse  * diff * vec4(texture(textures[materials.values[materialIndex.index].diffuse], texCoord));
     vec4 specular = light.specular * spec * vec4(texture(textures[materials.values[materialIndex.index].specular], texCoord));
     ambient  *= attenuation;
     diffuse  *= attenuation;
     specular *= attenuation;
     return (ambient + diffuse + specular);
+    //return vec4(diff);
 } 

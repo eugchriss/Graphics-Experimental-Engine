@@ -20,8 +20,7 @@ namespace gee
 	{
 	public:
 		ModelLoader(unsigned int flags = aiProcess_Triangulate | aiProcess_CalcTangentSpace
-			| aiProcess_OptimizeMeshes | aiProcess_PreTransformVertices
-			| aiProcess_GenNormals /*| aiProcess_FlipUVs*/);
+			| aiProcess_OptimizeMeshes | aiProcess_PreTransformVertices | aiProcess_GenNormals);
 		~ModelLoader() = default;
 		Mesh load(const std::string& path);
 	private:

@@ -88,7 +88,7 @@ namespace vkn
 		bool addMesh(const gee::Mesh& mesh);
 		const size_t addMaterial(const gee::Material& material);
 		const size_t addTexture(const gee::Texture& texture);
-		void bindTexture(std::unordered_map<size_t, vkn::Image>& textures);
+		void bindTexture(std::vector<std::pair<size_t, vkn::Image>>& textures);
 		void bindShaderMaterial(const std::unordered_map<size_t, gee::ShaderMaterial>& materials);
 		void bindLights(std::vector<std::reference_wrapper<gee::Drawable>>& lights);
 		vkn::Image createImageFromTexture(const gee::Texture& texture);
@@ -98,7 +98,7 @@ namespace vkn
 		std::vector<glm::vec4> drawablesColors_{};
 		std::unordered_map<size_t, vkn::MemoryLocation> meshesMemory_;
 		std::unordered_map<size_t, gee::ShaderMaterial> shaderMaterials_;
-		std::unordered_map<size_t, vkn::Image> textures_;
+		std::vector<std::pair<size_t, vkn::Image>> textures_;
 		bool skyboxEnbaled_{ true };
 		struct MeshIndices
 		{

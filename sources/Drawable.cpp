@@ -47,6 +47,10 @@ gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const Op
 void gee::Drawable::setPosition(const glm::vec3& pos)
 {
 	position = pos;
+	if (light_)
+	{
+		light_->position = pos;
+	}
 }
 
 void gee::Drawable::setColor(const glm::vec3& col)

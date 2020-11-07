@@ -16,6 +16,8 @@ namespace gee
 		glm::vec3 color{};
 		glm::vec2 textureCoord{};
 		glm::vec3 normal{};
+		glm::vec3 tangent{};
+		glm::vec3 bitangent{};
 	};
 	class Mesh
 	{

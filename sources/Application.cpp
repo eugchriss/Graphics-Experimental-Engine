@@ -89,7 +89,6 @@ void gee::Application::updateGui()
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	ImGui::ShowDemoWindow();
 	if (std::size(drawablesInfos) > 0)
 	{
 		displayDrawableInfo();

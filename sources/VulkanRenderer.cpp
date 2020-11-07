@@ -171,11 +171,11 @@ const size_t vkn::Renderer::addMaterial(const gee::Material& material)
 
 const size_t vkn::Renderer::addTexture(const gee::Texture& texture)
 {
-	auto result = textures_.find(texture.hash());
+	auto result = std::find_if(std::begin(textures_), std::end(textures_), [&](const auto& pair) { return pair.first == texture.hash(); });
 	if (result == std::end(textures_))
 	{
 		auto& image = createImageFromTexture(texture);
-		textures_.emplace(texture.hash(), std::move(image));
+		textures_.emplace_back(texture.hash(), std::move(image));
 		return std::size(textures_) - 1;
 	}
 	return std::distance(std::begin(textures_), result);
@@ -211,7 +211,7 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 	}
 }
 
-void vkn::Renderer::bindTexture(std::unordered_map<size_t, vkn::Image>& textures)
+void vkn::Renderer::bindTexture(std::vector<std::pair<size_t, vkn::Image>>& textures)
 {
 	std::vector<VkImageView> textureViews;
 	textureViews.reserve(std::size(textures));

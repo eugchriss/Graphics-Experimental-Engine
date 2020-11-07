@@ -48,6 +48,11 @@ void gee::ModelLoader::processMesh(const aiScene* scene, const aiMesh* mesh)
 		if (mesh->HasNormals())
 		{
 			vertex.normal = glm::vec3{ mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
+			if (mesh->HasTangentsAndBitangents())
+			{
+				vertex.tangent = glm::vec3{ mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z };
+				vertex.bitangent = glm::vec3{ mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z };
+			}
 		}
 
 		vertices_.push_back(vertex);
