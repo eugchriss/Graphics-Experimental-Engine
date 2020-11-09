@@ -50,8 +50,9 @@ void main()
 {
     vec3 normal = texture(textures[materials.values[materialIndex.index].normal], texCoord).rgb;
     vec3 viewDir = normalize(viewPos.xyz - fragPos.xyz);
-
+    normal = 2.0 * normal - vec3(1.0);
     outColor = computePointLight(pointLights.values[0], normal, fragPos, viewDir);
+    outColor = pow(outColor, vec4(1.0/2.2));
 }
 
 vec4 computePointLight(PointLight light, vec3 normal, vec3 pos, vec3 viewDir)
@@ -69,7 +70,7 @@ vec4 computePointLight(PointLight light, vec3 normal, vec3 pos, vec3 viewDir)
     
     // attenuation
     float distance    = length(light.position.xyz - pos);
-    float attenuation = 1.0 / (1 + light.linear * distance + light.quadratic * (distance * distance));    
+    float attenuation = 1.0 / (1 + light.linear * (distance / pow(distance, 1.2) ) + light.quadratic * distance);    
     
     // combine results
     vec4 ambient  = light.ambient * vec4(texture(textures[materials.values[materialIndex.index].diffuse], texCoord));

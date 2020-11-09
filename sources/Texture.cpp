@@ -3,7 +3,7 @@
 #include "stb_image.h"
 #include "../headers/Texture.h"
 
-gee::Texture::Texture(const std::string& path): path_{path}
+gee::Texture::Texture(const std::string& path, const ColorSpace colorSpace): path_{path}, colorSpace_{colorSpace}
 {
 	int channel{};
 	int width, height;
@@ -36,4 +36,9 @@ const uint32_t gee::Texture::width() const
 const uint32_t gee::Texture::height() const
 {
 	return height_;
+}
+
+const gee::Texture::ColorSpace gee::Texture::colorSpace() const
+{
+	return colorSpace_;
 }

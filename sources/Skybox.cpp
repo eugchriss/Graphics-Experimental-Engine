@@ -47,7 +47,7 @@ void vkn::Skybox::buildImage(vkn::Gpu& gpu, vkn::Device& device, vkn::Queue& que
 	std::vector<gee::Texture> textures;
 	for (const auto& path : paths)
 	{
-		textures.emplace_back(path);
+		textures.emplace_back(path, gee::Texture::ColorSpace::NON_LINEAR);
 		texturesOffsets.push_back(datasSize);
 		datasSize += std::size(textures.back().pixels());
 	}

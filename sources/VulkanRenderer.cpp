@@ -442,7 +442,13 @@ vkn::Image vkn::Renderer::createImageFromTexture(const gee::Texture& texture)
 	temp.bind(memory);
 	temp.add(datas);
 
-	vkn::Image image{ *gpu_, *device_, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VkExtent3D{texture.width(), texture.height(), 1} };
+	VkFormat imageFormat{ VK_FORMAT_R8G8B8A8_SRGB };
+	if (texture.colorSpace() == gee::Texture::ColorSpace::LINEAR)
+	{
+		imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+	}
+
+	vkn::Image image{ *gpu_, *device_, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageFormat, VkExtent3D{texture.width(), texture.height(), 1} };
 
 	auto cb = cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 

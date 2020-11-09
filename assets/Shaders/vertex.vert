@@ -43,10 +43,10 @@ void main() {
     
     texCoord = inTexCoord;
     viewPos = camera.pos;
-    mat3 normalMatrix = transpose(inverse(mat3(models.matrices[modelIndex.index + gl_InstanceIndex])));
-    vec3 T = normalize(normalMatrix * inTangent);
-    vec3 N = normalize(normalMatrix * inNormal);
+    mat4 normalMatrix = transpose(inverse(models.matrices[modelIndex.index + gl_InstanceIndex]));
+    vec3 T = vec3(normalize(normalMatrix * vec4(inTangent, 1.0)));
+    vec3 N = vec3(normalize(normalMatrix * vec4(inNormal, 1.0)));
     T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(N, T);
+    vec3 B = inBitangent;
     TBN = transpose(mat3(T, B, N));
 }
