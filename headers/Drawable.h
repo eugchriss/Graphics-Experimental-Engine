@@ -21,10 +21,11 @@ namespace gee
 		void setColor(const glm::vec3& col);
 		void setRotation(const glm::vec3& rot);
 		bool hasLightComponent() const;
+		const BoundingBox& boundingBox() const;
 		gee::Optics& light();
 		const size_t hash() const;
 		glm::vec3 position;
-		glm::vec3 size;
+		glm::vec3 size{ 1.0f };
 		glm::vec4 color;
 		glm::vec3 rotation;
 		std::string name;
@@ -33,6 +34,7 @@ namespace gee
 	private:
 		std::optional<gee::Optics> light_;
 		static uint32_t count; //solely used for default naming
+		gee::BoundingBox boundingBox_;
 
 		//normalize the scale factor so that the mesh bounding box volume is always 1m3
 		const float normalizedScaleFactor(const gee::Mesh& mesh);

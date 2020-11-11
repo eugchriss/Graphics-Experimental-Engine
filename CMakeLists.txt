@@ -53,7 +53,8 @@ set(SOURCES	"sources/main.cpp"
 			"sources/material.cpp"
 			"sources/skybox.cpp"
 			"sources/optics.cpp"
-			"sources/utility.cpp")
+			"sources/utility.cpp"
+			"sources/boundingBox.cpp")
 			
 
 set(HEADERS	"headers/gpu.h"
@@ -87,6 +88,7 @@ set(HEADERS	"headers/gpu.h"
 			"headers/pipelineBuilder.h"
 			"headers/pipeline.h"
 			"headers/pipelineLayout.h"
+			"headers/vertex.h"
 			"headers/mesh.h"
 			"headers/memoryLocation.h"
 			"headers/timer.h"
@@ -101,7 +103,8 @@ set(HEADERS	"headers/gpu.h"
 			"headers/material.h"
 			"headers/skybox.h"
 			"headers/utility.h"
-			"headers/optics.h")
+			"headers/optics.h"
+			"headers/boundingBox.h")
 
 add_executable(gee ${SOURCES} ${HEADERS})
 

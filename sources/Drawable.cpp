@@ -5,9 +5,10 @@ uint32_t gee::Drawable::count{};
 
 gee::Drawable::Drawable(const gee::Mesh& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot):
 	mesh{mesh},
-	position{pos}, color{col, 1.0f}, rotation{rot}
+	position{pos}, color{col, 1.0f}, rotation{rot}, boundingBox_{mesh.vertices()}
 {
 	name = std::string{ "Drawable : " } + std::to_string(count);
+
 	scaleFactor = normalizedScaleFactor(mesh);
 	if (scaleFactor == 0.0f)
 	{
@@ -19,7 +20,7 @@ gee::Drawable::Drawable(const gee::Mesh& mesh, const glm::vec3& pos, const glm::
 
 gee::Drawable::Drawable(const gee::Mesh& mesh, const Optics& optics, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot):
 	mesh{ mesh }, light_{optics},
-	position{ pos }, color{ col, 1.0f }, rotation{ rot }
+	position{ pos }, color{ col, 1.0f }, rotation{ rot }, boundingBox_{ mesh.vertices() }
 {
 	light_->position = position;
 	light_->diffuse = color;
@@ -27,8 +28,9 @@ gee::Drawable::Drawable(const gee::Mesh& mesh, const Optics& optics, const glm::
 
 gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot ) :
 	name{ noun }, mesh{ mesh },
-	position{ pos }, color{ col, 1.0f }, rotation{rot}
+	position{ pos }, color{ col, 1.0f }, rotation{rot}, boundingBox_{ mesh.vertices() }
 {
+
 	scaleFactor = normalizedScaleFactor(mesh);
 	if (scaleFactor == 0.0f)
 	{
@@ -38,7 +40,7 @@ gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const gl
 }
 gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const Optics& optics, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot):
 	name{ noun }, mesh{ mesh }, light_{optics},
-	position{ pos }, color{ col, 1.0f }, rotation{ rot }
+	position{ pos }, color{ col, 1.0f }, rotation{ rot }, boundingBox_{ mesh.vertices() }
 {
 	light_->position = position;
 	light_->diffuse = color;
@@ -67,6 +69,11 @@ void gee::Drawable::setRotation(const glm::vec3& rot)
 bool gee::Drawable::hasLightComponent() const
 {
 	return light_.has_value();
+}
+
+const gee::BoundingBox& gee::Drawable::boundingBox() const
+{
+	return boundingBox_;
 }
 
 gee::Optics& gee::Drawable::light()

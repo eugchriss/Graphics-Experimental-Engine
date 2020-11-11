@@ -4,8 +4,8 @@
 #include "../headers/RenderpassBuilder.h"
 #include "../headers/imgui_impl_glfw.h"
 #include "../headers/imgui_impl_vulkan.h"
-#include <iostream>
 #include <algorithm>
+#include <string>
 
 
 #define ENABLE_VALIDATION_LAYERS
@@ -204,6 +204,11 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 				bindShaderMaterial(shaderMaterials_);
 				forwardRendering_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
 				forwardRendering_->updatePipelineBuffer("Colors", drawablesColors_, VK_SHADER_STAGE_VERTEX_BIT);
+				if (showBindingBox_)
+				{
+					prepareBindingBox(drawables);
+				}
+
 			}
 			record(sortedDrawables);
 			submit();
@@ -262,6 +267,10 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	info.projection = camera.perspectiveProjection(aspectRatio);
 	info.projection[1][1] *= -1;
 	forwardRendering_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
+	if (showBindingBox_)
+	{
+		boundingBoxRendering_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
+	}
 	if (skyboxEnbaled_)
 	{
 		info.view = glm::mat4{ glm::mat3{camera.pointOfView()} };
@@ -302,6 +311,14 @@ void vkn::Renderer::buildShaderTechnique()
 	auto pipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/vert.spv", "../assets/Shaders/frag.spv");
 	forwardRendering_ = std::make_unique<vkn::ShaderTechnique>(renderpassBuilder, pipelineBuilder, *swapchain_);
 	
+	if (showBindingBox_)
+	{
+		auto boundingBoxRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), loadOp, initialLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		auto boundingBoxPipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/boundingBox/vert.spv", "../assets/Shaders/boundingBox/frag.spv");
+		boundingBoxPipelineBuilder.addRaterizationStage(VK_POLYGON_MODE_LINE);
+		boundingBoxPipelineBuilder.lineWidth = 5.0f;
+		boundingBoxRendering_ = std::make_unique<vkn::ShaderTechnique>(boundingBoxRenderpassBuilder, boundingBoxPipelineBuilder, *swapchain_);
+	}
 	auto imguiRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), loadOp, initialLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	imguiRenderpass_ = std::make_unique<vkn::Renderpass>(imguiRenderpassBuilder.get());
 }
@@ -416,7 +433,16 @@ void vkn::Renderer::record(const std::unordered_map<size_t, uint64_t>& sortedDra
 				instanceIndex += instanceCount;
 			}
 		});
-
+	if (showBindingBox_)
+	{
+		boundingBoxRendering_->execute(cb, currentFrame_, viewport_, renderArea_, [&]()
+			{
+				VkDeviceSize offset{ 0 };
+				vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &boundingBoxMemoryLocation_->vertexBuffer.buffer, &offset);
+				vkCmdBindIndexBuffer(cb.commandBuffer(), boundingBoxMemoryLocation_->indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(cb.commandBuffer(), boundingBoxMemoryLocation_->indicesCount, std::size(boundingBoxModels_), 0, 0, 0);
+			});
+	}
 	imguiRenderpass_->begin(cb, forwardRendering_->framebuffer(currentFrame_), renderArea_, VK_SUBPASS_CONTENTS_INLINE);
 	guiContent_();
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
@@ -502,9 +528,39 @@ const glm::mat4 vkn::Renderer::getModelMatrix(const gee::Drawable& drawable) con
 {
 	glm::mat4 mat{ 1.0f };
 	mat = glm::translate(mat, drawable.position);
+	mat = glm::scale(mat, drawable.size);
 	mat = glm::rotate(mat, drawable.rotation.x, glm::vec3{ 1.0, 0.0f, 0.0f });
 	mat = glm::rotate(mat, drawable.rotation.y, glm::vec3{ 0.0, 1.0f, 0.0f });
 	mat = glm::rotate(mat, drawable.rotation.z, glm::vec3{ 0.0, 0.0f, 1.0f });
-	mat = glm::scale(mat, drawable.size);
 	return mat;
+}
+
+void vkn::Renderer::prepareBindingBox(std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
+{
+	if (!boundingBoxMemoryLocation_)
+	{
+		auto& drawable = drawables[0].get();
+		const auto& boxVertices = drawable.boundingBox().vertices();
+		auto verticesSize = std::size(boxVertices) * sizeof(gee::Vertex);
+		vkn::Buffer boxVertexBuffer{ *device_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, verticesSize };
+
+		const auto& boxIndices = drawable.boundingBox().indices();
+		auto indicesSize = std::size(boxIndices) * sizeof(uint32_t);
+		vkn::Buffer boxIndexBuffer{ *device_, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indicesSize };
+
+		vkn::DeviceMemory boxMemory{ *gpu_, *device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, boxVertexBuffer.getMemorySize() + boxIndexBuffer.getMemorySize() };
+		boxVertexBuffer.bind(boxMemory);
+		boxIndexBuffer.bind(boxMemory);
+
+		boxVertexBuffer.add(boxVertices);
+		boxIndexBuffer.add(boxIndices);
+		boundingBoxMemoryLocation_ = std::make_unique<vkn::MemoryLocation>(std::move(boxMemory), std::move(boxVertexBuffer), std::move(boxIndexBuffer), static_cast<uint32_t>(std::size(boxIndices)));
+	}
+	boundingBoxModels_.clear(),
+	boundingBoxModels_.reserve(std::size(modelMatrices_));
+	for (auto i = 0u; i < std::size(drawables); ++i)
+	{
+		boundingBoxModels_.push_back(modelMatrices_[i] * drawables[i].get().boundingBox().transformMatrix);
+	}
+	boundingBoxRendering_->updatePipelineBuffer("Model_Matrix", boundingBoxModels_, VK_SHADER_STAGE_VERTEX_BIT);
 }

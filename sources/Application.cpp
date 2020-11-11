@@ -241,8 +241,9 @@ bool gee::Application::isRunning()
 		renderer_->updateGui([&]() { updateGui(); });
 		renderer_->updateCamera(camera_, window_.aspectRatio());
 
+		gee::Timer t{ "Draw time" };
 		renderer_->draw(drawables_, lightsDrawables_);
-
+		//std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
 		renderingtimer_.reset();
 	}
 

@@ -67,6 +67,7 @@ namespace vkn
 		std::unique_ptr<vkn::Skybox> skybox_;
 		std::unique_ptr<vkn::ShaderTechnique> forwardRendering_;
 		std::unique_ptr<vkn::ShaderTechnique> skyboxTechnique_;
+		std::unique_ptr<vkn::ShaderTechnique> boundingBoxRendering_;
 		//imgui variables
 		VkDescriptorPool imguiDescriptorPool_{ VK_NULL_HANDLE };
 		std::unique_ptr<vkn::Renderpass> imguiRenderpass_;
@@ -94,12 +95,16 @@ namespace vkn
 		vkn::Image createImageFromTexture(const gee::Texture& texture);
 		const std::unordered_map<size_t, uint64_t> createSortedDrawables(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		const glm::mat4 getModelMatrix(const gee::Drawable& drawable) const;
+		void prepareBindingBox(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		std::vector<glm::mat4> modelMatrices_{};
 		std::vector<glm::vec4> drawablesColors_{};
+		std::unique_ptr<vkn::MemoryLocation> boundingBoxMemoryLocation_;
+		std::vector<glm::mat4> boundingBoxModels_;
 		std::unordered_map<size_t, vkn::MemoryLocation> meshesMemory_;
 		std::unordered_map<size_t, gee::ShaderMaterial> shaderMaterials_;
 		std::vector<std::pair<size_t, vkn::Image>> textures_;
 		bool skyboxEnbaled_{ true };
+		bool showBindingBox_{ true };
 		struct MeshIndices
 		{
 			uint32_t modelIndices{};
