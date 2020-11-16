@@ -71,7 +71,13 @@ const glm::mat4 gee::Camera::pointOfView() const
 
 const glm::mat4 gee::Camera::perspectiveProjection(const float aspectRatio) const
 {
+	
 	return glm::perspective(fov_, aspectRatio, 0.1f, viewRange_);
+}
+
+const glm::mat4 gee::Camera::orhtogonalProjection() const
+{
+	return glm::ortho(-viewRange_, viewRange_, -viewRange_, viewRange_, 0.1f, viewRange_);
 }
 
 void gee::Camera::imguiDisplay()

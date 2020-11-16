@@ -1,23 +1,24 @@
 #include "..\headers\BoundingBox.h"
 #include <algorithm>
 #include "glm/gtx/transform.hpp"
+
 gee::BoundingBox::BoundingBox(const std::vector<gee::Vertex>& vertices)
 {
 	auto box = getBoxFromMesh(vertices);
-	width = box.extend.x - box.origin.x;
-	height = box.extend.y - box.origin.y;
-	depth = box.extend.z - box.origin.z;
-	if (width == 0.0f)
+	width_ = box.extend.x - box.origin.x;
+	height_ = box.extend.y - box.origin.y;
+	depth_ = box.extend.z - box.origin.z;
+	if (width_ == 0.0f)
 	{
-		width = 0.00002f;
+		width_ = 0.00002f;
 	}
-	if (height == 0.0f)
+	if (height_ == 0.0f)
 	{
-		height = 0.00002f;
+		height_ = 0.00002f;
 	}
-	if (depth == 0.0f)
+	if (depth_ == 0.0f)
 	{
-		depth = 0.00002f;
+		depth_ = 0.00002f;
 	}
 
 	getTransformCubeMesh(box);
@@ -25,12 +26,17 @@ gee::BoundingBox::BoundingBox(const std::vector<gee::Vertex>& vertices)
 
 const std::vector<gee::Vertex>& gee::BoundingBox::vertices() const
 {
-	return mesh.vertices;
+	return mesh_.vertices();
 }
 
 const std::vector<uint32_t>& gee::BoundingBox::indices() const
 {
-	return mesh.indices;
+	return mesh_.indices();
+}
+
+const gee::Cube& gee::BoundingBox::mesh() const
+{
+	return mesh_;
 }
 
 const gee::BoundingBox::Box gee::BoundingBox::getBoxFromMesh(const std::vector<gee::Vertex>& vertices) const
@@ -70,16 +76,11 @@ const gee::BoundingBox::Box gee::BoundingBox::getBoxFromMesh(const std::vector<g
 void gee::BoundingBox::getTransformCubeMesh(const Box& box)
 {
 	glm::vec3 scale{1.0f};
-	scale.x = width / 2.0f;
-	scale.y = height / 2.0f;
-	scale.z = depth / 2.0f;
+	scale.x = width_ / 2.0f;
+	scale.y = height_ / 2.0f;
+	scale.z = depth_ / 2.0f;
 
 	auto offset = 0.5f * (box.origin + box.extend);
 	transformMatrix = glm::translate(transformMatrix, offset);
 	transformMatrix = glm::scale(transformMatrix, scale);
-}
-
-float gee::BoundingBox::map(const float x, const float initialRangeBegin, const float initialRangeEnd, const float finalRangeBegin, const float finalRangeEnd)
-{
-	return finalRangeBegin + ((finalRangeEnd - finalRangeBegin) / (initialRangeEnd - initialRangeBegin)) * (x - initialRangeBegin);
 }

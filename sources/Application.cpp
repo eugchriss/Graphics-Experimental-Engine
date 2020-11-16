@@ -243,7 +243,7 @@ bool gee::Application::isRunning()
 
 		gee::Timer t{ "Draw time" };
 		renderer_->draw(drawables_, lightsDrawables_);
-		//std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
+		std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
 		renderingtimer_.reset();
 	}
 

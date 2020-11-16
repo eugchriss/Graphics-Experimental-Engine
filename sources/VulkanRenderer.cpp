@@ -4,8 +4,10 @@
 #include "../headers/RenderpassBuilder.h"
 #include "../headers/imgui_impl_glfw.h"
 #include "../headers/imgui_impl_vulkan.h"
+#include "../headers/AABB.h"
 #include <algorithm>
 #include <string>
+#include <future>
 
 
 #define ENABLE_VALIDATION_LAYERS
@@ -131,22 +133,7 @@ bool vkn::Renderer::addMesh(const gee::Mesh& mesh)
 	auto result = meshesMemory_.find(mesh.hash());
 	if (result == std::end(meshesMemory_))
 	{
-		const auto& vertices = mesh.vertices();
-		auto verticesSize = std::size(vertices) * sizeof(gee::Vertex);
-		vkn::Buffer vertexBuffer{ *device_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, verticesSize };
-
-		const auto& indices = mesh.indices();
-		auto indicesSize = std::size(indices) * sizeof(uint32_t);
-		vkn::Buffer indexBuffer{ *device_, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indicesSize };
-
-		vkn::DeviceMemory memory{ *gpu_, *device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.getMemorySize() + indexBuffer.getMemorySize() };
-		vertexBuffer.bind(memory);
-		indexBuffer.bind(memory);
-
-		vertexBuffer.add(vertices);
-		indexBuffer.add(indices);
-		meshesMemory_.emplace(mesh.hash(), vkn::MemoryLocation{ std::move(memory), std::move(vertexBuffer), std::move(indexBuffer), static_cast<uint32_t>(std::size(indices)) });
-
+		meshesMemory_.emplace(mesh.hash(), addMeshToMemory(mesh));
 		return true;
 	}
 	return false;
@@ -208,7 +195,6 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 				{
 					prepareBindingBox(drawables);
 				}
-
 			}
 			record(sortedDrawables);
 			submit();
@@ -261,18 +247,20 @@ void vkn::Renderer::bindLights(std::vector<std::reference_wrapper<gee::Drawable>
 
 void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRatio)
 {
-	ShaderCamera info{};
-	info.position = glm::vec4{camera.position_, 1.0f};
-	info.view = camera.pointOfView();
-	info.projection = camera.perspectiveProjection(aspectRatio);
-	info.projection[1][1] *= -1;
-	forwardRendering_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
+	shaderCamera_.position = glm::vec4{camera.position_, 1.0f};
+	shaderCamera_.view = camera.pointOfView();
+	shaderCamera_.projection = camera.perspectiveProjection(aspectRatio);
+	shaderCamera_.projection[1][1] *= -1;
+	forwardRendering_->updatePipelineBuffer("Camera", shaderCamera_, VK_SHADER_STAGE_VERTEX_BIT);
 	if (showBindingBox_)
 	{
-		boundingBoxRendering_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
+		boundingBoxRendering_->updatePipelineBuffer("Camera", shaderCamera_, VK_SHADER_STAGE_VERTEX_BIT);
 	}
 	if (skyboxEnbaled_)
 	{
+		ShaderCamera info;
+		info.position = shaderCamera_.position;
+		info.projection = shaderCamera_.projection;
 		info.view = glm::mat4{ glm::mat3{camera.pointOfView()} };
 		skyboxTechnique_->updatePipelineBuffer("Camera", info, VK_SHADER_STAGE_VERTEX_BIT);
 	}
@@ -539,22 +527,7 @@ void vkn::Renderer::prepareBindingBox(std::vector<std::reference_wrapper<gee::Dr
 {
 	if (!boundingBoxMemoryLocation_)
 	{
-		auto& drawable = drawables[0].get();
-		const auto& boxVertices = drawable.boundingBox().vertices();
-		auto verticesSize = std::size(boxVertices) * sizeof(gee::Vertex);
-		vkn::Buffer boxVertexBuffer{ *device_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, verticesSize };
-
-		const auto& boxIndices = drawable.boundingBox().indices();
-		auto indicesSize = std::size(boxIndices) * sizeof(uint32_t);
-		vkn::Buffer boxIndexBuffer{ *device_, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indicesSize };
-
-		vkn::DeviceMemory boxMemory{ *gpu_, *device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, boxVertexBuffer.getMemorySize() + boxIndexBuffer.getMemorySize() };
-		boxVertexBuffer.bind(boxMemory);
-		boxIndexBuffer.bind(boxMemory);
-
-		boxVertexBuffer.add(boxVertices);
-		boxIndexBuffer.add(boxIndices);
-		boundingBoxMemoryLocation_ = std::make_unique<vkn::MemoryLocation>(std::move(boxMemory), std::move(boxVertexBuffer), std::move(boxIndexBuffer), static_cast<uint32_t>(std::size(boxIndices)));
+		boundingBoxMemoryLocation_ = std::make_unique<vkn::MemoryLocation>(addMeshToMemory(drawables[0].get().boundingBox().mesh()));
 	}
 	boundingBoxModels_.clear(),
 	boundingBoxModels_.reserve(std::size(modelMatrices_));
@@ -563,4 +536,23 @@ void vkn::Renderer::prepareBindingBox(std::vector<std::reference_wrapper<gee::Dr
 		boundingBoxModels_.push_back(modelMatrices_[i] * drawables[i].get().boundingBox().transformMatrix);
 	}
 	boundingBoxRendering_->updatePipelineBuffer("Model_Matrix", boundingBoxModels_, VK_SHADER_STAGE_VERTEX_BIT);
+}
+
+vkn::MemoryLocation vkn::Renderer::addMeshToMemory(const gee::AbstractMesh& mesh)
+{
+	const auto& vertices = mesh.vertices();
+	auto verticesSize = std::size(vertices) * sizeof(gee::Vertex);
+	vkn::Buffer vertexBuffer{ *device_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, verticesSize };
+
+	const auto& indices = mesh.indices();
+	auto indicesSize = std::size(indices) * sizeof(uint32_t);
+	vkn::Buffer indexBuffer{ *device_, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indicesSize };
+
+	vkn::DeviceMemory memory{ *gpu_, *device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.getMemorySize() + indexBuffer.getMemorySize() };
+	vertexBuffer.bind(memory);
+	indexBuffer.bind(memory);
+
+	vertexBuffer.add(vertices);
+	indexBuffer.add(indices);
+	return vkn::MemoryLocation{ std::move(memory), std::move(vertexBuffer), std::move(indexBuffer), static_cast<uint32_t>(std::size(indices)) };
 }

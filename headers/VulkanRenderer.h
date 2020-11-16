@@ -29,6 +29,7 @@
 #include "Camera.h"
 #include "ShaderTechnique.h"
 #include "Skybox.h"
+#include "AABB.h"
 
 namespace vkn
 {
@@ -99,12 +100,13 @@ namespace vkn
 		std::vector<glm::mat4> modelMatrices_{};
 		std::vector<glm::vec4> drawablesColors_{};
 		std::unique_ptr<vkn::MemoryLocation> boundingBoxMemoryLocation_;
+		std::unique_ptr<vkn::MemoryLocation> aabbMemoryLocation_;
 		std::vector<glm::mat4> boundingBoxModels_;
 		std::unordered_map<size_t, vkn::MemoryLocation> meshesMemory_;
 		std::unordered_map<size_t, gee::ShaderMaterial> shaderMaterials_;
 		std::vector<std::pair<size_t, vkn::Image>> textures_;
 		bool skyboxEnbaled_{ true };
-		bool showBindingBox_{ true };
+		bool showBindingBox_{ false };
 		struct MeshIndices
 		{
 			uint32_t modelIndices{};
@@ -117,5 +119,8 @@ namespace vkn
 			glm::mat4 view{};
 			glm::mat4 projection{};
 		};
+
+		ShaderCamera shaderCamera_{};
+		vkn::MemoryLocation addMeshToMemory(const gee::AbstractMesh& mesh);
 	};
 }

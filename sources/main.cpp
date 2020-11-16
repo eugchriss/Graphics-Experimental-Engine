@@ -33,7 +33,7 @@ int main()
 	app.addDrawable(backpack2);
 	app.addDrawable(light);
 
-	gee::Mesh floorMesh{ "floorMesh", std::move(gee::Floor{}.vertices), std::move(gee::Floor{}.indices), gee::Material{"../assets/textures/floor/diffuse.jpg", "../assets/textures/floor/normal.png"} };
+	gee::Mesh floorMesh{ "floorMesh", std::move(gee::Floor{}.vertices_), std::move(gee::Floor{}.indices_), gee::Material{"../assets/textures/floor/diffuse.jpg", "../assets/textures/floor/normal.png"} };
 	gee::Drawable floor{ "floor", floorMesh };
 	floor.size = glm::vec3{ 10.0f };
 	app.addDrawable(floor);

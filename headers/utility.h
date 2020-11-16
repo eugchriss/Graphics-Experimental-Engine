@@ -1,13 +1,16 @@
 #pragma once
 #include <vector>
 #include "glm/glm.hpp"
-#include "vertex.h"
+#include "AbstractMesh.h"
 
 namespace gee
 {
-	struct Cube
+	class Cube : public AbstractMesh
 	{
-		std::vector<gee::Vertex> vertices
+	public:
+		virtual const std::vector<gee::Vertex>& vertices() const final;
+		virtual const std::vector<uint32_t>& indices() const final;
+		std::vector<gee::Vertex> vertices_
 		{
 			gee::Vertex{glm::vec3{-1.0f, 1.0f, 1.0f}, glm::vec3{1.0f}, glm::vec2{0.0f, 1.0f}},
 			gee::Vertex{glm::vec3{1.0f, 1.0f, 1.0f}, glm::vec3{1.0f}, glm::vec2{1.0f, 1.0f}},
@@ -18,7 +21,7 @@ namespace gee
 			gee::Vertex{glm::vec3{1.0f, -1.0f, -1.0f}, glm::vec3{1.0f}, glm::vec2{1.0f, 0.0f}},
 			gee::Vertex{glm::vec3{-1.0f, -1.0f, -1.0f}, glm::vec3{1.0f}, glm::vec2{0.0f, 0.0f}}
 		};
-		std::vector<uint32_t> indices{
+		std::vector<uint32_t> indices_{
 			0, 1, 3, 1, 2, 3, //front
 			4, 5, 7, 5, 6, 7, //back
 			4, 0, 7, 0, 3, 7, //left
@@ -28,28 +31,34 @@ namespace gee
 		};
 	};
 
-	struct Plane
+	class QuadMesh : public AbstractMesh
 	{
-		std::vector<gee::Vertex> vertices
+	public:
+		virtual const std::vector<gee::Vertex>& vertices() const final;
+		virtual const std::vector<uint32_t>& indices() const  final;
+		std::vector<gee::Vertex> vertices_
 		{
 			gee::Vertex{glm::vec3{-1.0f, 1.0f, 0.0f}, glm::vec3{1.0f}, glm::vec2{0.0f, 1.0f}},
 			gee::Vertex{glm::vec3{1.0f, 1.0f, 0.0f}, glm::vec3{1.0f}, glm::vec2{1.0f, 1.0f}},
 			gee::Vertex{glm::vec3{1.0f, -1.0f, 0.0f}, glm::vec3{1.0f}, glm::vec2{1.0f, 0.0f}},
 			gee::Vertex{glm::vec3{-1.0f, -1.0f, 0.0f}, glm::vec3{1.0f}, glm::vec2{0.0f, 0.0f}}
 		};
-		std::vector<uint32_t> indices{ 0, 1, 3, 1, 2, 3 };
+		std::vector<uint32_t> indices_{ 0, 1, 3, 1, 2, 3 };
 	};
 
-	struct Floor
+	class Floor : public AbstractMesh
 	{
+	public:
 		Floor();
-		std::vector<gee::Vertex> vertices
+		virtual const std::vector<gee::Vertex>& vertices() const final;
+		virtual const std::vector<uint32_t>& indices() const final;
+		std::vector<gee::Vertex> vertices_
 		{
 			gee::Vertex{glm::vec3{-1.0f, 0.0f, -1.0f}, glm::vec3{1.0f}, glm::vec2{0.0f, 0.0f}},
 			gee::Vertex{glm::vec3{1.0f, 0.0f, -1.0f}, glm::vec3{1.0f}, glm::vec2{1.0f, 0.0f}},
 			gee::Vertex{glm::vec3{1.0f, 0.0f, 1.0f}, glm::vec3{1.0f}, glm::vec2{1.0f, 1.0f}},
 			gee::Vertex{glm::vec3{-1.0f, 0.0f, 1.0f}, glm::vec3{1.0f}, glm::vec2{0.0f, 1.0f}}
 		};
-		std::vector<uint32_t> indices{ 0, 1, 3, 1, 2, 3 };
+		std::vector<uint32_t> indices_{ 0, 1, 3, 1, 2, 3 };
 	};
 }

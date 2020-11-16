@@ -11,13 +11,13 @@ namespace gee
 		BoundingBox(const std::vector<gee::Vertex>& vertices);
 		const std::vector<gee::Vertex>& vertices() const;
 		const std::vector<uint32_t>& indices() const;
-
+		const gee::Cube& mesh() const;
 		glm::mat4 transformMatrix{1.0f};
 	private:
-		gee::Cube mesh;
-		float width{};
-		float height{};
-		float depth{};
+		gee::Cube mesh_;
+		float width_{};
+		float height_{};
+		float depth_{};
 
 		struct Box
 		{
@@ -27,6 +27,5 @@ namespace gee
 
 		const Box getBoxFromMesh(const std::vector<gee::Vertex>& vertices) const;
 		void getTransformCubeMesh(const Box&);
-		float map(const float x, const float initialRangeBegin, const float initialRangeEnd, const float finalRangeBegin, const float finalRangeEnd);
 	};
 }

@@ -86,17 +86,17 @@ void vkn::Skybox::buildImage(vkn::Gpu& gpu, vkn::Device& device, vkn::Queue& que
 void vkn::Skybox::buildMesh(vkn::Gpu& gpu, vkn::Device& device, vkn::Queue& queue)
 {
 	gee::Cube cube;
-	vertexBuffer_ = std::make_unique<vkn::Buffer>(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, std::size(cube.vertices) * sizeof(gee::Vertex));
+	vertexBuffer_ = std::make_unique<vkn::Buffer>(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, std::size(cube.vertices()) * sizeof(gee::Vertex));
 
-	indexCount_ = std::size(cube.indices);
-	indexBuffer_ = std::make_unique<vkn::Buffer>(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, std::size(cube.indices) * sizeof(uint32_t));
+	indexCount_ = std::size(cube.indices());
+	indexBuffer_ = std::make_unique<vkn::Buffer>(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, std::size(cube.indices()) * sizeof(uint32_t));
 
 	vkn::DeviceMemory temp{ gpu, device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer_->getMemorySize() + vertexBuffer_->getMemorySize() };
 	vertexBuffer_->bind(temp);
 	indexBuffer_->bind(temp);
 
-	vertexBuffer_->add(cube.vertices);
-	indexBuffer_->add(cube.indices);
+	vertexBuffer_->add(cube.vertices());
+	indexBuffer_->add(cube.indices());
 	
 	hostVisibleMemory_ = std::make_unique<vkn::DeviceMemory>(gpu, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer_->getMemorySize() + vertexBuffer_->getMemorySize());
 	vertexBuffer_->moveTo(queue, *hostVisibleMemory_);

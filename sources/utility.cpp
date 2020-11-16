@@ -2,13 +2,13 @@
 
 gee::Floor::Floor()
 {
-	assert(std::size(indices) % 3 == 0 && "Drawing primitives should be triangles");
+	assert(std::size(indices_) % 3 == 0 && "Drawing primitives should be triangles");
 
-	for (auto i = 0u; i < std::size(indices); i += 3)
+	for (auto i = 0u; i < std::size(indices_); i += 3)
 	{
-        auto& v0 = vertices[indices[i]];
-        auto& v1 = vertices[indices[i + 1]];
-        auto& v2 = vertices[indices[i + 2]];
+        auto& v0 = vertices_[indices_[i]];
+        auto& v1 = vertices_[indices_[i + 1]];
+        auto& v2 = vertices_[indices_[i + 2]];
 
         auto Edge1 = v1.position - v0.position;
         auto Edge2 = v2.position - v0.position;
@@ -35,10 +35,40 @@ gee::Floor::Floor()
         v2.tangent += tangent;
 	}
 
-    for (auto& vertex : vertices)
+    for (auto& vertex : vertices_)
     {
         vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
         vertex.tangent = glm::normalize(vertex.tangent);
         vertex.bitangent = glm::cross(vertex.tangent, vertex.normal);
     }
+}
+
+const std::vector<gee::Vertex>& gee::Floor::vertices() const
+{
+    return vertices_;
+}
+
+const std::vector<uint32_t>& gee::Floor::indices() const
+{
+    return indices_;
+}
+
+const std::vector<gee::Vertex>& gee::QuadMesh::vertices() const
+{
+    return vertices_;
+}
+
+const std::vector<uint32_t>& gee::QuadMesh::indices() const
+{
+    return indices_;
+}
+
+const std::vector<gee::Vertex>& gee::Cube::vertices() const
+{
+    return vertices_;
+}
+
+const std::vector<uint32_t>& gee::Cube::indices() const
+{
+    return indices_;
 }

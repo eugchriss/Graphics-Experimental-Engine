@@ -74,6 +74,7 @@ namespace gee
 		void arcball(const double pitch, const double yaw);
 		const glm::mat4 pointOfView() const;
 		const glm::mat4 perspectiveProjection(const float aspectRatio) const;
+		const glm::mat4 orhtogonalProjection() const;
 		inline bool isViewable(const glm::vec3& pos) const
 		{
 			return viewFrustum_.isInside(pos);
