@@ -4,10 +4,8 @@
 #include "../headers/RenderpassBuilder.h"
 #include "../headers/imgui_impl_glfw.h"
 #include "../headers/imgui_impl_vulkan.h"
-#include "../headers/AABB.h"
 #include <algorithm>
 #include <string>
-#include <future>
 
 
 #define ENABLE_VALIDATION_LAYERS
@@ -474,6 +472,7 @@ vkn::Image vkn::Renderer::createImageFromTexture(const gee::Texture& texture)
 	vkn::Signal imageReady{ *device_ };
 	transferQueue_->submit(cb, imageReady);
 	imageReady.waitForSignal();
+	auto test = image.rawContent(*gpu_);
 	return std::move(image);
 }
 

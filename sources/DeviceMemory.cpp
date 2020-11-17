@@ -81,7 +81,7 @@ vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, 
 	bool found{ false };
 	for (auto i = 0u; i < memProps.memoryTypeCount; ++i)
 	{
-		if ((memoryTypeBits & (1 >> i)) == (1 >> i))
+		if ((memoryTypeBits & (1 << i)) == (1 << i) && (memProps.memoryTypes[i].propertyFlags != 0))
 		{
 			if (memProps.memoryHeaps[memProps.memoryTypes[i].heapIndex].size > size_)
 			{
@@ -140,7 +140,7 @@ const VkDeviceSize vkn::DeviceMemory::bind(const VkBuffer buffer)
 	return offset;
 }
 
-void vkn::DeviceMemory::bind(const VkImage image)
+const VkDeviceSize vkn::DeviceMemory::bind(const VkImage image)
 {
 	VkMemoryRequirements memRequirements{};
 	vkGetImageMemoryRequirements(device_.device, image, &memRequirements);
@@ -150,8 +150,27 @@ void vkn::DeviceMemory::bind(const VkImage image)
 
 	checkAlignment(memRequirements.alignment);
 	vkn::error_check(vkBindImageMemory(device_.device, image, memory_, offset_), "Unabled to bind the image and the memory");
-
+	
+	auto offset = offset_;
 	offset_ += memRequirements.size;
+	return offset;
+}
+
+const std::vector<unsigned char> vkn::DeviceMemory::rawContent(const VkDeviceSize offset, const VkDeviceSize size) const
+{
+	if (((location_ & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
+	{
+		std::vector<unsigned char> datas(size);
+		void* ptr;
+		vkn::error_check(vkMapMemory(device_.device, memory_, offset, size, 0, &ptr), "Unabled to map memory to vulkan");
+		memcpy(std::data(datas), ptr, size);
+		vkUnmapMemory(device_.device, memory_);
+		return std::move(datas);
+	}
+	else
+	{
+		throw std::runtime_error{ "Attempting to map a non mappable memory type" };
+	}
 }
 
 void vkn::DeviceMemory::checkAlignment(const VkDeviceSize alignment)

@@ -1,9 +1,9 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
 #include "Gpu.h"
-#include "DeviceMemory.h"
-#include "Buffer.h"
 #include "CommandBuffer.h"
+#include "Buffer.h"
+#include "DeviceMemory.h"
 #include <unordered_map>
 #include <memory>
 
@@ -18,6 +18,9 @@ namespace vkn
 		Image(Image&& image);
 		~Image();
 
+		const std::vector<unsigned char> rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& apect = VK_IMAGE_ASPECT_COLOR_BIT);
+		void copyToBuffer(vkn::CommandBuffer& cb, vkn::Buffer& buffer, const VkImageAspectFlags& aspect);
+		void copyToImage(vkn::CommandBuffer& cb, vkn::Image& image, const VkImageAspectFlags aspect);
 		void transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const VkImageLayout newLayout);
 		void copyFromBuffer(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const vkn::Buffer& buffer, const VkDeviceSize offset);
 		void copyFromBuffer(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const vkn::Buffer& buffer, const std::vector<VkDeviceSize>& offsets);
@@ -39,8 +42,10 @@ namespace vkn
 		};
 		std::unordered_map<size_t, VkImageView> views_;
 		std::unique_ptr<vkn::DeviceMemory> memory_;
+		VkDeviceSize memoryOffset_{};
 		bool owned_{ true };
 		VkExtent3D extent_{};
 		VkImageView createView(const vkn::Image::ViewType& viewType);
+		const VkMemoryRequirements getMemoryRequirement() const;
 	};
 }

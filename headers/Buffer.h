@@ -6,6 +6,7 @@
 namespace vkn
 {
 	class Queue;
+	class Image;
 	class Buffer
 	{
 	public:
@@ -15,7 +16,7 @@ namespace vkn
 		const VkDeviceSize getMemorySize() const;
 		void bind(DeviceMemory& memory);
 		void moveTo(Queue& queue, DeviceMemory& memory);
-
+		const std::vector<unsigned char> rawContent() const;
 		template<class T>
 		VkDeviceSize add(const T& data);
 

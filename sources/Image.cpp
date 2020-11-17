@@ -1,7 +1,12 @@
 #include "../headers/Image.h"
 #include "../headers/vulkan_utils.h"
+#include "../headers/QueueFamily.h"
+#include "../headers/Queue.h"
+#include "../headers/CommandPool.h"
+#include "../headers/CommandBuffer.h"
+#include "../headers/Signal.h"
 
-vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags usage, VkFormat format, VkExtent3D extent, const uint32_t layerCount) : device_{ device }, extent_{ extent }, format_{format}, layerCount_{layerCount}
+vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags usage, VkFormat format, VkExtent3D extent, const uint32_t layerCount) : device_{ device }, extent_{ extent }, format_{ format }, layerCount_{ layerCount }
 {
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -21,9 +26,10 @@ vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags us
 	imageInfo.arrayLayers = layerCount_;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.usage = usage;
+	imageInfo.usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
 	vkn::error_check(vkCreateImage(device_.device, &imageInfo, nullptr, &image), "Failed to create the image");
 
 	VkMemoryRequirements memRequirements{};
@@ -32,12 +38,12 @@ vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags us
 	memory_->bind(image);
 }
 
-vkn::Image::Image(vkn::Device& device, const VkImage image, const VkFormat format, const uint32_t layerCount, bool owned) : device_{ device }, owned_{owned}, format_{format}, layerCount_{layerCount}
+vkn::Image::Image(vkn::Device& device, const VkImage image, const VkFormat format, const uint32_t layerCount, bool owned) : device_{ device }, owned_{ owned }, format_{ format }, layerCount_{ layerCount }
 {
 	this->image = image;
 }
 
-vkn::Image::Image(Image&& other): device_{other.device_}
+vkn::Image::Image(Image&& other) : device_{ other.device_ }
 {
 	memory_ = std::move(other.memory_);
 	views_ = std::move(other.views_);
@@ -53,7 +59,7 @@ vkn::Image::Image(Image&& other): device_{other.device_}
 
 vkn::Image::~Image()
 {
-	for(auto& [viewType, view] : views_)
+	for (auto& [viewType, view] : views_)
 	{
 		vkDestroyImageView(device_.device, view, nullptr);
 	}
@@ -83,6 +89,70 @@ VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 	return view;
 }
 
+const VkMemoryRequirements vkn::Image::getMemoryRequirement() const
+{
+	VkMemoryRequirements requirements{};
+	vkGetImageMemoryRequirements(device_.device, image, &requirements);
+	return requirements;
+}
+
+const std::vector<unsigned char> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
+{
+	auto requirements = getMemoryRequirement();
+	vkn::Buffer buffer{ device_, VK_BUFFER_USAGE_TRANSFER_DST_BIT, requirements.size };
+	vkn::DeviceMemory memory{ gpu, device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, buffer.getMemorySize() };
+	buffer.bind(memory);
+
+	vkn::QueueFamily transferQueueFamily{ gpu, VK_QUEUE_TRANSFER_BIT, 1 };
+	vkn:CommandPool cbPool{ device_, transferQueueFamily.familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
+	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	cb.begin();
+	copyToBuffer(cb, buffer, VK_IMAGE_ASPECT_COLOR_BIT);
+	cb.end();
+
+	auto transferQueue = transferQueueFamily.getQueue(device_);
+	vkn::Signal copyDone{ device_ };
+	transferQueue->submit(cb, copyDone);
+	//copyDone.waitForSignal();
+
+	return buffer.rawContent();
+}
+
+void vkn::Image::copyToBuffer(vkn::CommandBuffer& cb, vkn::Buffer& buffer, const VkImageAspectFlags& aspect)
+{
+	VkBufferImageCopy copy{};
+	copy.bufferImageHeight = 0;
+	copy.bufferRowLength = 0;
+	copy.bufferOffset = 0;
+	copy.imageOffset = VkOffset3D{};
+	copy.imageExtent = extent_;
+	copy.imageSubresource = { aspect, 0, 0, layerCount_ };
+
+	auto layout = layout_;
+	transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	vkCmdCopyImageToBuffer(cb.commandBuffer(), image, layout_, buffer.buffer, 1, &copy);
+	transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, layout);
+}
+
+void vkn::Image::copyToImage(vkn::CommandBuffer& cb, vkn::Image& dstImage, const VkImageAspectFlags aspect)
+{
+	auto srcLayout = layout_;
+	auto dstLayout = dstImage.layout_;
+
+	transitionLayout(cb, aspect, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	dstImage.transitionLayout(cb, aspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	VkImageCopy copy{};
+	copy.srcSubresource = { aspect, 0, 0, layerCount_ };
+	copy.srcOffset = VkOffset3D{ 0, 0, 0 };
+	copy.dstSubresource = { aspect, 0, 0, dstImage.layerCount_ };
+	copy.dstOffset = VkOffset3D{ 0, 0, 0 };
+	copy.extent = extent_;
+	vkCmdCopyImage(cb.commandBuffer(), image, layout_, dstImage.image, dstImage.layout_, 1, &copy);
+	transitionLayout(cb, aspect, srcLayout);
+	dstImage.transitionLayout(cb, aspect, dstLayout);
+}
+
 void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const VkImageLayout newLayout)
 {
 	VkPipelineStageFlagBits srcStage{};
@@ -101,6 +171,11 @@ void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFla
 	else if (layout_ == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	{
 		imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (layout_ == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+	{
+		imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 		srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	}
 	else if (layout_ == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -134,6 +209,11 @@ void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFla
 		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	}
+	else if (newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+	{
+		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	}
 	else if (newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 	{
 		imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -144,7 +224,7 @@ void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFla
 	imageBarrier.subresourceRange = { aspect, 0, 1, 0, layerCount_ };
 
 	vkCmdPipelineBarrier(cb.commandBuffer(), srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
-	
+
 	layout_ = newLayout;
 }
 
@@ -170,7 +250,7 @@ void vkn::Image::copyFromBuffer(vkn::CommandBuffer& cb, const VkImageAspectFlags
 		transitionLayout(cb, aspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	}
 
-	std::vector<VkBufferImageCopy> copyRegions;	
+	std::vector<VkBufferImageCopy> copyRegions;
 	uint32_t layerIndex{};
 	for (const auto offset : offsets)
 	{
