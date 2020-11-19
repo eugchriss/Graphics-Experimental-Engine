@@ -309,7 +309,7 @@ void vkn::Renderer::buildShaderTechnique()
 	auto pipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/vert.spv", "../assets/Shaders/frag.spv");
 	forwardRendering_ = std::make_unique<vkn::ShaderTechnique>(renderpassBuilder, pipelineBuilder, *swapchain_);
 
-	auto pixelPerfectRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	auto pixelPerfectRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, VK_FORMAT_R32G32B32A32_SFLOAT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	auto pixelPerfectPipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
 	pixelPerfectTechnique_ = std::make_unique<vkn::ShaderTechnique>(pixelPerfectRenderpassBuilder, pixelPerfectPipelineBuilder, VkExtent2D{static_cast<uint32_t>(viewport_.width), static_cast<uint32_t>(viewport_.height)});
 

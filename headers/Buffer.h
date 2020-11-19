@@ -16,7 +16,7 @@ namespace vkn
 		const VkDeviceSize getMemorySize() const;
 		void bind(DeviceMemory& memory);
 		void moveTo(Queue& queue, DeviceMemory& memory);
-		const std::vector<unsigned char> rawContent() const;
+		const std::vector<float> rawContent() const;
 		template<class T>
 		VkDeviceSize add(const T& data);
 

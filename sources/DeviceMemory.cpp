@@ -156,11 +156,11 @@ const VkDeviceSize vkn::DeviceMemory::bind(const VkImage image)
 	return offset;
 }
 
-const std::vector<unsigned char> vkn::DeviceMemory::rawContent(const VkDeviceSize offset, const VkDeviceSize size) const
+const std::vector<float> vkn::DeviceMemory::rawContent(const VkDeviceSize offset, const VkDeviceSize size) const
 {
 	if (((location_ & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
 	{
-		std::vector<unsigned char> datas(size);
+		std::vector<float> datas(size);
 		void* ptr;
 		vkn::error_check(vkMapMemory(device_.device, memory_, offset, size, 0, &ptr), "Unabled to map memory to vulkan");
 		memcpy(std::data(datas), ptr, size);

@@ -145,7 +145,7 @@ const std::vector<vkn::Pixel> vkn::Image::content(const vkn::Gpu& gpu, const VkI
 	return std::move(datas);
 }
 
-const std::vector<unsigned char> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
+const std::vector<float> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
 {
 	auto requirements = getMemoryRequirement();
 	vkn::Buffer buffer{ device_, VK_BUFFER_USAGE_TRANSFER_DST_BIT, requirements.size };

@@ -10,7 +10,7 @@ vkn::Renderpass::Renderpass(vkn::Device& device, const VkRenderPass& renderpass,
 		{
 			colorClearValuesIndices_.push_back(std::size(clearValues_));
 			VkClearValue clear{};
-			clear.color = { 0.2f, 0.2f, 0.2f, 1.0f };
+			clear.color = { 0.0f, 0.0f, 0.0f, 1.0f };
 			clearValues_.push_back(clear);
 		}
 		else

@@ -19,7 +19,7 @@ namespace vkn
 		const VkDeviceSize bind(const VkImage image);
 		template<class T>
 		void update(const VkDeviceSize offset, const T data, const VkDeviceSize size);
-		const std::vector<unsigned char> rawContent(const VkDeviceSize offset, const VkDeviceSize size) const;
+		const std::vector<float> rawContent(const VkDeviceSize offset, const VkDeviceSize size) const;
 	private:
 		const vkn::Device& device_;
 		VkDeviceMemory memory_{ VK_NULL_HANDLE };
