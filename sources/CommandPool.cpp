@@ -44,5 +44,5 @@ vkn::CommandBuffer vkn::CommandPool::getCommandBuffer(const VkCommandBufferLevel
 	VkCommandBuffer cb{ VK_NULL_HANDLE };
 	vkn::error_check(vkAllocateCommandBuffers(device_.device, &allocInfo, &cb), "Unable to allocate command buffer");
 	cbs_.push_back(cb);
-	return CommandBuffer{ cb };
+	return CommandBuffer{device_, cb };
 }

@@ -21,6 +21,13 @@ vkn::ShaderTechnique::ShaderTechnique(vkn::RenderpassBuilder& renderpassBuilder,
 	framebuffer_ = std::make_unique<vkn::Framebuffer>(pipelineBuilder.gpu_, pipelineBuilder.device_, *renderpass_, size);
 }
 
+#ifndef NDEBUG
+void vkn::ShaderTechnique::setDebugName(const std::string& name)
+{
+	renderpass_->setDebugName(name + " renderpass");
+}
+#endif
+
 void vkn::ShaderTechnique::setClearColor(const glm::vec3& color)
 {
 	renderpass_->setClearColor(color);
@@ -39,4 +46,9 @@ void vkn::ShaderTechnique::updatePipelineTextures(const std::string& resourceNam
 VkFramebuffer vkn::ShaderTechnique::framebuffer(const uint32_t index)
 {
 	return framebuffer_->frame(index);
+}
+
+const std::vector<vkn::Pixel> vkn::ShaderTechnique::content(const uint32_t framebufferImageIndex)
+{
+	return framebuffer_->frameContent(framebufferImageIndex);
 }

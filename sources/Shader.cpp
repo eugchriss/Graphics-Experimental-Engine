@@ -197,12 +197,14 @@ const vkn::Shader::PushConstant vkn::Shader::parsePushConstant(const spirv_cross
 	auto spirvType = spirv_->get_type(resource.base_type_id);
 	auto pushConstantRanges = spirv_->get_active_buffer_ranges(resource.id);
 
-	assert(std::size(pushConstantRanges) < 2 && "There is more than 1 element in the push constant");
 	PushConstant pc{};
 	pc.name = resource.name;
 	pc.stageFlag = stage_;
-	pc.offset = pushConstantRanges[0].offset;
-	pc.size  = pushConstantRanges[0].range;
-	
+	for (auto i = 0u; i < std::size(pushConstantRanges); ++i)
+	{
+		pc.offsets.push_back(pushConstantRanges[i].offset);
+		pc.ranges.push_back(pushConstantRanges[i].range);
+		pc.size += pushConstantRanges[i].range;
+	}
 	return pc;
 }

@@ -9,6 +9,13 @@
 
 namespace vkn
 {
+	struct Pixel
+	{
+		uint8_t r;
+		uint8_t g;
+		uint8_t b;
+		uint8_t a;
+	};
 	class Image
 	{
 	public:
@@ -18,6 +25,10 @@ namespace vkn
 		Image(Image&& image);
 		~Image();
 
+#ifndef NDEBUG
+		void setDebugName(const std::string& name);
+#endif
+		const std::vector<Pixel> content(const vkn::Gpu& gpu, const VkImageAspectFlags& apect = VK_IMAGE_ASPECT_COLOR_BIT);
 		const std::vector<unsigned char> rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& apect = VK_IMAGE_ASPECT_COLOR_BIT);
 		void copyToBuffer(vkn::CommandBuffer& cb, vkn::Buffer& buffer, const VkImageAspectFlags& aspect);
 		void copyToImage(vkn::CommandBuffer& cb, vkn::Image& image, const VkImageAspectFlags aspect);
@@ -29,6 +40,7 @@ namespace vkn
 		const VkImageView getView(const VkImageAspectFlags aspect, const VkImageViewType viewType, const VkFormat format, const uint32_t layerCount = 1);
 
 	private:
+		std::string name_;//only used for debugging purpose
 		vkn::Device& device_;
 		VkImageLayout layout_{ VK_IMAGE_LAYOUT_UNDEFINED };
 		VkFormat format_{};
@@ -47,5 +59,8 @@ namespace vkn
 		VkExtent3D extent_{};
 		VkImageView createView(const vkn::Image::ViewType& viewType);
 		const VkMemoryRequirements getMemoryRequirement() const;
+		const std::string getStringUsage(const VkImageUsageFlags usageFlag)const;
+		const std::vector<uint32_t> unwrapFlags(const VkImageUsageFlags usageFlag) const;
+		const std::string getStringViewType(const VkImageViewType type)const;
 	};
 }

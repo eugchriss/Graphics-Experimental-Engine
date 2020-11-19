@@ -2,7 +2,7 @@
 #include "../headers/vulkan_utils.h"
 #include <cassert>
 
-vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, vkn::Swapchain& swapchain) : device_{ device }, size{ swapchain.extent() }
+vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, vkn::Swapchain& swapchain) :gpu_{ gpu }, device_ { device }, size{ swapchain.extent() }
 {
 	VkFramebufferCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -16,6 +16,7 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Ren
 	auto& swapchainImages = swapchain.images();
 	const auto& renderpassAttachments = renderpass.attachments();
 	uint32_t renderpassAttachmentsSize{};
+	std::vector<VkImageAspectFlags> aspects;
 	for (const auto& swapchainImage : swapchainImages)
 	{
 		for (const auto& attachment : renderpassAttachments)
@@ -24,28 +25,49 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Ren
 			if (attachment.index != 0)
 			{
 				++renderpassAttachmentsSize;
-				images_.emplace_back(gpu, device_, getUsageFlag(attachment), attachment.format, VkExtent3D{ size.width, size.height, 1 });
+				images_.emplace_back(gpu_, device_, getUsageFlag(attachment), attachment.format, VkExtent3D{ size.width, size.height, 1 });
+				aspects.push_back(getAspectFlag(attachment));
 			}
 		}
 	}
 
 	framebuffers_.resize(std::size(swapchainImages));
+	uint32_t index{};
 	for (auto i = 0u; i < std::size(swapchainImages); ++i)
 	{
 		std::vector<VkImageView> attachments;
 		attachments.push_back(swapchainImages[i].getView(VK_IMAGE_ASPECT_COLOR_BIT));
 		for (auto j = 0u; j < renderpassAttachmentsSize / std::size(swapchainImages); ++j)
 		{
-			attachments.push_back(images_[i * std::size(renderpassAttachments) / std::size(swapchainImages) + j].getView(VK_IMAGE_ASPECT_DEPTH_BIT));
+			attachments.push_back(images_[index].getView(aspects[index]));
+			++index;
 		}
 		info.attachmentCount = std::size(attachments);
 		info.pAttachments = std::data(attachments);
 		vkn::error_check(vkCreateFramebuffer(device_.device, &info, nullptr, &framebuffers_[i]), "Failed to create the framebuffer");
 	}
+#ifndef NDEBUG
+	for (auto& image : images_)
+	{
+		image.setDebugName("Framebuffer image");
+	}
+#endif
+
 }
 
-vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, const VkExtent2D& sz) : device_{ device }, size{ sz }
+vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, const VkExtent2D& sz, const uint32_t frameCount) : gpu_{ gpu }, device_ { device }, size{ sz }
 {
+	std::vector<VkImageAspectFlags> aspects;
+	const auto& renderpassAttachments = renderpass.attachments();
+	for (auto i = 0u; i < frameCount; ++i)
+	{
+		for (const auto& attachment : renderpassAttachments)
+		{
+			images_.emplace_back(gpu, device_, getUsageFlag(attachment) | VK_IMAGE_USAGE_SAMPLED_BIT, attachment.format, VkExtent3D{ size.width, size.height, 1 });
+			aspects.push_back(getAspectFlag(attachment));
+		}
+	}
+
 	VkFramebufferCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	info.pNext = nullptr;
@@ -55,26 +77,32 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Ren
 	info.width = size.width;
 	info.renderPass = renderpass.renderpass();
 
-	const auto& renderpassAttachments = renderpass.attachments();
-	std::vector<VkImageView> attachmentViews;
-	for (const auto& attachment : renderpassAttachments)
+	uint32_t index{};
+	for (auto i = 0u; i < frameCount; ++i)
 	{
-		images_.emplace_back(gpu, device_, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, attachment.format, VkExtent3D{ size.width, size.height, 1 });
-		attachmentViews.push_back(images_.back().getView(getAspectFlag(attachment)));
-	}
+		std::vector<VkImageView> attachmentViews;
+		for (auto j = 0u; j < std::size(renderpassAttachments); ++j)
+		{
+			attachmentViews.push_back(images_[index].getView(aspects[index]));
+			index++;
+		}
+		info.attachmentCount = std::size(attachmentViews);
+		info.pAttachments = std::data(attachmentViews);
 
-	info.attachmentCount = std::size(attachmentViews);
-	info.pAttachments = std::data(attachmentViews);
-	for (const auto& image : images_)
-	{
 		VkFramebuffer fb{ VK_NULL_HANDLE };
 		vkn::error_check(vkCreateFramebuffer(device_.device, &info, nullptr, &fb), "Failed to create the framebuffer");
 		framebuffers_.emplace_back(fb);
 	}
 
+#ifndef NDEBUG
+	for (auto& image : images_)
+	{
+		image.setDebugName("Framebuffer image");
+	}
+#endif
 }
 
-vkn::Framebuffer::Framebuffer(Framebuffer&& other) : device_{ other.device_ }
+vkn::Framebuffer::Framebuffer(Framebuffer&& other) :gpu_{ other.gpu_ }, device_ { other.device_ }
 {
 	framebuffers_ = std::move(other.framebuffers_);
 	images_ = std::move(other.images_);
@@ -89,10 +117,25 @@ vkn::Framebuffer::~Framebuffer()
 	}
 }
 
+#ifndef NDEBUG
+void vkn::Framebuffer::setDebugName(const std::string& name)
+{
+	for (auto& image : images_)
+	{
+		image.setDebugName(name + "image ");
+	}
+}
+#endif
+
 const VkFramebuffer vkn::Framebuffer::frame(const uint32_t index) const
 {
 	assert(index <= std::size(framebuffers_) && "There is no image at that index");
 	return framebuffers_[index];
+}
+
+const std::vector<vkn::Pixel> vkn::Framebuffer::frameContent(const uint32_t imageIndex)
+{
+	return images_[imageIndex].content(gpu_);
 }
 
 VkImageAspectFlags vkn::Framebuffer::getAspectFlag(const vkn::Renderpass::Attachment& attachment)

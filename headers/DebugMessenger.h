@@ -11,7 +11,6 @@ namespace vkn
 	public:
 		DebugMessenger(const vkn::Instance& instance, const VkDebugUtilsMessageSeverityFlagsEXT severity, const VkDebugUtilsMessageTypeFlagsEXT type);
 		~DebugMessenger();
-		const std::string& lastMessage() const;
 	private:
 		const VkInstance instance_;
 		VkDebugUtilsMessengerEXT messenger_{ VK_NULL_HANDLE };

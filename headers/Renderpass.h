@@ -21,6 +21,9 @@ namespace vkn
 		const VkRenderPass renderpass() const;
 		void begin(vkn::CommandBuffer& cb, const VkFramebuffer& fb, const VkRect2D& renderArea, const VkSubpassContents subpassContent);
 		void end(vkn::CommandBuffer& cb);
+#ifndef NDEBUG
+		void setDebugName(const std::string& name);
+#endif
 	private:
 		friend class RenderpassBuilder;
 		Renderpass(vkn::Device& device, const VkRenderPass& renderpass, std::vector<Renderpass::Attachment>& attachments);

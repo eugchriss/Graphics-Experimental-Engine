@@ -69,6 +69,7 @@ namespace vkn
 		std::unique_ptr<vkn::ShaderTechnique> forwardRendering_;
 		std::unique_ptr<vkn::ShaderTechnique> skyboxTechnique_;
 		std::unique_ptr<vkn::ShaderTechnique> boundingBoxRendering_;
+		std::unique_ptr<vkn::ShaderTechnique> pixelPerfectTechnique_;
 		//imgui variables
 		VkDescriptorPool imguiDescriptorPool_{ VK_NULL_HANDLE };
 		std::unique_ptr<vkn::Renderpass> imguiRenderpass_;

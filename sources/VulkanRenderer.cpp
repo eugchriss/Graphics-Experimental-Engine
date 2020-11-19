@@ -45,6 +45,9 @@ vkn::Renderer::Renderer(gee::Window& window) :renderArea_{ 0, 0, window.size().x
 	for (auto i = 0; i < imageCount_; ++i)
 	{
 		cbs_.emplace_back(cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY));
+#ifndef NDEBUG
+		cbs_.back().setDebugName("Main command buffer " + std::to_string(i));
+#endif
 		imageAvailableSignals_.emplace_back(*device_, true);
 		renderingFinishedSignals_.emplace_back(*device_, true);
 	}
@@ -96,9 +99,12 @@ void vkn::Renderer::resize()
 	imageAvailableSignals_.clear();
 	renderingFinishedSignals_.clear();
 	imageCount_ = std::size(swapchain_->images());
-	for (auto& image : swapchain_->images())
+	for (auto i = 0u; i < std::size(swapchain_->images()) ; ++i)
 	{
 		cbs_.emplace_back(cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY));
+#ifndef NDEBUG
+		cbs_.back().setDebugName("Main command buffer " + std::to_string(i));
+#endif
 		imageAvailableSignals_.emplace_back(*device_, true);
 		renderingFinishedSignals_.emplace_back(*device_, true);
 	}
@@ -113,6 +119,7 @@ void vkn::Renderer::enableSkybox(bool value)
 void vkn::Renderer::setSkybox(const std::array<std::string, 6>& skyboxPaths)
 {
 	skybox_ = std::make_unique<vkn::Skybox>(*gpu_, *device_, skyboxPaths);
+	skyboxEnbaled_ = true;
 	skyboxTechnique_->updatePipelineTexture("skybox", sampler_, skybox_->getView(), VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
@@ -189,6 +196,7 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 				bindShaderMaterial(shaderMaterials_);
 				forwardRendering_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
 				forwardRendering_->updatePipelineBuffer("Colors", drawablesColors_, VK_SHADER_STAGE_VERTEX_BIT);
+				pixelPerfectTechnique_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
 				if (showBindingBox_)
 				{
 					prepareBindingBox(drawables);
@@ -196,6 +204,7 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 			}
 			record(sortedDrawables);
 			submit();
+			auto test = pixelPerfectTechnique_->content(0);
 		}
 	}
 }
@@ -250,6 +259,8 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	shaderCamera_.projection = camera.perspectiveProjection(aspectRatio);
 	shaderCamera_.projection[1][1] *= -1;
 	forwardRendering_->updatePipelineBuffer("Camera", shaderCamera_, VK_SHADER_STAGE_VERTEX_BIT);
+	pixelPerfectTechnique_->updatePipelineBuffer("Camera", shaderCamera_, VK_SHADER_STAGE_VERTEX_BIT);
+	
 	if (showBindingBox_)
 	{
 		boundingBoxRendering_->updatePipelineBuffer("Camera", shaderCamera_, VK_SHADER_STAGE_VERTEX_BIT);
@@ -283,7 +294,7 @@ void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
 
 void vkn::Renderer::buildShaderTechnique()
 {
-	VkImageLayout initialLayout{VK_IMAGE_LAYOUT_UNDEFINED};
+	VkImageLayout initialLayout{ VK_IMAGE_LAYOUT_UNDEFINED };
 	VkAttachmentLoadOp loadOp{ VK_ATTACHMENT_LOAD_OP_CLEAR };
 	if (skyboxEnbaled_)
 	{
@@ -293,10 +304,15 @@ void vkn::Renderer::buildShaderTechnique()
 		initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 	}
+
 	auto renderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), loadOp, initialLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	auto pipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/vert.spv", "../assets/Shaders/frag.spv");
 	forwardRendering_ = std::make_unique<vkn::ShaderTechnique>(renderpassBuilder, pipelineBuilder, *swapchain_);
-	
+
+	auto pixelPerfectRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	auto pixelPerfectPipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
+	pixelPerfectTechnique_ = std::make_unique<vkn::ShaderTechnique>(pixelPerfectRenderpassBuilder, pixelPerfectPipelineBuilder, VkExtent2D{static_cast<uint32_t>(viewport_.width), static_cast<uint32_t>(viewport_.height)});
+
 	if (showBindingBox_)
 	{
 		auto boundingBoxRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), loadOp, initialLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -306,6 +322,7 @@ void vkn::Renderer::buildShaderTechnique()
 		boundingBoxRendering_ = std::make_unique<vkn::ShaderTechnique>(boundingBoxRenderpassBuilder, boundingBoxPipelineBuilder, *swapchain_);
 	}
 	auto imguiRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, swapchain_->imageFormat(), loadOp, initialLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	
 	imguiRenderpass_ = std::make_unique<vkn::Renderpass>(imguiRenderpassBuilder.get());
 }
 
@@ -419,6 +436,20 @@ void vkn::Renderer::record(const std::unordered_map<size_t, uint64_t>& sortedDra
 				instanceIndex += instanceCount;
 			}
 		});
+	pixelPerfectTechnique_->execute(cb, currentFrame_, viewport_, renderArea_, [&]()
+		{
+			uint32_t instanceIndex{ 0 };
+			for (const auto [meshHashKey, instanceCount] : sortedDrawables)
+			{
+				VkDeviceSize offset{ 0 };
+				auto& memoryLocation = meshesMemory_.at(meshHashKey); 
+				forwardRendering_->pipelinePushConstant(cb, "modelIndex", meshesShaderIndices_[instanceIndex].modelIndices);
+				vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
+				vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, 0);
+				instanceIndex += instanceCount;
+			}
+		});
 	if (showBindingBox_)
 	{
 		boundingBoxRendering_->execute(cb, currentFrame_, viewport_, renderArea_, [&]()
@@ -472,7 +503,6 @@ vkn::Image vkn::Renderer::createImageFromTexture(const gee::Texture& texture)
 	vkn::Signal imageReady{ *device_ };
 	transferQueue_->submit(cb, imageReady);
 	imageReady.waitForSignal();
-	auto test = image.rawContent(*gpu_);
 	return std::move(image);
 }
 

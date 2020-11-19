@@ -57,6 +57,20 @@ void vkn::Renderpass::end(vkn::CommandBuffer& cb)
 	vkCmdEndRenderPass(cb.commandBuffer());
 }
 
+#ifndef NDEBUG
+void vkn::Renderpass::setDebugName(const std::string& name)
+{
+	VkDebugUtilsObjectNameInfoEXT nameInfo{};
+	nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+	nameInfo.pNext = nullptr;
+	nameInfo.objectType = VK_OBJECT_TYPE_RENDER_PASS;
+	nameInfo.objectHandle = reinterpret_cast<uint64_t>(renderpass_);
+	nameInfo.pObjectName = name.c_str();
+
+	device_.setDebugOjectName(nameInfo);
+}
+#endif
+
 vkn::Renderpass::Renderpass(Renderpass&& other): device_{other.device_}
 {
 	renderpass_ = other.renderpass_;

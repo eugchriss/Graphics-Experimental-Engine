@@ -119,6 +119,7 @@ vkn::RenderpassBuilder vkn::RenderpassBuilder::getDefaultColorDepthResolveRender
 	RenderpassBuilder builder{ device };
 	auto colorAttachment = builder.addAttachment(attachmentFormat, { loadOp, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { initialLayout, finalLayout });
 	auto depthAttachment = builder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
+
 	vkn::RenderpassBuilder::Subpass::Requirement requirements{};
 	requirements.addColorAttachment(colorAttachment);
 	requirements.addDepthStencilAttachment(depthAttachment);

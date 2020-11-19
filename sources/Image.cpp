@@ -36,11 +36,20 @@ vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags us
 	vkGetImageMemoryRequirements(device_.device, image, &memRequirements);
 	memory_ = std::make_unique<vkn::DeviceMemory>(gpu.device, device_, memRequirements.memoryTypeBits, memRequirements.size);
 	memory_->bind(image);
+
+#ifndef NDEBUG
+	name_ = "Owned image";
+	setDebugName(name_ + getStringUsage(usage));
+#endif
 }
 
 vkn::Image::Image(vkn::Device& device, const VkImage image, const VkFormat format, const uint32_t layerCount, bool owned) : device_{ device }, owned_{ owned }, format_{ format }, layerCount_{ layerCount }
 {
 	this->image = image;
+#ifndef NDEBUG
+	name_ = "Non owned image";
+	setDebugName(name_);
+#endif
 }
 
 vkn::Image::Image(Image&& other) : device_{ other.device_ }
@@ -86,7 +95,17 @@ VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 
 	VkImageView view{};
 	vkn::error_check(vkCreateImageView(device_.device, &viewInfo, nullptr, &view), "Failed to create the view");
+
+#ifndef NDEBUG
+	VkDebugUtilsObjectNameInfoEXT nameInfo{};
+	nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+	nameInfo.pNext = nullptr;
+	nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
+	nameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
+	nameInfo.pObjectName = std::string{ name_ + getStringViewType(viewType.type) }.c_str();
+	device_.setDebugOjectName(nameInfo);
 	return view;
+#endif
 }
 
 const VkMemoryRequirements vkn::Image::getMemoryRequirement() const
@@ -94,6 +113,36 @@ const VkMemoryRequirements vkn::Image::getMemoryRequirement() const
 	VkMemoryRequirements requirements{};
 	vkGetImageMemoryRequirements(device_.device, image, &requirements);
 	return requirements;
+}
+#ifndef NDEBUG
+void vkn::Image::setDebugName(const std::string& name)
+{
+	VkDebugUtilsObjectNameInfoEXT nameInfo{};
+	nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+	nameInfo.pNext = nullptr;
+	nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
+	nameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
+	nameInfo.pObjectName = name.c_str();
+
+	device_.setDebugOjectName(nameInfo);
+}
+#endif
+const std::vector<vkn::Pixel> vkn::Image::content(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
+{
+	auto& raw = rawContent(gpu, aspect);
+	assert(std::size(raw) % 4 == 0 && "image raw content is corrupted");
+	std::vector<vkn::Pixel> datas;
+	datas.reserve(std::size(raw)/4);
+	for (auto i = 0u; i < std::size(raw); i += 4)
+	{
+		Pixel p;
+		p.r = raw[i];
+		p.g = raw[i + 1];
+		p.b = raw[i + 2];
+		p.a = raw[i + 3];
+		datas.push_back(p);
+	}
+	return std::move(datas);
 }
 
 const std::vector<unsigned char> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
@@ -114,7 +163,7 @@ const std::vector<unsigned char> vkn::Image::rawContent(const vkn::Gpu& gpu, con
 	auto transferQueue = transferQueueFamily.getQueue(device_);
 	vkn::Signal copyDone{ device_ };
 	transferQueue->submit(cb, copyDone);
-	//copyDone.waitForSignal();
+	copyDone.waitForSignal();
 
 	return buffer.rawContent();
 }
@@ -310,3 +359,81 @@ const VkImageView vkn::Image::getView(const VkImageAspectFlags aspect, const VkI
 		return imageView;
 	}
 }
+
+const std::string vkn::Image::getStringUsage(const VkImageUsageFlags usageFlag) const
+{
+	auto bits = unwrapFlags(usageFlag);
+	std::string usage{};
+	for (const auto flag : bits)
+	{
+		switch (1 << flag)
+		{
+		case VK_IMAGE_USAGE_TRANSFER_SRC_BIT:
+			usage += std::string{" USAGE_TRANSFER_SRC" };
+			break;
+		case VK_IMAGE_USAGE_TRANSFER_DST_BIT:
+			usage += std::string{" USAGE_TRANSFER_DST" };
+			break;
+		case VK_IMAGE_USAGE_SAMPLED_BIT:
+			usage += std::string{" USAGE_SAMPLED" };
+			break;
+		case VK_IMAGE_USAGE_STORAGE_BIT:
+			usage += std::string{" USAGE_STORAGE" };
+			break;
+		case VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
+			usage += std::string{" USAGE_COLOR_ATTACHMENT" };
+			break;
+		case VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
+			usage += std::string{" USAGE_DEPTH_STENCIL_ATTACHMENT" };
+			break;
+		case VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT:
+			usage += std::string{" USAGE_TRANSIENT_ATTACHMENT" };
+			break;
+		case VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT:
+			usage += std::string{" USAGE_INPUT_ATTACHMENT" };
+			break;
+		default:
+			usage = std::string{ "corrupted image usage" };
+			break;
+		}
+	}
+	return std::string();
+}
+
+const std::vector<uint32_t> vkn::Image::unwrapFlags(const VkImageUsageFlags usageFlag) const
+{
+	std::vector<uint32_t> bits;
+	for (auto i = 0u; i < 8; ++i)
+	{
+		if (usageFlag & (1 << i) == i)
+		{
+			bits.push_back(i);
+		}
+	}
+	return bits;
+}
+
+const std::string vkn::Image::getStringViewType(const VkImageViewType type) const
+{
+	std::string str;
+	switch (type)
+	{
+	case VK_IMAGE_VIEW_TYPE_1D:
+		str = "VIEW_TYPE_1D";
+		break;
+	case VK_IMAGE_VIEW_TYPE_2D:
+		str = "VIEW_TYPE_2D";
+		break;
+	case VK_IMAGE_VIEW_TYPE_3D:
+		str = "VIEW_TYPE_3D";
+	break;
+		case VK_IMAGE_VIEW_TYPE_CUBE:
+		str = "VIEW_TYPE_CUBE";
+		break;
+	default:
+		str = "unknown view type";
+		break;
+	}
+	return str;
+}
+

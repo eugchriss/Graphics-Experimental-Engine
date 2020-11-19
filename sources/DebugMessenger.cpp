@@ -27,7 +27,26 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vkn::DebugMessenger::debugCallback(VkDebugUtilsMe
 {
 	if (severity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT && type != VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
 	{
-		std::cout << typeToString(type) << " " << severityToString(severity) << ": " << pCallbackData->pMessage << "\n\n";
+		std::cout << typeToString(type) << " " << severityToString(severity) << "\n";
+		if (pCallbackData->objectCount > 0)
+		{
+			for (auto i = 0u; i < pCallbackData->objectCount; ++i)
+			{
+				if (pCallbackData->pObjects[i].pObjectName)
+				{
+					std::cout << pCallbackData->pObjects[i].pObjectName << "\n";
+				}
+				else
+				{
+					std::cout << pCallbackData->pObjects[i].objectType << "\n";
+				}
+			}
+			std::cout << "\t" << pCallbackData->pMessage << "\n\n";
+		}
+		else
+		{
+			std::cout << pCallbackData->pMessage << "\n\n";
+		}
 	}
 	return VK_FALSE;
 }

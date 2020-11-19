@@ -18,6 +18,8 @@ vkn::Device::Device(const vkn::Gpu& gpu,const std::initializer_list<const char*>
 	deviceCI.pEnabledFeatures = nullptr;
 
 	vkn::error_check(vkCreateDevice(gpu.device, &deviceCI, nullptr, &device), "unable to create a logical device");
+
+	vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
 }
 
 vkn::Device::~Device()
@@ -29,3 +31,9 @@ void vkn::Device::idle()
 {
 	vkn::error_check(vkDeviceWaitIdle(device), "Unabled to idle the device");
 }
+#ifndef NDEBUG
+void vkn::Device::setDebugOjectName(const VkDebugUtilsObjectNameInfoEXT& nameInfo)
+{
+	vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
+}
+#endif 

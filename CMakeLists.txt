@@ -125,5 +125,4 @@ target_link_libraries(gee glfw)
 target_link_libraries(gee ${Vulkan_LIBRARY})
 target_link_libraries(gee spirv-cross-cpp)
 
-
 set_target_properties(gee PROPERTIES CXX_STANDARD 17)

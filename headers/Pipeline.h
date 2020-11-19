@@ -91,7 +91,7 @@ namespace vkn
 		}
 		else
 		{
-			vkCmdPushConstants(cb.commandBuffer(), layout_->layout, result->stageFlag, result->offset, result->size, &datas);
+			vkCmdPushConstants(cb.commandBuffer(), layout_->layout, result->stageFlag, result->offsets[0], result->size, &datas);
 		}
 	}
 }

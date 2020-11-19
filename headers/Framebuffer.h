@@ -15,14 +15,19 @@ namespace vkn
 	public:
 
 		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, vkn::Swapchain& swapchain);
-		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, const VkExtent2D& sz);
+		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass, const VkExtent2D& sz, const uint32_t frameCount = 2);
 		Framebuffer(Framebuffer&& other);
 		~Framebuffer();
+#ifndef NDEBUG
+		void setDebugName(const std::string& name);
+#endif
 		const VkFramebuffer frame(const uint32_t index) const;
+		const std::vector<vkn::Pixel> frameContent(const uint32_t index);
 		VkExtent2D size;
 
 
 	private:
+		vkn::Gpu& gpu_;
 		vkn::Device& device_;
 		std::vector<VkFramebuffer> framebuffers_;
 		std::vector<vkn::Image> images_;

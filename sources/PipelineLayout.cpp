@@ -19,7 +19,7 @@ vkn::PipelineLayout::PipelineLayout(vkn::Device& device, const std::vector<vkn::
 	vkn::error_check(vkCreatePipelineLayout(device.device, &layoutInfo, nullptr, &layout), "Failed to create the pipeline Layout");
 }
 
-vkn::PipelineLayout::PipelineLayout(PipelineLayout&& other): device_{other.device_}
+vkn::PipelineLayout::PipelineLayout(PipelineLayout&& other) : device_{ other.device_ }
 {
 	layout = other.layout;
 	sets_ = std::move(other.sets_);
@@ -92,9 +92,10 @@ void vkn::PipelineLayout::createPushConstantRanges(const std::vector<vkn::Shader
 		const auto& pushConstants = shader.pushConstants();
 		for (const auto& pushConstant : pushConstants)
 		{
+			assert(std::size(pushConstant.offsets) == std::size(pushConstant.ranges) && "The number of elements in the push constant is ambiguous");
 			VkPushConstantRange range{};
-			range.stageFlags = pushConstant.stageFlag;	
-			range.offset = pushConstant.offset;
+			range.stageFlags = pushConstant.stageFlag;
+			range.offset = pushConstant.offsets[0];
 			range.size = pushConstant.size;
 			pushConstantRanges_.push_back(range);
 		}

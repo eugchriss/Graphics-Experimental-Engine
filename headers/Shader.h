@@ -33,8 +33,9 @@ namespace vkn
 		{
 			std::string name{};
 			VkShaderStageFlagBits stageFlag{};
-			VkDeviceSize offset{};
-			VkDeviceSize size{};
+			std::vector<VkDeviceSize> offsets{};
+			std::vector<VkDeviceSize> ranges{};
+			uint32_t size{};
 		};
 		const std::vector<Binding>& bindings() const;
 		const std::vector<PushConstant>& pushConstants() const;
