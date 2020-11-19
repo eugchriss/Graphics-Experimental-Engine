@@ -104,8 +104,8 @@ VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 	nameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
 	nameInfo.pObjectName = std::string{ name_ + getStringViewType(viewType.type) }.c_str();
 	device_.setDebugOjectName(nameInfo);
-	return view;
 #endif
+	return view;
 }
 
 const VkMemoryRequirements vkn::Image::getMemoryRequirement() const
@@ -141,8 +141,7 @@ const std::vector<vkn::Pixel> vkn::Image::content(const vkn::Gpu& gpu, const VkI
 		p.b = raw[i + 2];
 		p.a = raw[i + 3];
 		datas.push_back(p);
-	}
-	return std::move(datas);
+	}return std::move(datas);
 }
 
 const std::vector<float> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
@@ -204,77 +203,80 @@ void vkn::Image::copyToImage(vkn::CommandBuffer& cb, vkn::Image& dstImage, const
 
 void vkn::Image::transitionLayout(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const VkImageLayout newLayout)
 {
-	VkPipelineStageFlagBits srcStage{};
-	VkPipelineStageFlagBits dstStage{};
-	VkImageMemoryBarrier imageBarrier{};
-	imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	imageBarrier.pNext = nullptr;
-	imageBarrier.oldLayout = layout_;
-	imageBarrier.newLayout = newLayout;
+	if (newLayout != VK_IMAGE_LAYOUT_UNDEFINED && newLayout != VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout != layout_)
+	{
+		VkPipelineStageFlagBits srcStage{};
+		VkPipelineStageFlagBits dstStage{};
+		VkImageMemoryBarrier imageBarrier{};
+		imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageBarrier.pNext = nullptr;
+		imageBarrier.oldLayout = layout_;
+		imageBarrier.newLayout = newLayout;
 
-	if (layout_ == VK_IMAGE_LAYOUT_UNDEFINED)
-	{
-		imageBarrier.srcAccessMask = 0;
-		srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	}
-	else if (layout_ == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-	{
-		imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	}
-	else if (layout_ == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-	{
-		imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	}
-	else if (layout_ == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-	{
-		imageBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	}
-	else if (layout_ == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-	{
-		imageBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		srcStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	}
-	else if (layout_ == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
-		imageBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		srcStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	}
+		if (layout_ == VK_IMAGE_LAYOUT_UNDEFINED)
+		{
+			imageBarrier.srcAccessMask = 0;
+			srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		}
+		else if (layout_ == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		else if (layout_ == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+		{
+			imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		else if (layout_ == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+		{
+			imageBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		}
+		else if (layout_ == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+		{
+			imageBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			srcStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		}
+		else if (layout_ == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			imageBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			srcStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
 
-	if ((newLayout & VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-	{
-		imageBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	}
-	else if ((newLayout & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-	{
-		imageBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	}
-	else if (newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-	{
-		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	}
-	else if (newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-	{
-		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	}
-	else if (newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
-		imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	}
+		if ((newLayout & VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+		{
+			imageBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		}
+		else if ((newLayout & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+		{
+			imageBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		}
+		else if (newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		}
+		else if (newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+		{
+			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		}
+		else if (newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
 
-	imageBarrier.image = image;
-	imageBarrier.subresourceRange = { aspect, 0, 1, 0, layerCount_ };
+		imageBarrier.image = image;
+		imageBarrier.subresourceRange = { aspect, 0, 1, 0, layerCount_ };
 
-	vkCmdPipelineBarrier(cb.commandBuffer(), srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
+		vkCmdPipelineBarrier(cb.commandBuffer(), srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
 
-	layout_ = newLayout;
+		layout_ = newLayout;
+	}
 }
 
 void vkn::Image::copyFromBuffer(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const vkn::Buffer& buffer, const VkDeviceSize offset)

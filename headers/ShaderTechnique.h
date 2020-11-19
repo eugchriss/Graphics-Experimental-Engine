@@ -30,6 +30,7 @@ namespace vkn
 		void updatePipelineTextures(const std::string& resourceName, const VkSampler& sampler, const std::vector<VkImageView>& views, const VkShaderStageFlagBits stage);
 		VkFramebuffer framebuffer(const uint32_t index);
 		const std::vector<vkn::Pixel> content(const uint32_t framebufferImageIndex);
+		const std::vector<float> rawContent(const uint32_t framebufferImageIndex);
 		template<class T>
 		void pipelinePushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
 		template<class T>

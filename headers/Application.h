@@ -74,5 +74,6 @@ namespace gee
 
 		std::vector<DrawableInfo> drawablesInfos;
 		std::vector<PointLightInfo> pointLightInfos_;
+		std::optional<gee::Drawable> activeDrawable_;
 	};
 }

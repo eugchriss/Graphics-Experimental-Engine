@@ -42,6 +42,7 @@ namespace vkn
 		void resize();
 		void enableSkybox(bool value);
 		void setSkybox(const std::array<std::string, 6>& skyboxPaths_);
+		const std::optional<size_t> objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y);
 		void setWindowMinimized(const bool value);
 		void setRenderArea(const VkRect2D renderArea);
 		void updateGui(std::function<void()> guiContent);

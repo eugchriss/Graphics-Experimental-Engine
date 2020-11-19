@@ -29,5 +29,6 @@ layout( push_constant ) uniform PushConstant{
 void main() {
     mat4 modelMatrix = models.matrices[modelIndex.index + gl_InstanceIndex];
     gl_Position = camera.proj * camera.view * modelMatrix * vec4(inPosition, 1.0);
-    index = modelIndex.index + gl_InstanceIndex;
+    //+1 to make sure 0 means no object
+    index = modelIndex.index + gl_InstanceIndex + 1;
 }

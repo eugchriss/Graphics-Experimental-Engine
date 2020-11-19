@@ -138,6 +138,11 @@ const std::vector<vkn::Pixel> vkn::Framebuffer::frameContent(const uint32_t imag
 	return images_[imageIndex].content(gpu_);
 }
 
+const std::vector<float> vkn::Framebuffer::frameRawContent(const uint32_t imageIndex)
+{
+	return images_[imageIndex].rawContent(gpu_);
+}
+
 VkImageAspectFlags vkn::Framebuffer::getAspectFlag(const vkn::Renderpass::Attachment& attachment)
 {
 	if (attachment.format == VK_FORMAT_D16_UNORM || attachment.format == VK_FORMAT_D32_SFLOAT)

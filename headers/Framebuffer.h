@@ -23,6 +23,7 @@ namespace vkn
 #endif
 		const VkFramebuffer frame(const uint32_t index) const;
 		const std::vector<vkn::Pixel> frameContent(const uint32_t index);
+		const std::vector<float> frameRawContent(const uint32_t index);
 		VkExtent2D size;
 
 

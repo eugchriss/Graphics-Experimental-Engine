@@ -177,6 +177,10 @@ void gee::Application::onMouseMoveEvent(double x, double y)
 		
 		camera_.rotate(pitch, yaw);
 	}
+	if (rightButtonPressed_)
+	{
+		
+	}
 }
 
 void gee::Application::onMouseScrollEvent(double x, double y)
@@ -200,6 +204,19 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 	{
 		rightButtonPressed_ = true;
+		double x, y;
+		glfwGetCursorPos(window_.window(), &x, &y);
+		auto drawableIndex = renderer_->objectAt(drawables_, x, y);
+		if (drawableIndex.has_value())
+		{
+			activeDrawable_.emplace(drawables_[drawableIndex.value()].get());
+			std::cout << activeDrawable_->name << "\n";
+		}
+		else
+		{
+			std::cout << "no active drawable" << "\n";
+			activeDrawable_ = std::nullopt;
+		}
 	}
 
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
@@ -210,6 +227,7 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
 	{
 		rightButtonPressed_ = false;
+		activeDrawable_ = std::nullopt;
 	}
 }
 

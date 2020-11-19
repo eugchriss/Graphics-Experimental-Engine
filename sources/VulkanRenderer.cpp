@@ -123,6 +123,43 @@ void vkn::Renderer::setSkybox(const std::array<std::string, 6>& skyboxPaths)
 	skyboxTechnique_->updatePipelineTexture("skybox", sampler_, skybox_->getView(), VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
+const std::optional<size_t> vkn::Renderer::objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y)
+{
+	auto& sortedDrawables = createSortedDrawables(drawables);
+	pixelPerfectTechnique_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
+	auto cb = cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	cb.begin();
+	pixelPerfectTechnique_->execute(cb, 0, viewport_, renderArea_, [&]()
+		{
+			uint32_t instanceIndex{ 0 };
+			for (const auto [meshHashKey, instanceCount] : sortedDrawables)
+			{
+				VkDeviceSize offset{ 0 };
+				auto& memoryLocation = meshesMemory_.at(meshHashKey);
+				forwardRendering_->pipelinePushConstant(cb, "modelIndex", meshesShaderIndices_[instanceIndex].modelIndices);
+				vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
+				vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, 0);
+				instanceIndex += instanceCount;
+			}
+		});
+	cb.end();
+	vkn::Signal renderingDone{ *device_ };
+	graphicsQueue_->submit(cb, renderingDone);
+	renderingDone.waitForSignal();
+	auto& pixels = pixelPerfectTechnique_->rawContent(0);
+	auto pixel = pixels[(x + y * viewport_.width) * 4];
+	if (pixel == 0.0f)
+	{
+		return std::nullopt;
+	}
+	else
+	{
+		return std::make_optional(pixel * 255 - 1);
+	}
+	return std::optional<size_t>();
+}
+
 void vkn::Renderer::setWindowMinimized(const bool value)
 {
 	isWindowMinimized_ = value;
@@ -196,7 +233,6 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 				bindShaderMaterial(shaderMaterials_);
 				forwardRendering_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
 				forwardRendering_->updatePipelineBuffer("Colors", drawablesColors_, VK_SHADER_STAGE_VERTEX_BIT);
-				pixelPerfectTechnique_->updatePipelineBuffer("Model_Matrix", modelMatrices_, VK_SHADER_STAGE_VERTEX_BIT);
 				if (showBindingBox_)
 				{
 					prepareBindingBox(drawables);
@@ -204,7 +240,6 @@ void vkn::Renderer::draw(std::vector<std::reference_wrapper<gee::Drawable>>& dra
 			}
 			record(sortedDrawables);
 			submit();
-			auto test = pixelPerfectTechnique_->content(0);
 		}
 	}
 }
@@ -309,7 +344,7 @@ void vkn::Renderer::buildShaderTechnique()
 	auto pipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/vert.spv", "../assets/Shaders/frag.spv");
 	forwardRendering_ = std::make_unique<vkn::ShaderTechnique>(renderpassBuilder, pipelineBuilder, *swapchain_);
 
-	auto pixelPerfectRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, VK_FORMAT_R32G32B32A32_SFLOAT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	auto pixelPerfectRenderpassBuilder = vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(*device_, VK_FORMAT_R32G32B32A32_SFLOAT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	auto pixelPerfectPipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(*gpu_, *device_, "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
 	pixelPerfectTechnique_ = std::make_unique<vkn::ShaderTechnique>(pixelPerfectRenderpassBuilder, pixelPerfectPipelineBuilder, VkExtent2D{static_cast<uint32_t>(viewport_.width), static_cast<uint32_t>(viewport_.height)});
 
@@ -430,20 +465,6 @@ void vkn::Renderer::record(const std::unordered_map<size_t, uint64_t>& sortedDra
 
 				forwardRendering_->pipelinePushConstant(cb, "modelIndex", meshesShaderIndices_[instanceIndex].modelIndices);
 				forwardRendering_->pipelinePushConstant(cb, "materialIndex", meshesShaderIndices_[instanceIndex].materialIndex);
-				vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
-				vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-				vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, 0);
-				instanceIndex += instanceCount;
-			}
-		});
-	pixelPerfectTechnique_->execute(cb, currentFrame_, viewport_, renderArea_, [&]()
-		{
-			uint32_t instanceIndex{ 0 };
-			for (const auto [meshHashKey, instanceCount] : sortedDrawables)
-			{
-				VkDeviceSize offset{ 0 };
-				auto& memoryLocation = meshesMemory_.at(meshHashKey); 
-				forwardRendering_->pipelinePushConstant(cb, "modelIndex", meshesShaderIndices_[instanceIndex].modelIndices);
 				vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
 				vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 				vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, 0);

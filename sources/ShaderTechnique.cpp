@@ -52,3 +52,8 @@ const std::vector<vkn::Pixel> vkn::ShaderTechnique::content(const uint32_t frame
 {
 	return framebuffer_->frameContent(framebufferImageIndex);
 }
+
+const std::vector<float> vkn::ShaderTechnique::rawContent(const uint32_t framebufferImageIndex)
+{
+	return framebuffer_->frameRawContent(framebufferImageIndex);
+}
