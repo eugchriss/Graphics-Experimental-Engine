@@ -54,6 +54,7 @@ namespace vkn
 		void addDependecy(const Dependency::Subpass& scr, const Dependency::Subpass& dst);
 		vkn::Renderpass get();
 		void reset();
+		const std::vector<VkFormat> attachmentFormats() const;
 		static RenderpassBuilder getDefaultColorDepthResolveRenderpass(vkn::Device& device, const VkFormat attachmentFormat, const VkAttachmentLoadOp loadOp, const VkImageLayout initialLayout, const VkImageLayout finalLayout);
 
 	private:

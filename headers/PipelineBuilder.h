@@ -4,6 +4,7 @@
 #include "Device.h"
 #include "Shader.h"
 #include "Pipeline.h"
+#include "RenderpassBuilder.h"
 
 #include <vector>
 #include <string>
@@ -22,6 +23,7 @@ namespace vkn
 		PipelineBuilder(PipelineBuilder&&) = default;
 		~PipelineBuilder();
 		vkn::Pipeline get();
+		void buildSubpass(vkn::RenderpassBuilder& renderpassBuilder, const VkImageLayout initialLayout, const VkImageLayout finalLayout, const VkAttachmentLoadOp loadOp, const VkAttachmentStoreOp storeOp);
 		void addShaderStage(const VkShaderStageFlagBits stage, const std::string& path);
 		void addShaderStage(vkn::Shader&& shader);
 		void setInputBindingRate(const uint32_t binding, const VkVertexInputRate rate);
@@ -46,7 +48,7 @@ namespace vkn
 		vkn::Gpu& gpu_;
 		vkn::Device& device_;
 	private:
-
+		bool support3D{ false };
 		VkPipelineVertexInputStateCreateInfo vertexInput_{};
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyCI_{};
 		VkPipelineTessellationStateCreateInfo tesselationCI_{};

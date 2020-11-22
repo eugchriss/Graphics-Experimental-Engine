@@ -114,6 +114,16 @@ void vkn::RenderpassBuilder::reset()
 	dependencies_.clear();
 }
 
+const std::vector<VkFormat> vkn::RenderpassBuilder::attachmentFormats() const
+{
+	std::vector<VkFormat> formats;
+	for (const auto attachment : attachments_)
+	{
+		formats.push_back(attachment.format);
+	}
+	return formats;
+}
+
 vkn::RenderpassBuilder vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(vkn::Device& device, const VkFormat attachmentFormat, const VkAttachmentLoadOp loadOp, const VkImageLayout initialLayout, const VkImageLayout finalLayout)
 {
 	RenderpassBuilder builder{ device };

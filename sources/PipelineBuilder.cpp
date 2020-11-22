@@ -165,6 +165,28 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 	return vkn::Pipeline{ gpu_, device_, pipeline, std::move(shaders_) };
 }
 
+void vkn::PipelineBuilder::buildSubpass(vkn::RenderpassBuilder& renderpassBuilder, const VkImageLayout initialLayout, const VkImageLayout finalLayout, const VkAttachmentLoadOp loadOp, const VkAttachmentStoreOp storeOp)
+{
+	auto fragShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) {return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT});
+	if (fragShader == std::end(shaders_))
+	{
+		throw std::runtime_error{ "The pipeline requires a fragment shader stage" };
+	}
+	vkn::RenderpassBuilder::Subpass::Requirement requirements{};
+	const auto& outputAttachmentsFormats = fragShader->outputAttachmentsFormats();
+	for (const auto outputFormat : outputAttachmentsFormats)
+	{
+		auto attachment = renderpassBuilder.addAttachment(outputFormat, { loadOp, storeOp }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { initialLayout, finalLayout });
+		requirements.addColorAttachment(attachment);
+	}
+	if (support3D)
+	{
+		auto depthAttachment = renderpassBuilder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
+		requirements.addDepthStencilAttachment(depthAttachment);
+	}
+	subpass = renderpassBuilder.addSubpass(requirements);
+}
+
 void vkn::PipelineBuilder::addShaderStage(const VkShaderStageFlagBits stage, const std::string& path)
 {
 	auto result = std::find_if(std::begin(shaders_), std::end(shaders_), [&](const auto& shader) { return shader.stage() == stage; });
@@ -251,6 +273,7 @@ void vkn::PipelineBuilder::addMultisampleStage(const VkSampleCountFlagBits sampl
 
 void vkn::PipelineBuilder::addDepthStage(const VkCompareOp op, const VkBool32 write)
 {
+	support3D = true;
 	depthStencilCI_.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencilCI_.pNext = nullptr;
 	depthStencilCI_.flags = 0;
