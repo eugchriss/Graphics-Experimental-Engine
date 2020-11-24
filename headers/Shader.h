@@ -37,18 +37,24 @@ namespace vkn
 			std::vector<VkDeviceSize> ranges{};
 			uint32_t size{};
 		};
+		struct Attachment
+		{
+			std::string name{};
+			VkFormat format{};
+		};
+
 		const std::vector<Binding>& bindings() const;
 		const std::vector<PushConstant>& pushConstants() const;
 		const std::vector<VkDescriptorPoolSize> poolSize() const;
 		const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributeDescriptions() const;
-		const std::vector<VkFormat>& outputAttachmentsFormats() const;
+		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
 	private:
 		vkn::Device& device_;
 		VkShaderModule module_{ VK_NULL_HANDLE };
 		VkShaderStageFlagBits stage_;
 		std::vector<Binding> bindings_;
 		std::vector<PushConstant> pushConstants_;
-		std::vector<VkFormat> outputAttachmentsFormats_;
+		std::vector<vkn::Shader::Attachment> outputAttachments_;
 		std::unique_ptr<spirv_cross::CompilerGLSL> spirv_;
 
 		const std::vector<char> readFile(const std::string& path);

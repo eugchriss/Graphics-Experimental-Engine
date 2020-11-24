@@ -5,30 +5,6 @@ vkn::RenderpassBuilder::RenderpassBuilder(vkn::Device& device) : device_{ device
 {
 }
 
-const std::vector<uint32_t> vkn::RenderpassBuilder::addAttachments(const std::vector<VkFormat>& formats, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout)
-{
-	std::vector<uint32_t> attachments;
-	attachments.reserve(std::size(formats));
-
-	for (const auto format : formats)
-	{
-		VkAttachmentDescription attachment{};
-		attachment.flags = 0;
-		attachment.format = format;
-		attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		attachment.loadOp = colorDepthOp.load;
-		attachment.storeOp = colorDepthOp.store;
-		attachment.stencilLoadOp = stencilOp.load;
-		attachment.stencilStoreOp = stencilOp.store;
-		attachment.initialLayout = layout.initial;
-		attachment.finalLayout = layout.final;
-
-		attachments_.push_back(attachment);
-	}
-	attachments.push_back(std::size(attachments_) - 1);
-	return attachments;
-}
-
 const uint32_t vkn::RenderpassBuilder::addAttachment(const VkFormat format, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout)
 {
 	VkAttachmentDescription attachment{};
@@ -42,8 +18,24 @@ const uint32_t vkn::RenderpassBuilder::addAttachment(const VkFormat format, cons
 	attachment.initialLayout = layout.initial;
 	attachment.finalLayout = layout.final;
 
-	attachments_.push_back(attachment);
+	attachments_.push_back({ {}, attachment });
 	return std::size(attachments_) - 1;
+}
+
+const uint32_t vkn::RenderpassBuilder::addAttachment(const vkn::Shader::Attachment& attachment, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout)
+{
+	auto result = std::find_if(std::begin(attachments_), std::end(attachments_), [&](const auto pair) { return pair.first == attachment.name; });
+	if (result == std::end(attachments_))
+	{
+		auto index = addAttachment(attachment.format, colorDepthOp, stencilOp, layout);
+		attachments_[index].first = attachment.name;	
+		return index;
+	}
+	else
+	{
+		result->second.finalLayout = layout.final;
+		return std::distance(std::begin(attachments_), result);
+	}
 }
 
 const uint32_t vkn::RenderpassBuilder::addSubpass(Subpass::Requirement& requiment)
@@ -82,12 +74,17 @@ vkn::Renderpass vkn::RenderpassBuilder::get()
 		subpass.preserveAttachmentCount = 0;
 		subpasses_.push_back(subpass);
 	}
+	std::vector<VkAttachmentDescription> attachmentsDesc;
+	for (const auto attachment : attachments_)
+	{
+		attachmentsDesc.push_back(attachment.second);
+	}
 	VkRenderPassCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	info.pNext = nullptr;
 	info.flags = 0;
 	info.attachmentCount = std::size(attachments_);
-	info.pAttachments = std::data(attachments_);
+	info.pAttachments = std::data(attachmentsDesc);
 	info.subpassCount = std::size(subpasses_);
 	info.pSubpasses = std::data(subpasses_);
 	info.dependencyCount = std::size(dependencies_);
@@ -101,7 +98,7 @@ vkn::Renderpass vkn::RenderpassBuilder::get()
 	{
 		vkn::Renderpass::Attachment attachment;
 		attachment.index = i;
-		attachment.format = attachments_[i].format;
+		attachment.format = attachments_[i].second.format;
 		attachments.push_back(attachment);
 	}
 	return vkn::Renderpass{ device_, renderpass, attachments };
@@ -112,16 +109,6 @@ void vkn::RenderpassBuilder::reset()
 	attachments_.clear();
 	subpassesRequirements_.clear();
 	dependencies_.clear();
-}
-
-const std::vector<VkFormat> vkn::RenderpassBuilder::attachmentFormats() const
-{
-	std::vector<VkFormat> formats;
-	for (const auto attachment : attachments_)
-	{
-		formats.push_back(attachment.format);
-	}
-	return formats;
 }
 
 vkn::RenderpassBuilder vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(vkn::Device& device, const VkFormat attachmentFormat, const VkAttachmentLoadOp loadOp, const VkImageLayout initialLayout, const VkImageLayout finalLayout)

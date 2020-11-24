@@ -116,7 +116,7 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 			auto shader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
 			assert(shader != std::end(shaders_) && "Modern pipeline requires  a fragment shader");
 
-			for (auto i = 0u; i < std::size(shader->outputAttachmentsFormats()); ++i)
+			for (auto i = 0u; i < std::size(shader->outputAttachments()); ++i)
 			{
 				VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 				colorBlendAttachment.blendEnable = VK_FALSE;
@@ -167,13 +167,13 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 
 void vkn::PipelineBuilder::buildSubpass(vkn::RenderpassBuilder& renderpassBuilder, const VkImageLayout initialLayout, const VkImageLayout finalLayout, const VkAttachmentLoadOp loadOp, const VkAttachmentStoreOp storeOp)
 {
-	auto fragShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) {return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT});
+	auto fragShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) {return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
 	if (fragShader == std::end(shaders_))
 	{
 		throw std::runtime_error{ "The pipeline requires a fragment shader stage" };
 	}
 	vkn::RenderpassBuilder::Subpass::Requirement requirements{};
-	const auto& outputAttachmentsFormats = fragShader->outputAttachmentsFormats();
+	const auto& outputAttachmentsFormats = fragShader->outputAttachments();
 	for (const auto outputFormat : outputAttachmentsFormats)
 	{
 		auto attachment = renderpassBuilder.addAttachment(outputFormat, { loadOp, storeOp }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { initialLayout, finalLayout });
@@ -306,14 +306,14 @@ void vkn::PipelineBuilder::addDynamicState(const VkDynamicState state)
 	dynamicStates_.push_back(state);
 }
 
-const std::vector<VkFormat>& vkn::PipelineBuilder::getColorOutputFormats() const
+const std::vector<vkn::Shader::Attachment> vkn::PipelineBuilder::getColorOutputAttachment() const
 {
 	auto result = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
 	if (result == std::end(shaders_))
 	{
-		return {};
+		return{};
 	}
-	return result->outputAttachmentsFormats();
+	return result->outputAttachments();
 }
 
 vkn::PipelineBuilder vkn::PipelineBuilder::getDefault3DPipeline(vkn::Gpu& gpu, vkn::Device& device, const std::string& vertexPath, const std::string& fragmentPath)

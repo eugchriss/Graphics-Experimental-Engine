@@ -316,6 +316,32 @@ void vkn::Renderer::setBackgroundColor(const glm::vec3& color)
 	forwardRendering_->setClearColor(backgroundColor_);
 }
 
+vkn::Framebuffer vkn::Renderer::getFramebuffer(const uint32_t frameCount, vkn::ShaderEffect& shaderEffect)
+{
+	assert(mainFramebufferCount < 2 && "There is already a main frame buffer");
+	std::vector<vkn::ShaderEffect> effect;
+	effect.emplace_back(std::move(shaderEffect));
+	return vkn::Framebuffer{ *gpu_, *device_, 2, effect, *swapchain_ };
+}
+
+vkn::Framebuffer vkn::Renderer::getFramebuffer(const uint32_t frameCount, std::vector<vkn::ShaderEffect>& shaderEffects)
+{
+	assert(mainFramebufferCount < 2 && "There is already a main frame buffer");
+	return vkn::Framebuffer{ *gpu_, *device_, 2 , shaderEffects, *swapchain_ };
+}
+
+vkn::Framebuffer vkn::Renderer::getOffscreenFramebuffer(const uint32_t frameCount, vkn::ShaderEffect& shaderEffect, const glm::uvec2& size) const
+{
+	std::vector<vkn::ShaderEffect> effect;
+	effect.emplace_back(std::move(shaderEffect));
+	return vkn::Framebuffer{ *gpu_, *device_, 2 , effect, VkExtent2D{size.x, size.y} };
+}
+
+vkn::Framebuffer vkn::Renderer::getOffscreenFramebuffer(const uint32_t frameCount, std::vector<vkn::ShaderEffect>& shaderEffects, const glm::uvec2& size) const
+{
+	return vkn::Framebuffer{ *gpu_, *device_, 2 , shaderEffects, VkExtent2D{size.x, size.y} };
+}
+
 void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
 {
 	auto& features = gpu.enabledFeatures();

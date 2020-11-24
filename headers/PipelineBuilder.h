@@ -37,7 +37,9 @@ namespace vkn
 		void addColorBlendStage(const VkBool32 logicEnabled = VK_FALSE, const VkLogicOp op = VK_LOGIC_OP_OR);
 		void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment);
 		void addDynamicState(const VkDynamicState state);
-		const std::vector<VkFormat>& getColorOutputFormats() const;
+
+		
+		const std::vector<vkn::Shader::Attachment> getColorOutputAttachment() const;
 
 		static PipelineBuilder getDefault3DPipeline(vkn::Gpu& gpu, vkn::Device& device, const std::string& vertexPath, const std::string& fragmentPath);
 		VkFrontFace frontFace;

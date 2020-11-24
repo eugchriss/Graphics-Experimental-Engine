@@ -1,6 +1,4 @@
 #include "..\headers\ShaderEffect.h"
-#include "../headers/RenderpassBuilder.h"
-#include "../headers/PipelineBuilder.h"
 
 vkn::ShaderEffect::ShaderEffect(const std::string& vertexShaderPath, const std::string& fragmentShaderPath, Function_t& function, const VkImageLayout finalLayout):
 	vertexShaderPath_{vertexShaderPath},
@@ -25,11 +23,6 @@ void vkn::ShaderEffect::setLineWidth(const float width)
 	lineWidth_ = width;
 }
 
-void vkn::ShaderEffect::setSampleCount(const VkSampleCountFlagBits count)
-{
-	sampleCount_ = count;
-}
-
 void vkn::ShaderEffect::setLoadOp(const VkAttachmentLoadOp op)
 {
 	loadOp_ = op;
@@ -38,6 +31,11 @@ void vkn::ShaderEffect::setLoadOp(const VkAttachmentLoadOp op)
 void vkn::ShaderEffect::setStoreOp(const VkAttachmentStoreOp op)
 {
 	storeOp_ = op;
+}
+
+void vkn::ShaderEffect::setSampleCount(const VkSampleCountFlagBits count)
+{
+	sampleCount_ = count;
 }
 
 void vkn::ShaderEffect::updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view, const VkShaderStageFlagBits stage)
@@ -57,27 +55,17 @@ const vkn::ShaderEffect::Requirement vkn::ShaderEffect::getRequirement() const
 	return requirement;
 }
 
-void vkn::ShaderEffect::begin(vkn::CommandBuffer& cb, const VkFramebuffer& fb, const VkRect2D& renderArea, const VkSubpassContents subpassContent)
+void vkn::ShaderEffect::create(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass)
 {
-	renderpass_->begin(cb, fb, renderArea, subpassContent);
+	pipelineBuilder_->renderpass = renderpass.renderpass();
+	pipeline_ = std::make_unique<vkn::Pipeline>(pipelineBuilder_->get());
 }
 
-void vkn::ShaderEffect::end(vkn::CommandBuffer& cb)
+void vkn::ShaderEffect::getSubpass(vkn::Gpu& gpu, vkn::Device& device, vkn::RenderpassBuilder& renderpassBuilder)
 {
-	renderpass_->end(cb);
-}
-
-void vkn::ShaderEffect::create(vkn::Gpu& gpu, vkn::Device& device, const VkImageLayout initialLayout)
-{
-	vkn::RenderpassBuilder renderpassBuilder{ device };
-
-	auto pipelineBuilder = vkn::PipelineBuilder::getDefault3DPipeline(gpu, device, vertexShaderPath_, fragmentShaderPath_);
-	pipelineBuilder.lineWidth = lineWidth_;
-	pipelineBuilder.addRaterizationStage(polyMode_);
-	pipelineBuilder.addMultisampleStage(sampleCount_);
-	pipelineBuilder.buildSubpass(renderpassBuilder, initialLayout, finalLayout_, loadOp_, storeOp_);
-	pipeline_ = std::make_unique<vkn::Pipeline>(pipelineBuilder.get());
-	renderpass_ = std::make_unique<vkn::Renderpass>(renderpassBuilder.get());
-
-	attachmentFormats_ = std::move(renderpassBuilder.attachmentFormats());
+	pipelineBuilder_ = std::make_unique<vkn::PipelineBuilder>(vkn::PipelineBuilder::getDefault3DPipeline(gpu, device, vertexShaderPath_, fragmentShaderPath_));
+	pipelineBuilder_->lineWidth = lineWidth_;
+	pipelineBuilder_->addRaterizationStage(polyMode_);
+	pipelineBuilder_->addMultisampleStage(sampleCount_);
+	pipelineBuilder_->buildSubpass(renderpassBuilder, VK_IMAGE_LAYOUT_UNDEFINED, finalLayout_, loadOp_, storeOp_);
 }

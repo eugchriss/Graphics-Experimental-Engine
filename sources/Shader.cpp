@@ -26,7 +26,7 @@ vkn::Shader::Shader(Shader&& other): device_{other.device_}
 	/*not neccesary but for rigor	*/
 	bindings_ = std::move(other.bindings_);
 	pushConstants_ = std::move(other.pushConstants_);
-	outputAttachmentsFormats_ = std::move(other.outputAttachmentsFormats_);
+	outputAttachments_ = std::move(other.outputAttachments_);
 	spirv_ = std::move(other.spirv_);
 	/*****/
 
@@ -95,9 +95,9 @@ const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> vkn::S
 	return std::make_pair(attributeDescriptions, offset);
 }
 
-const std::vector<VkFormat>& vkn::Shader::outputAttachmentsFormats() const
+const std::vector<vkn::Shader::Attachment>& vkn::Shader::outputAttachments() const
 {
-	return outputAttachmentsFormats_;
+	return outputAttachments_;
 }
 
 const std::vector<char> vkn::Shader::readFile(const std::string& path)
@@ -149,7 +149,7 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 	for (const auto& resource : resources.stage_outputs)
 	{
 		auto spirvType = spirv_->get_type(resource.type_id);
-		outputAttachmentsFormats_.push_back(vkn::getFormat(spirvType).format);
+		outputAttachments_.push_back({resource.name , vkn::getFormat(spirvType).format});
 	}
 }
 

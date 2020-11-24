@@ -30,7 +30,7 @@
 #include "ShaderTechnique.h"
 #include "Skybox.h"
 #include "AABB.h"
-
+#include "ShaderEffect.h"
 namespace vkn
 {
 	class Renderer
@@ -49,6 +49,10 @@ namespace vkn
 		void draw(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, std::vector<std::reference_wrapper<gee::Drawable>>& lights);
 		void updateCamera(const gee::Camera& camera, const float aspectRatio);
 		void setBackgroundColor(const glm::vec3& color);
+		vkn::Framebuffer getFramebuffer(const uint32_t frameCount, vkn::ShaderEffect& shaderEffect);
+		vkn::Framebuffer getFramebuffer(const uint32_t frameCount, std::vector<vkn::ShaderEffect>& shaderEffects);
+		vkn::Framebuffer getOffscreenFramebuffer(const uint32_t frameCount, vkn::ShaderEffect& shaderEffect, const glm::uvec2& size) const;
+		vkn::Framebuffer getOffscreenFramebuffer(const uint32_t frameCount, std::vector<vkn::ShaderEffect>& shaderEffects, const glm::uvec2& size) const;
 
 	private:
 		std::unique_ptr<vkn::Instance> instance_;
@@ -124,5 +128,7 @@ namespace vkn
 
 		ShaderCamera shaderCamera_{};
 		vkn::MemoryLocation addMeshToMemory(const gee::AbstractMesh& mesh);
+
+		uint32_t mainFramebufferCount{};
 	};
 }
