@@ -2,7 +2,7 @@
 #include <algorithm>
 #include "glm/gtx/transform.hpp"
 
-gee::BoundingBox::BoundingBox(const std::vector<gee::Vertex>& vertices)
+gee::BoundingBox::BoundingBox(const std::vector<gee::Vertex>& vertices) : mesh_{gee::getCubeMesh()}
 {
 	auto box = getBoxFromMesh(vertices);
 	width_ = box.extend.x - box.origin.x;
@@ -34,7 +34,7 @@ const std::vector<uint32_t>& gee::BoundingBox::indices() const
 	return mesh_.indices();
 }
 
-const gee::Cube& gee::BoundingBox::mesh() const
+const gee::Mesh& gee::BoundingBox::mesh() const
 {
 	return mesh_;
 }

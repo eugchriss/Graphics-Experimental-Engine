@@ -13,6 +13,7 @@ layout(location = 1) out vec2 texCoord;
 layout(location = 2) out vec3 fragPos;
 layout(location = 3) out vec4 viewPos;
 layout(location = 4) out mat3 TBN;
+layout(location = 7) out flat uint drawableIndex;
 
 layout(binding = 0) uniform Camera
 {
@@ -31,22 +32,19 @@ layout(binding = 2) uniform Colors
      vec4[100] color;
 }colors;
 
-layout( push_constant ) uniform PushConstant{ 
-    uint index;
-} modelIndex; 
-
 void main() {
-    mat4 modelMatrix = models.matrices[modelIndex.index + gl_InstanceIndex];
+    mat4 modelMatrix = models.matrices[gl_InstanceIndex];
     fragPos = vec3( modelMatrix * vec4(inPosition, 1.0));
     gl_Position = camera.proj * camera.view * vec4(fragPos, 1.0);
-    fragColor = colors.color[modelIndex.index + gl_InstanceIndex];
+    fragColor = colors.color[gl_InstanceIndex];
     
     texCoord = inTexCoord;
     viewPos = camera.pos;
-    mat4 normalMatrix = transpose(inverse(models.matrices[modelIndex.index + gl_InstanceIndex]));
+    mat4 normalMatrix = transpose(inverse(models.matrices[gl_InstanceIndex]));
     vec3 T = vec3(normalize(normalMatrix * vec4(inTangent, 1.0)));
     vec3 N = vec3(normalize(normalMatrix * vec4(inNormal, 1.0)));
     T = normalize(T - dot(T, N) * N);
     vec3 B = inBitangent;
     TBN = transpose(mat3(T, B, N));
+    drawableIndex = gl_InstanceIndex;
 }

@@ -100,6 +100,11 @@ const std::vector<vkn::Shader::Attachment>& vkn::Shader::outputAttachments() con
 	return outputAttachments_;
 }
 
+const std::vector<vkn::Shader::Attachment>& vkn::Shader::subpassInputAttachments() const
+{
+	return subpassInputAttachments_;
+}
+
 const std::vector<char> vkn::Shader::readFile(const std::string& path)
 {
 	std::ifstream file{ path, std::ios::ate | std::ios::binary };
@@ -149,7 +154,20 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 	for (const auto& resource : resources.stage_outputs)
 	{
 		auto spirvType = spirv_->get_type(resource.type_id);
-		outputAttachments_.push_back({resource.name , vkn::getFormat(spirvType).format});
+		Attachment attchment{};
+		attchment.layoutIndex = spirv_->get_decoration(resource.id, spv::DecorationLocation);
+		attchment.name = resource.name;
+		attchment.format = vkn::getFormat(spirvType).format;
+		outputAttachments_.emplace_back(attchment);
+	}
+	for (const auto& resource : resources.subpass_inputs)
+	{
+		auto spirvType = spirv_->get_type(resource.type_id);
+		Attachment attchment{};
+		attchment.layoutIndex = spirv_->get_decoration(resource.id, spv::DecorationLocation);
+		attchment.name = resource.name;
+		attchment.format = vkn::getFormat(spirvType).format;
+		subpassInputAttachments_.emplace_back(attchment);
 	}
 }
 

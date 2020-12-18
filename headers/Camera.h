@@ -56,8 +56,8 @@ namespace gee
 		float left = 1.0_m;
 		float up = 1.0_m;
 		float down = 1.0_m;
-		float forward = 100.0_m;
-		float backward = 100.0_m;
+		float forward = 5.0_m;
+		float backward = 5.0_m;
 
 		float pitch = 10.0_deg;
 		float yaw = 10.0_deg;

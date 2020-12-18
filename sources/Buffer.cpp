@@ -73,6 +73,11 @@ void vkn::Buffer::moveTo(Queue& queue, DeviceMemory& memory)
 	dst.buffer = VK_NULL_HANDLE;
 }
 
+const float vkn::Buffer::rawContentAt(const VkDeviceSize offset) const
+{
+	return memory_->rawContentAt(memoryOffset_ + offset);
+}
+
 const std::vector<float> vkn::Buffer::rawContent() const
 {
 	return memory_->rawContent(memoryOffset_, size_);

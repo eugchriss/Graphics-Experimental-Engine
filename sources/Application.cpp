@@ -13,15 +13,8 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	renderer_ = std::make_unique<vkn::Renderer>(window_);
 	std::ostringstream os;
 	renderer_->getGpuInfo(os);
-	renderer_->setBackgroundColor(glm::vec3{0.2f});
-	std::array<std::string, 6> skyboxPaths{ 
-	"../assets/skybox/space/right.png",
-	"../assets/skybox/space/left.png",
-	"../assets/skybox/space/top.png",
-	"../assets/skybox/space/bottom.png",
-	"../assets/skybox/space/front.png",
-	"../assets/skybox/space/back.png" };
-	renderer_->setSkybox(skyboxPaths);
+	//renderer_->setBackgroundColor(glm::vec3{0.2f});
+
 	window_.setTitle(name + ": " + os.str());
 
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
@@ -61,6 +54,12 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		{
 			onMouseMoveEvent(x, y);
 		});
+
+	//auto& skybox = forwardRendering_.emplace_back("../assets/Shaders/skybox/vert.spv", "../assets/Shaders/skybox/frag.spv");
+	auto& forwardEffect = forwardRendering_.emplace_back("../assets/shaders/vert.spv", "../assets/shaders/frag.spv");
+
+	mainFb_ = renderer_->getFramebuffer(forwardRendering_);
+	mainFb_->setViewport(0.0f, 0.0f, static_cast<float>(window_.size().x), static_cast<float>(window_.size().y));
 }
 
 void gee::Application::setCameraPosition(const glm::vec3& position)
@@ -68,15 +67,28 @@ void gee::Application::setCameraPosition(const glm::vec3& position)
 	camera_.position_ = position;
 }
 
-void gee::Application::addDrawable(Drawable& drawable)
+void gee::Application::setSkybox(Drawable& skybox)
 {
+	skybox_ = std::make_optional(std::ref(skybox));
+}
+
+void gee::Application::addDrawable(Drawable& drawable)
+{	
 	if (drawable.hasLightComponent())
 	{
-		addDrawable(drawable, pointLightInfos_);
+		auto result = std::find_if(std::begin(lights_), std::end(lights_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
+		if (result == std::end(lights_))
+		{
+			lights_.emplace_back(std::ref(drawable));
+		}
 	}
 	else
 	{
-		addDrawable(drawable, drawablesInfos);
+		auto drawbleResult = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
+		if (drawbleResult == std::end(drawables_))
+		{
+			drawables_.emplace_back(std::ref(drawable));
+		}
 	}
 }
 
@@ -89,12 +101,12 @@ void gee::Application::updateGui()
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	if (std::size(drawablesInfos) > 0)
+	if (std::size(drawables_) > 0)
 	{
 		displayDrawableInfo();
 	}
 
-	if (std::size(pointLightInfos_) > 0)
+	if (std::size(lights_) > 0)
 	{
 		displayPointLightInfo();
 	}
@@ -105,50 +117,57 @@ void gee::Application::updateGui()
 void gee::Application::displayDrawableInfo()
 {
 	std::vector<const char*> names;
-	names.reserve(std::size(drawablesInfos));
-	for (const auto& drawableInfo : drawablesInfos)
+	names.reserve(std::size(drawables_));
+	for (const auto& drawable: drawables_)
 	{
-		names.push_back(drawableInfo.name.c_str());
+		names.push_back(drawable.get().name.c_str());
 	}
 
 	ImGui::Begin("Drawables");
 	static int selected_drawable = 0;
 	ImGui::Combo("Names", &selected_drawable, std::data(names), std::size(names));
-	auto& drawable = drawablesInfos[selected_drawable];
-	ImGui::SliderFloat3("position", &drawable.position.x, -50.0_m, 50.0_m, "%.1f");
+	auto& drawable = drawables_[selected_drawable].get();
+	auto position = drawable.getPosition();
+	ImGui::SliderFloat3("position", &position.x, -50.0_m, 50.0_m, "%.1f");
 	ImGui::ColorEdit4("color", &drawable.color.x);
 
 	//the engine uses radians units in internal but degrees for display
-	glm::vec3 rotationDeg = glm::degrees(drawable.rotation);
+	auto rotation = drawable.getRotation();
+	glm::vec3 rotationDeg = glm::degrees(rotation);
 	ImGui::SliderFloat3("rotation", &rotationDeg.x, 0.0f, 360.0f, "%.1f");
-	drawable.rotation = glm::radians(rotationDeg);
+	rotation = glm::radians(rotationDeg);
 	
 	auto lastScaleFactor = drawable.scaleFactor;
 	ImGui::SliderFloat("scale factor", &drawable.scaleFactor, 0.0f, 10.0f, "%.1f");
+
+	auto size = drawable.getSize();
+	auto sizeStr = std::string{ "x = " } + std::to_string(size.x) + std::string{ " y = " } + std::to_string(size.y) + std::string{ " z = " } + std::to_string(size.z);
+	ImGui::LabelText("size", sizeStr.c_str());
+	ImGui::End();
+
+	drawable.setPosition(position);
+	drawable.setRotation(rotation);
 	if (drawable.scaleFactor == 0.0f)
 	{
 		drawable.scaleFactor = lastScaleFactor;
 	}
-	drawable.updateSize(drawable.scaleFactor / lastScaleFactor);
-
-	auto sizeStr = std::string{ "x = " } + std::to_string(drawable.size.x) + std::string{ " y = " } + std::to_string(drawable.size.y) + std::string{ " z = " } + std::to_string(drawable.size.z);
-	ImGui::LabelText("size", sizeStr.c_str());
-	ImGui::End();
+	drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
 }
 
 void gee::Application::displayPointLightInfo()
 {
 	std::vector<const char*> names;
-	names.reserve(std::size(pointLightInfos_));
-	for (const auto& light : pointLightInfos_)
+	names.reserve(std::size(lights_));
+	for (const auto& light : lights_)
 	{
-		names.push_back(light.name.c_str());
+		names.push_back(light.get().name.c_str());
 	}
 
 	ImGui::Begin("PointLights");
 	static int selected_pointLight = 0;
 	ImGui::Combo("Names", &selected_pointLight, std::data(names), std::size(names));
-	auto& light = pointLightInfos_[selected_pointLight];
+	auto& light = lights_[selected_pointLight].get().light();
+
 	ImGui::SliderFloat3("position", &light.position.x, -50.0_m, 50.0_m, "%.1f");
 	ImGui::ColorEdit3("ambient", &light.ambient.x);
 	ImGui::ColorEdit3("diffuse", &light.diffuse.x);
@@ -209,7 +228,7 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		auto drawableIndex = renderer_->objectAt(drawables_, x, y);
 		if (drawableIndex.has_value())
 		{
-			activeDrawable_.emplace(drawables_[drawableIndex.value()].get());
+			//activeDrawable_.emplace(drawables_[drawableIndex.value()].get());
 			std::cout << activeDrawable_->name << "\n";
 		}
 		else
@@ -231,57 +250,25 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 	}
 }
 
-void gee::Application::addDrawable(Drawable& drawable, std::vector<PointLightInfo>& infos)
-{
-	auto result = std::find_if(std::begin(lightsDrawables_), std::end(lightsDrawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
-	if (result == std::end(lightsDrawables_))
-	{
-		auto& light = drawable.light();
-		lightsDrawables_.emplace_back(std::ref(drawable));
-		infos.emplace_back(drawable.name, drawable.light().position, drawable.light().ambient, drawable.light().diffuse, drawable.light().specular, drawable.light().linear, drawable.light().quadratic);
-	}
-}
-
-void gee::Application::addDrawable(Drawable& drawable, std::vector<DrawableInfo>& infos)
-{
-	auto drawbleResult = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
-	if (drawbleResult == std::end(drawables_))
-	{
-		drawables_.emplace_back(std::ref(drawable));
-		infos.emplace_back(drawable.name, drawable.mesh.name(), drawable.position, drawable.color, drawable.rotation, drawable.scaleFactor, drawable.size);
-	}
-}
-
 bool gee::Application::isRunning()
 {
 	if (renderingtimer_.ellapsedMs() >= 1000 / 60.0f)
 	{
-		renderer_->updateGui([&]() { updateGui(); });
+		//renderer_->updateGui([&]() { updateGui(); });
 		renderer_->updateCamera(camera_, window_.aspectRatio());
 
 		gee::Timer t{ "Draw time" };
-		renderer_->draw(drawables_, lightsDrawables_);
-		std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
+		std::vector<std::reference_wrapper<gee::Drawable>> v;
+		if (skybox_.has_value())
+		{
+			//v.emplace_back(skybox_.value());
+			//renderer_->render(*mainFb_, forwardRendering_[0], v);
+		}
+		renderer_->render(*mainFb_, forwardRendering_[0], drawables_);
+		renderer_->draw(*mainFb_);
+		//std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
 		renderingtimer_.reset();
 	}
 
 	return window_.isOpen();
-}
-
-gee::Application::DrawableInfo::DrawableInfo(const std::string& name_, const std::string& meshName_, glm::vec3& position_, glm::vec4& color_, glm::vec3& rot, float& scaleFactor_, glm::vec3& size_):
-	name{name_}, meshName{meshName_},
-	position{ position_ }, color{ color_ }, rotation{rot},
-	scaleFactor{scaleFactor_}, size{size_}
-{
-}
-
-void gee::Application::DrawableInfo::updateSize(float factor)
-{
-	size *= factor;
-}
-
-gee::Application::PointLightInfo::PointLightInfo(const std::string& name_, glm::vec3& pos, glm::vec3& amb, glm::vec3& diff, glm::vec3& spec, float& lin, float& quad): 
-	name{name_}, position{pos}, ambient{amb}, diffuse{diff}, specular{spec},
-	 linear{lin}, quadratic{quad}
-{
 }

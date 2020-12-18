@@ -19,6 +19,6 @@ layout(binding = 0) uniform Camera
 
 void main() 
 {
-    gl_Position = camera.proj * camera.view * vec4(inPosition, 1.0);
+    gl_Position = camera.proj * mat4(mat3(camera.view)) * vec4(inPosition, 1.0);
     texCoord = inPosition;
 }

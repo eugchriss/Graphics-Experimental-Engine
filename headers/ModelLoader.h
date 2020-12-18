@@ -11,6 +11,7 @@
 #include <string>
 #include <filesystem>
 #include <vector>
+#include <functional>
 
 namespace fs = std::filesystem;
 namespace gee
@@ -22,7 +23,10 @@ namespace gee
 		ModelLoader(unsigned int flags = aiProcess_Triangulate | aiProcess_CalcTangentSpace
 			| aiProcess_OptimizeMeshes | aiProcess_PreTransformVertices | aiProcess_GenNormals);
 		~ModelLoader() = default;
+		ModelLoader(ModelLoader&&) = default;
 		Mesh load(const std::string& path);
+		Mesh create(const std::string& path);
+		Mesh create(std::function<Mesh(gee::Material&&)> customMesh, gee::Material material = {});
 	private:
 		fs::path meshPath_;
 		std::vector<Vertex> vertices_;

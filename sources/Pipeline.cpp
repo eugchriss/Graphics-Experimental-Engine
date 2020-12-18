@@ -140,6 +140,22 @@ void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSamp
 	vkUpdateDescriptorSets(device_.device, 1, &write, 0, nullptr);
 }
 
+const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const
+{
+	return uniforms_;
+}
+
+const std::vector<vkn::Shader::Attachment>& vkn::Pipeline::outputAttachments() const
+{
+	auto fragmentShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
+	if (fragmentShader == std::end(shaders_))
+	{
+		throw std::runtime_error{ "The pipeline requires a fragment shader" };
+	}
+
+	return fragmentShader->outputAttachments();
+}
+
 void vkn::Pipeline::createSets()
 {
 	auto layouts = layout_->layouts();

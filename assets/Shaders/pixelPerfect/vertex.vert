@@ -22,13 +22,10 @@ layout(binding = 1) uniform Model_Matrix
     mat4[100] matrices;
 }models;
 
-layout( push_constant ) uniform PushConstant{ 
-    uint index;
-} modelIndex; 
 
 void main() {
-    mat4 modelMatrix = models.matrices[modelIndex.index + gl_InstanceIndex];
+    mat4 modelMatrix = models.matrices[gl_InstanceIndex];
     gl_Position = camera.proj * camera.view * modelMatrix * vec4(inPosition, 1.0);
     //+1 to make sure 0 means no object
-    index = modelIndex.index + gl_InstanceIndex + 1;
+    index = gl_InstanceIndex + 1;
 }

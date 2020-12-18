@@ -9,7 +9,7 @@ namespace gee
 		Timer(const std::string& name);
 		const std::string& name() const;
 		void reset();
-		const long long ellapsedMs() const;
+		const float ellapsedMs() const;
 		const long long ellapsedSec() const;
 	private:
 		std::string name_;

@@ -15,11 +15,11 @@ void gee::Timer::reset()
 	referenceTime_ = std::chrono::system_clock::now();
 }
 
-const long long gee::Timer::ellapsedMs() const
+const float gee::Timer::ellapsedMs() const
 {
 	auto now = std::chrono::system_clock::now();
 	auto ellapsed = now - referenceTime_;
-	return std::chrono::duration_cast<std::chrono::milliseconds>(ellapsed).count();
+	return std::chrono::duration_cast<std::chrono::nanoseconds>(ellapsed).count() / 1000000.0f;
 }
 
 const long long gee::Timer::ellapsedSec() const

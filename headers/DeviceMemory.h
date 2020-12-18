@@ -3,6 +3,7 @@
 #include "Gpu.h"
 #include "Device.h"
 #include <cassert>
+#include <vector>
 
 namespace vkn
 {
@@ -19,16 +20,20 @@ namespace vkn
 		const VkDeviceSize bind(const VkImage image);
 		template<class T>
 		void update(const VkDeviceSize offset, const T data, const VkDeviceSize size);
+
+		const float rawContentAt(const VkDeviceSize offset) const;
 		const std::vector<float> rawContent(const VkDeviceSize offset, const VkDeviceSize size) const;
 	private:
 		const vkn::Device& device_;
 		VkDeviceMemory memory_{ VK_NULL_HANDLE };
 		VkDeviceSize size_{};
+		void* baseOffset_{ nullptr };
 		VkDeviceSize offset_{};
 		uint32_t memoryIndex_{};
 		VkMemoryPropertyFlags location_;
 
 		void checkAlignment(const VkDeviceSize aligment);
+		const bool isMappable() const;
 
 		static uint32_t allocationCount;
 	};
@@ -38,10 +43,7 @@ namespace vkn
 		if (((location_ & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT)))
 		{
 			assert(std::is_pointer<T>::value && "This function requires a pointer to the datas to update with");
-			void* ptr;
-			vkn::error_check(vkMapMemory(device_.device, memory_, offset, size, 0, &ptr), "Unabled to map memory to vulkan");
-			memcpy(ptr, datas, size);
-			vkUnmapMemory(device_.device, memory_);
+			memcpy(static_cast<VkDeviceSize*>(baseOffset_) + offset / 8, datas, size);
 		}
 		else
 		{

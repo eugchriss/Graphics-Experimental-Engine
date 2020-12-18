@@ -39,8 +39,10 @@ namespace vkn
 		};
 		struct Attachment
 		{
+			uint32_t layoutIndex{};
 			std::string name{};
 			VkFormat format{};
+			bool isPresentBuffer{ false };
 		};
 
 		const std::vector<Binding>& bindings() const;
@@ -48,6 +50,7 @@ namespace vkn
 		const std::vector<VkDescriptorPoolSize> poolSize() const;
 		const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributeDescriptions() const;
 		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
+		const std::vector<vkn::Shader::Attachment>& subpassInputAttachments() const;
 	private:
 		vkn::Device& device_;
 		VkShaderModule module_{ VK_NULL_HANDLE };
@@ -55,6 +58,7 @@ namespace vkn
 		std::vector<Binding> bindings_;
 		std::vector<PushConstant> pushConstants_;
 		std::vector<vkn::Shader::Attachment> outputAttachments_;
+		std::vector<vkn::Shader::Attachment> subpassInputAttachments_;
 		std::unique_ptr<spirv_cross::CompilerGLSL> spirv_;
 
 		const std::vector<char> readFile(const std::string& path);

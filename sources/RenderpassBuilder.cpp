@@ -1,39 +1,27 @@
 #include "../headers/renderpassBuilder.h"
 #include "../headers/vulkan_utils.h"
+#include <numeric>
 
-vkn::RenderpassBuilder::RenderpassBuilder(vkn::Device& device) : device_{ device }
-{
-}
-
-const uint32_t vkn::RenderpassBuilder::addAttachment(const VkFormat format, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout)
-{
-	VkAttachmentDescription attachment{};
-	attachment.flags = 0;
-	attachment.format = format;
-	attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	attachment.loadOp = colorDepthOp.load;
-	attachment.storeOp = colorDepthOp.store;
-	attachment.stencilLoadOp = stencilOp.load;
-	attachment.stencilStoreOp = stencilOp.store;
-	attachment.initialLayout = layout.initial;
-	attachment.finalLayout = layout.final;
-
-	attachments_.push_back({ {}, attachment });
-	return std::size(attachments_) - 1;
-}
-
-const uint32_t vkn::RenderpassBuilder::addAttachment(const vkn::Shader::Attachment& attachment, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp, const Attachment::Layout& layout)
+const uint32_t vkn::RenderpassBuilder::addAttachmentT(const vkn::RenderpassAttachment& attachment, const VkImageLayout finalLayout, const Attachment::Content& stencilOp)
 {
 	auto result = std::find_if(std::begin(attachments_), std::end(attachments_), [&](const auto pair) { return pair.first == attachment.name; });
 	if (result == std::end(attachments_))
 	{
-		auto index = addAttachment(attachment.format, colorDepthOp, stencilOp, layout);
-		attachments_[index].first = attachment.name;	
-		return index;
+		VkAttachmentDescription att{};
+		att.flags = 0;
+		att.format = attachment.format;
+		att.samples = VK_SAMPLE_COUNT_1_BIT;
+		att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		att.stencilLoadOp = stencilOp.load;
+		att.stencilStoreOp = stencilOp.store;
+		att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		att.finalLayout = finalLayout;
+		attachments_.emplace_back(attachment.name, att);
+		return std::size(attachments_) - 1;
 	}
 	else
 	{
-		result->second.finalLayout = layout.final;
 		return std::distance(std::begin(attachments_), result);
 	}
 }
@@ -57,7 +45,7 @@ void vkn::RenderpassBuilder::addDependecy(const Dependency::Subpass& src, const 
 	dependencies_.push_back(dependency);
 }
 
-vkn::Renderpass vkn::RenderpassBuilder::get()
+vkn::Renderpass vkn::RenderpassBuilder::get(vkn::Device& device)
 {
 	std::vector<VkSubpassDescription> subpasses_;
 	for (const auto& requirement : subpassesRequirements_)
@@ -71,7 +59,8 @@ vkn::Renderpass vkn::RenderpassBuilder::get()
 		subpass.pColorAttachments = std::data(requirement.colorAttachments);
 		subpass.pDepthStencilAttachment = std::data(requirement.depthStencilAttacments);
 		subpass.pResolveAttachments = nullptr;
-		subpass.preserveAttachmentCount = 0;
+		subpass.preserveAttachmentCount = std::size(requirement.preservedAttachments);
+		subpass.pPreserveAttachments = std::data(requirement.preservedAttachments);
 		subpasses_.push_back(subpass);
 	}
 	std::vector<VkAttachmentDescription> attachmentsDesc;
@@ -91,17 +80,18 @@ vkn::Renderpass vkn::RenderpassBuilder::get()
 	info.pDependencies = std::data(dependencies_);
 
 	VkRenderPass renderpass{ VK_NULL_HANDLE };
-	vkn::error_check(vkCreateRenderPass(device_.device, &info, nullptr, &renderpass), "Failed to create the render pass");
+	vkn::error_check(vkCreateRenderPass(device.device, &info, nullptr, &renderpass), "Failed to create the render pass");
 
-	std::vector<vkn::Renderpass::Attachment> attachments;
+	std::vector<vkn::RenderpassAttachment> attachments;
 	for (auto i = 0u; i < std::size(attachments_); ++i)
 	{
-		vkn::Renderpass::Attachment attachment;
-		attachment.index = i;
+		vkn::RenderpassAttachment attachment{};
+		attachment.attachmentIndex = i;
 		attachment.format = attachments_[i].second.format;
-		attachments.push_back(attachment);
+		attachment.name = attachments_[i].first;
+		attachments.emplace_back(attachment);
 	}
-	return vkn::Renderpass{ device_, renderpass, attachments };
+	return vkn::Renderpass{ device, renderpass, attachments};
 }
 
 void vkn::RenderpassBuilder::reset()
@@ -111,22 +101,10 @@ void vkn::RenderpassBuilder::reset()
 	dependencies_.clear();
 }
 
-vkn::RenderpassBuilder vkn::RenderpassBuilder::getDefaultColorDepthResolveRenderpass(vkn::Device& device, const VkFormat attachmentFormat, const VkAttachmentLoadOp loadOp, const VkImageLayout initialLayout, const VkImageLayout finalLayout)
+void vkn::RenderpassBuilder::Subpass::Requirement::addInputAttachment(const uint32_t attachment)
 {
-	RenderpassBuilder builder{ device };
-	auto colorAttachment = builder.addAttachment(attachmentFormat, { loadOp, VK_ATTACHMENT_STORE_OP_STORE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { initialLayout, finalLayout });
-	auto depthAttachment = builder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
-
-	vkn::RenderpassBuilder::Subpass::Requirement requirements{};
-	requirements.addColorAttachment(colorAttachment);
-	requirements.addDepthStencilAttachment(depthAttachment);
-	builder.addSubpass(requirements);
-	return std::move(builder);
-}
-
-void vkn::RenderpassBuilder::Subpass::Requirement::addInputAttachment(const uint32_t attachment, const VkImageLayout layout)
-{
-	inputAttachments.push_back(VkAttachmentReference{ attachment, layout });
+	inputAttachments.push_back(VkAttachmentReference{ attachment, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+	usedAttachments.push_back(attachment);
 }
 
 void vkn::RenderpassBuilder::Subpass::Requirement::addColorAttachments(std::vector<uint32_t>& attachments)
@@ -134,15 +112,34 @@ void vkn::RenderpassBuilder::Subpass::Requirement::addColorAttachments(std::vect
 	for (const auto attachment : attachments)
 	{
 		colorAttachments.emplace_back(VkAttachmentReference{ attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+		usedAttachments.push_back(attachment);
 	}
 }
 
 void vkn::RenderpassBuilder::Subpass::Requirement::addColorAttachment(const uint32_t attachment)
 {
 	colorAttachments.emplace_back(VkAttachmentReference{ attachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+	usedAttachments.push_back(attachment);
 }
 
-void vkn::RenderpassBuilder::Subpass::Requirement::addDepthStencilAttachment(const uint32_t attachment)
+void vkn::RenderpassBuilder::Subpass::Requirement::addDepthAttachment(const uint32_t attachment)
 {
 	depthStencilAttacments.emplace_back(VkAttachmentReference{ attachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
+	usedAttachments.push_back(attachment);
+}
+
+void vkn::RenderpassBuilder::Subpass::Requirement::addStencilAttachment(const uint32_t attachment)
+{
+	depthStencilAttacments.emplace_back(VkAttachmentReference{ attachment, VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL });
+	usedAttachments.push_back(attachment);
+}
+
+void vkn::RenderpassBuilder::Subpass::Requirement::setPreservedAttachments(const std::vector<RenderpassAttachment>& renderpassAttachments)
+{
+	preservedAttachments.resize(std::size(renderpassAttachments));
+	std::iota(std::begin(preservedAttachments), std::end(preservedAttachments), 0);
+	for (const auto used : usedAttachments)
+	{
+		preservedAttachments.erase(std::remove(std::begin(preservedAttachments), std::end(preservedAttachments), used));
+	}
 }

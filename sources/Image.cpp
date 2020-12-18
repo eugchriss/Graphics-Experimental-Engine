@@ -144,6 +144,30 @@ const std::vector<vkn::Pixel> vkn::Image::content(const vkn::Gpu& gpu, const VkI
 	}return std::move(datas);
 }
 
+const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize offset, const VkImageAspectFlags& apect)
+{
+	auto requirements = getMemoryRequirement();
+	vkn::Buffer buffer{ device_, VK_BUFFER_USAGE_TRANSFER_DST_BIT, requirements.size };
+	vkn::DeviceMemory memory{ gpu, device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, buffer.getMemorySize() };
+	buffer.bind(memory);
+
+	vkn::QueueFamily transferQueueFamily{ gpu, VK_QUEUE_TRANSFER_BIT, 1 };
+	vkn:CommandPool cbPool{ device_, transferQueueFamily.familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
+	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	cb.begin();
+	copyToBuffer(cb, buffer, VK_IMAGE_ASPECT_COLOR_BIT);
+	cb.end();
+
+	auto transferQueue = transferQueueFamily.getQueue(device_);
+	vkn::Signal copyDone{ device_ };
+	transferQueue->submit(cb, copyDone);
+	copyDone.waitForSignal();
+
+	// x4 because the image uses 4 component per pixel (RGBA)
+	return buffer.rawContentAt(offset * 4);
+}
+
 const std::vector<float> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
 {
 	auto requirements = getMemoryRequirement();

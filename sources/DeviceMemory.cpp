@@ -1,6 +1,8 @@
 #include "../headers/DeviceMemory.h"
 #include "../headers/vulkan_utils.h"
-#include <cassert>
+#include "../headers/Timer.h"
+#include <iostream>
+
 
 uint32_t vkn::DeviceMemory::allocationCount = 0;
 
@@ -44,6 +46,11 @@ vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, 
 	assert(allocationCount <= gpu.properties().limits.maxMemoryAllocationCount && "The application reached the maximum allocation count");
 	vkn::error_check(vkAllocateMemory(device_.device, &memoryInfo, nullptr, &memory_), "Failed to allocate the memory");
 	++allocationCount;
+
+	if(isMappable())
+	{
+		vkn::error_check(vkMapMemory(device_.device, memory_, 0, size_, 0, &baseOffset_), "Unabled to map memory to vulkan");
+	}
 }
 
 vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const VkMemoryPropertyFlagBits property, const uint32_t memoryTypeBits, const VkDeviceSize size) : device_{ device }, size_{ size }, location_{ static_cast<VkMemoryPropertyFlags>(property) }
@@ -73,6 +80,10 @@ vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, 
 	assert(allocationCount <= gpu.properties().limits.maxMemoryAllocationCount && "The application reached the maximum allocation count");
 	vkn::error_check(vkAllocateMemory(device_.device, &memoryInfo, nullptr, &memory_), "Failed to allocate the memory");
 	++allocationCount;
+	if(isMappable())
+	{
+		vkn::error_check(vkMapMemory(device_.device, memory_, 0, size_, 0, &baseOffset_), "Unabled to map memory to vulkan");
+	}
 }
 
 vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const uint32_t memoryTypeBits, const VkDeviceSize size) : device_{ device }, size_{ size }
@@ -103,6 +114,10 @@ vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, 
 	assert(allocationCount <= gpu.properties().limits.maxMemoryAllocationCount && "The application reached the maximum allocation count");
 	vkn::error_check(vkAllocateMemory(device_.device, &memoryInfo, nullptr, &memory_), "Failed to allocate the memory");
 	++allocationCount;
+	if(isMappable())
+	{
+		vkn::error_check(vkMapMemory(device_.device, memory_, 0, size_, 0, &baseOffset_), "Unabled to map memory to vulkan");
+	}
 }
 
 vkn::DeviceMemory::DeviceMemory(DeviceMemory&& other): device_{other.device_}
@@ -120,6 +135,10 @@ vkn::DeviceMemory::~DeviceMemory()
 {
 	if (memory_ != VK_NULL_HANDLE)
 	{
+		if (isMappable())
+		{
+			vkUnmapMemory(device_.device, memory_);
+		}
 		vkFreeMemory(device_.device, memory_, nullptr);
 		--allocationCount;
 	}
@@ -156,16 +175,29 @@ const VkDeviceSize vkn::DeviceMemory::bind(const VkImage image)
 	return offset;
 }
 
+const float vkn::DeviceMemory::rawContentAt(const VkDeviceSize offset) const
+{
+	if (isMappable())
+	{ 
+		float data{};
+		auto off = static_cast<VkDeviceSize*>(baseOffset_) + offset / 8;
+		memcpy(&data, off, sizeof(data));
+		return data;
+	}
+	else
+	{
+		throw std::runtime_error{ "Attempting to map a non mappable memory type" };
+	}
+}
+
 const std::vector<float> vkn::DeviceMemory::rawContent(const VkDeviceSize offset, const VkDeviceSize size) const
 {
-	if (((location_ & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
+	if (isMappable())
 	{
 		std::vector<float> datas(size);
-		void* ptr;
-		vkn::error_check(vkMapMemory(device_.device, memory_, offset, size, 0, &ptr), "Unabled to map memory to vulkan");
-		memcpy(std::data(datas), ptr, size);
-		vkUnmapMemory(device_.device, memory_);
-		return std::move(datas);
+		auto off = static_cast<VkDeviceSize*>(baseOffset_) + offset / 8;
+		memcpy(std::data(datas), off, size);
+		return datas;
 	}
 	else
 	{
@@ -179,4 +211,9 @@ void vkn::DeviceMemory::checkAlignment(const VkDeviceSize alignment)
 	{
 		offset_ += alignment - (offset_ % alignment);
 	}
+}
+
+const bool vkn::DeviceMemory::isMappable() const
+{
+	return ((location_ & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
 }

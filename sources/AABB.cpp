@@ -2,7 +2,7 @@
 #include "glm/gtx/transform.hpp"
 #include <algorithm>
 
-gee::AABB::AABB(const std::vector<gee::Vertex>& vertices)
+gee::AABB::AABB(const std::vector<gee::Vertex>& vertices): mesh_{gee::getQuadMesh()}
 {
     std::vector<float> xs;
     std::vector<float> ys;
@@ -61,7 +61,7 @@ const std::vector<uint32_t>& gee::AABB::indices() const
     return mesh_.indices();
 }
 
-const gee::AbstractMesh& gee::AABB::mesh() const
+const gee::Mesh& gee::AABB::mesh() const
 {
     return mesh_;
 }

@@ -5,7 +5,8 @@
 #include <stdexcept>
 #include <fstream>
 
-vkn::PipelineBuilder::PipelineBuilder(vkn::Gpu& gpu, vkn::Device& device) : gpu_{ gpu }, device_{ device }, lineWidth{ 1.0f }, frontFace{ VK_FRONT_FACE_CLOCKWISE }, cullMode{ VK_CULL_MODE_NONE }
+
+vkn::PipelineBuilder::PipelineBuilder(): lineWidth{ 1.0f }, frontFace{ VK_FRONT_FACE_CLOCKWISE }, cullMode{ VK_CULL_MODE_NONE }
 {
 	//initialize input state info
 	{
@@ -38,28 +39,30 @@ vkn::PipelineBuilder::PipelineBuilder(vkn::Gpu& gpu, vkn::Device& device) : gpu_
 	}
 }
 
-vkn::PipelineBuilder::~PipelineBuilder()
+
+void vkn::PipelineBuilder::preBuild(vkn::Device& device)
 {
+	for (const auto& [stage, path] : shaderStages_)
+	{
+		shaders_.emplace_back(device, stage, path);
+	}
 }
 
-vkn::Pipeline vkn::PipelineBuilder::get()
+vkn::Pipeline vkn::PipelineBuilder::get(vkn::Gpu& gpu, vkn::Device& device)
 {
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages{};
-	//create shaders
+	for (const auto& shader : shaders_)
 	{
-		for (const auto& shader : shaders_)
-		{
-			VkPipelineShaderStageCreateInfo stageInfo{};
-			stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			stageInfo.pNext = nullptr;
-			stageInfo.flags = 0;
-			stageInfo.stage = shader.stage();
-			stageInfo.module = shader.module();
-			stageInfo.pName = "main";
-			stageInfo.pSpecializationInfo = nullptr;
+		VkPipelineShaderStageCreateInfo stageInfo{};
+		stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		stageInfo.pNext = nullptr;
+		stageInfo.flags = 0;
+		stageInfo.stage = shader.stage();
+		stageInfo.module = shader.module();
+		stageInfo.pName = "main";
+		stageInfo.pSpecializationInfo = nullptr;
 
-			shaderStages.push_back(stageInfo);
-		}
+		shaderStages.push_back(stageInfo);
 	}
 	std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributesDesc;
 	std::vector<VkVertexInputBindingDescription> bindingsDescriprion;
@@ -134,7 +137,7 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 		dynamicStateCI_.pDynamicStates = std::data(dynamicStates_);
 	}
 	//create the pipeline
-	vkn::PipelineLayout pipelineLayout{ device_, shaders_ };
+	vkn::PipelineLayout pipelineLayout{ device, shaders_ };
 	VkPipeline pipeline{ VK_NULL_HANDLE };
 	{
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -159,52 +162,20 @@ vkn::Pipeline vkn::PipelineBuilder::get()
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 			pipelineInfo.basePipelineIndex = -1;
 		}
-		vkn::error_check(vkCreateGraphicsPipelines(device_.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "Failed to create the pipeline");
+		vkn::error_check(vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "Failed to create the pipeline");
 	}
 
-	return vkn::Pipeline{ gpu_, device_, pipeline, std::move(shaders_) };
-}
-
-void vkn::PipelineBuilder::buildSubpass(vkn::RenderpassBuilder& renderpassBuilder, const VkImageLayout initialLayout, const VkImageLayout finalLayout, const VkAttachmentLoadOp loadOp, const VkAttachmentStoreOp storeOp)
-{
-	auto fragShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) {return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
-	if (fragShader == std::end(shaders_))
-	{
-		throw std::runtime_error{ "The pipeline requires a fragment shader stage" };
-	}
-	vkn::RenderpassBuilder::Subpass::Requirement requirements{};
-	const auto& outputAttachmentsFormats = fragShader->outputAttachments();
-	for (const auto outputFormat : outputAttachmentsFormats)
-	{
-		auto attachment = renderpassBuilder.addAttachment(outputFormat, { loadOp, storeOp }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { initialLayout, finalLayout });
-		requirements.addColorAttachment(attachment);
-	}
-	if (support3D)
-	{
-		auto depthAttachment = renderpassBuilder.addAttachment(VK_FORMAT_D32_SFLOAT, { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_ATTACHMENT_LOAD_OP_DONT_CARE , VK_ATTACHMENT_STORE_OP_DONT_CARE }, { VK_IMAGE_LAYOUT_UNDEFINED , VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
-		requirements.addDepthStencilAttachment(depthAttachment);
-	}
-	subpass = renderpassBuilder.addSubpass(requirements);
+	return vkn::Pipeline{ gpu, device, pipeline, std::move(shaders_) };
 }
 
 void vkn::PipelineBuilder::addShaderStage(const VkShaderStageFlagBits stage, const std::string& path)
 {
-	auto result = std::find_if(std::begin(shaders_), std::end(shaders_), [&](const auto& shader) { return shader.stage() == stage; });
-	if (result != std::end(shaders_))
+	auto result = std::find_if(std::begin(shaderStages_), std::end(shaderStages_), [&](const auto& pair) { return pair.first == stage; });
+	if (result != std::end(shaderStages_))
 	{
 		throw std::runtime_error{ "There is already a code for this shader stage" };
 	}
-	shaders_.emplace_back(device_, stage, path);
-}
-
-void vkn::PipelineBuilder::addShaderStage(vkn::Shader&& shader)
-{
-	auto result = std::find_if(std::begin(shaders_), std::end(shaders_), [&](const auto& s) { return s.stage() == shader.stage(); });
-	if (result != std::end(shaders_))
-	{
-		throw std::runtime_error{ "There is already a code for this shader stage" };
-	}
-	shaders_.emplace_back(std::move(shader));
+	shaderStages_.emplace_back(stage, path);
 }
 
 void vkn::PipelineBuilder::setInputBindingRate(const uint32_t binding, const VkVertexInputRate rate)
@@ -316,17 +287,23 @@ const std::vector<vkn::Shader::Attachment> vkn::PipelineBuilder::getColorOutputA
 	return result->outputAttachments();
 }
 
-vkn::PipelineBuilder vkn::PipelineBuilder::getDefault3DPipeline(vkn::Gpu& gpu, vkn::Device& device, const std::string& vertexPath, const std::string& fragmentPath)
+const std::vector<vkn::Shader::Attachment>& vkn::PipelineBuilder::subpassInputAttachments() const
 {
-	vkn::PipelineBuilder builder{gpu, device};
-	builder.addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, vertexPath);
-	builder.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentPath);
-	builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
-	builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
-	builder.addDepthStage(VK_COMPARE_OP_LESS);
-	builder.addColorBlendStage();
-	builder.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
-	builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-	builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-	return std::move(builder);
+	auto fragmentShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
+	if (fragmentShader == std::end(shaders_))
+	{
+		throw std::runtime_error{ "The pipeline requires a fragment shader" };
+	}
+
+	return fragmentShader->subpassInputAttachments();
+}
+const std::vector<vkn::Shader::Attachment>& vkn::PipelineBuilder::outputAttachments() const
+{
+	auto fragmentShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
+	if (fragmentShader == std::end(shaders_))
+	{
+		throw std::runtime_error{ "The pipeline requires a fragment shader" };
+	}
+
+	return fragmentShader->outputAttachments();
 }

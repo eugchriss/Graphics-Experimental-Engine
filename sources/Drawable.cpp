@@ -1,57 +1,82 @@
 #include "..\headers\Drawable.h"
+#include "glm/gtx/transform.hpp"
 #include <stdexcept>
 
 uint32_t gee::Drawable::count{};
 
-gee::Drawable::Drawable(const gee::Mesh& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot):
-	mesh{mesh},
-	position{pos}, color{col, 1.0f}, rotation{rot}, boundingBox_{mesh.vertices()}
+gee::Drawable::Drawable(const gee::Mesh& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
+	mesh{ mesh },
+	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
 {
 	name = std::string{ "Drawable : " } + std::to_string(count);
-
+	setPosition(pos);
+	setRotation(rot);
 	scaleFactor = normalizedScaleFactor(mesh);
 	if (scaleFactor == 0.0f)
 	{
 		scaleFactor = 1.0f;
 	}
-	size /= scaleFactor;
+	size_ /= scaleFactor;
 	count++;
 }
 
-gee::Drawable::Drawable(const gee::Mesh& mesh, const Optics& optics, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot):
-	mesh{ mesh }, light_{optics},
-	position{ pos }, color{ col, 1.0f }, rotation{ rot }, boundingBox_{ mesh.vertices() }
+gee::Drawable::Drawable(const gee::Mesh& mesh, const Optics& optics, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
+	mesh{ mesh }, light_{ optics },
+	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
 {
-	light_->position = position;
+	setPosition(pos);
+	setRotation(rot);
+	light_->position = position_;
 	light_->diffuse = color;
 }
 
-gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot ) :
+gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
 	name{ noun }, mesh{ mesh },
-	position{ pos }, color{ col, 1.0f }, rotation{rot}, boundingBox_{ mesh.vertices() }
+	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
 {
-
+	setPosition(pos);
+	setRotation(rot);
 	scaleFactor = normalizedScaleFactor(mesh);
 	if (scaleFactor == 0.0f)
 	{
 		scaleFactor = 1.0f;
 	}
-	size /= scaleFactor;
+	size_ /= scaleFactor;
 }
-gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const Optics& optics, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot):
-	name{ noun }, mesh{ mesh }, light_{optics},
-	position{ pos }, color{ col, 1.0f }, rotation{ rot }, boundingBox_{ mesh.vertices() }
+gee::Drawable::Drawable(const std::string& noun, gee::Mesh&& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot):
+	name{ noun }, mesh{ std::move(mesh) },
+	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
 {
-	light_->position = position;
+	setPosition(pos);
+	setRotation(rot);
+	scaleFactor = normalizedScaleFactor(mesh);
+	if (scaleFactor == 0.0f)
+	{
+		scaleFactor = 1.0f;
+	}
+	size_ /= scaleFactor;
+}
+gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const Optics& optics, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
+	name{ noun }, mesh{ mesh }, light_{ optics },
+	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
+{
+	setPosition(pos);
+	setRotation(rot);
+	light_->position = position_;
 	light_->diffuse = color;
 }
 
 void gee::Drawable::setPosition(const glm::vec3& pos)
 {
-	position = pos;
-	if (light_)
+	const auto relativePos = pos - position_;
+	if (relativePos != glm::vec3{ 0.0f })
 	{
-		light_->position = pos;
+		position_ = pos;
+		if (light_)
+		{
+			light_->position = position_;
+		}
+		transform = glm::translate(transform, relativePos);
 	}
 }
 
@@ -63,7 +88,46 @@ void gee::Drawable::setColor(const glm::vec3& col)
 
 void gee::Drawable::setRotation(const glm::vec3& rot)
 {
-	rotation = rot;
+	const auto relativeRot = rot - rotation_;
+	if (relativeRot != glm::vec3{ 0.0f })
+	{
+		rotation_ = rot;
+
+		transform = glm::rotate(transform, relativeRot.x, glm::vec3{ 1.0, 0.0f, 0.0f });
+		transform = glm::rotate(transform, relativeRot.y, glm::vec3{ 0.0, 1.0f, 0.0f });
+		transform = glm::rotate(transform, relativeRot.z, glm::vec3{ 0.0, 0.0f, 1.0f });
+	}
+}
+
+void gee::Drawable::setSize(const glm::vec3& size)
+{
+	auto relativeSize = size / size_;
+	if (std::isinf(relativeSize.x))
+		relativeSize.x = 1.0f;
+	if (std::isinf(relativeSize.y))
+		relativeSize.y = 1.0f;
+	if (std::isinf(relativeSize.z))
+		relativeSize.z = 1.0f;
+	if (relativeSize != glm::vec3{ 1.0f })
+	{
+		size_ = size;
+		transform = glm::scale(transform, relativeSize);
+	}
+}
+
+const glm::vec3& gee::Drawable::getPosition() const
+{
+	return position_;
+}
+
+const glm::vec3& gee::Drawable::getSize() const
+{
+	return size_;
+}
+
+const glm::vec3& gee::Drawable::getRotation() const
+{
+	return rotation_;
 }
 
 bool gee::Drawable::hasLightComponent() const
@@ -114,6 +178,6 @@ const float gee::Drawable::normalizedScaleFactor(const gee::Mesh& mesh)
 	const auto z = maxZ - minZ;
 
 	const auto volume = x * y * z;
-	size = glm::vec3{ x, y, z };
+	size_ = glm::vec3{ x, y, z };
 	return glm::pow(volume, 1 / 3.0f);
 }

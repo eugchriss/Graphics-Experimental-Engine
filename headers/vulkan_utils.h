@@ -66,4 +66,16 @@ namespace gee
 		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		hash_combine(seed, rest...);
 	}
+
+	template<class Container>
+	inline const std::size_t hash_combine(const Container& c)
+	{
+		using T = typename Container::value_type;
+		std::size_t seed{};
+		for (const auto& element : c)
+		{
+			seed ^= std::hash<T>{}(element) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		}
+		return seed;
+	}
 }

@@ -6,18 +6,21 @@
 #include <vector>
 namespace vkn
 {
+	struct RenderpassAttachment
+	{
+		uint32_t attachmentIndex{};
+		std::string name;
+		VkFormat format;
+		bool isUsedForPresent{ false };
+	};
+
 	class Renderpass
 	{
 	public:
-		struct Attachment
-		{
-			uint32_t index;
-			VkFormat format;
-		};
 		Renderpass(Renderpass&&);
 		~Renderpass();
 		void setClearColor(const glm::vec3& color);
-		const std::vector<Attachment>& attachments() const;
+		std::vector<RenderpassAttachment>& attachments();
 		const VkRenderPass renderpass() const;
 		void begin(vkn::CommandBuffer& cb, const VkFramebuffer& fb, const VkRect2D& renderArea, const VkSubpassContents subpassContent);
 		void end(vkn::CommandBuffer& cb);
@@ -26,12 +29,12 @@ namespace vkn
 #endif
 	private:
 		friend class RenderpassBuilder;
-		Renderpass(vkn::Device& device, const VkRenderPass& renderpass, std::vector<Renderpass::Attachment>& attachments);
+		Renderpass(vkn::Device& device, const VkRenderPass& renderpass, std::vector<RenderpassAttachment>& attachments);
 		vkn::Device& device_;
 		VkRenderPass renderpass_{ VK_NULL_HANDLE };
-		std::vector<Attachment> attachments_;
+		std::vector<RenderpassAttachment> attachments_;
 		std::vector<VkClearValue> clearValues_;
 		std::vector<size_t> colorClearValuesIndices_;
-		bool isColorAttachment(const Attachment& attachment) const;
+		bool isColorAttachment(const RenderpassAttachment& attachment) const;
 	};
 }

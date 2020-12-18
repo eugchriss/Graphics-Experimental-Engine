@@ -19,6 +19,16 @@ gee::Mesh gee::ModelLoader::load(const std::string& path)
 	return Mesh{ scene->GetShortFilename(path.c_str()), std::move(vertices_), std::move(indices_), std::move(material_) };
 }
 
+gee::Mesh gee::ModelLoader::create(const std::string& path)
+{
+	return load(path);
+}
+
+gee::Mesh gee::ModelLoader::create(std::function<gee::Mesh(gee::Material&&)> customMesh, gee::Material material)
+{
+	return customMesh(std::move(material));
+}
+
 void gee::ModelLoader::processNode(const aiScene* scene, const aiNode* node)
 {
 	for (auto i = 0u; i < node->mNumMeshes; ++i)

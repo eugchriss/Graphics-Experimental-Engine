@@ -16,19 +16,6 @@ namespace vkn
 	class Pipeline
 	{
 	public:
-		Pipeline(vkn::Gpu& gpu, vkn::Device& device, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders);
-		Pipeline(Pipeline&& other);
-		~Pipeline();
-		void bind(vkn::CommandBuffer& cb);
-		void updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view, const VkShaderStageFlagBits stage);
-		void updateTextures(const std::string& resourceName, const VkSampler sampler, const std::vector<VkImageView> views, const VkShaderStageFlagBits stage);
-
-		template<class T>
-		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
-		template<class T>
-		void updateBuffer(const std::string& resourceName, const T& datas, const VkShaderStageFlagBits stage);
-
-	private:
 		struct Uniform
 		{
 			std::string name;
@@ -39,6 +26,20 @@ namespace vkn
 			VkDeviceSize size;
 			VkDeviceSize range;
 		};
+		Pipeline(vkn::Gpu& gpu, vkn::Device& device, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders);
+		Pipeline(Pipeline&& other);
+		~Pipeline();
+		void bind(vkn::CommandBuffer& cb);
+		void updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view, const VkShaderStageFlagBits stage);
+		void updateTextures(const std::string& resourceName, const VkSampler sampler, const std::vector<VkImageView> views, const VkShaderStageFlagBits stage);
+		const std::vector<Uniform> uniforms() const;
+		template<class T>
+		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
+		template<class T>
+		void updateBuffer(const std::string& resourceName, const T& datas, const VkShaderStageFlagBits stage);
+		const std::vector<Shader::Attachment>& outputAttachments() const;
+		const std::vector<Shader::Attachment>& subpassInputAttachments() const;
+	private:
 
 		vkn::Gpu& gpu_;
 		vkn::Device& device_;

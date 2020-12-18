@@ -7,57 +7,69 @@
 #include "PipelineBuilder.h"
 #include "Renderpass.h"
 #include "CommandBuffer.h"
-#include "MemoryLocation.h"
+#include "MeshMemoryLocation.h"
 #include "Drawable.h"
+#include "ResourceHolder.h"
+#include "TextureImageFactory.h"
 
+using Hash_t = size_t;
+using MeshHolder_t = gee::ResourceHolder<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, Hash_t>;
 namespace vkn
 {
 	template <typename T> using Ptr = std::unique_ptr<T>;
-	using Hash_t = size_t;
 	class Framebuffer;
 	class ShaderEffect
 	{
 	public:
-		enum class Requirement
+		enum Requirement
 		{
-			Camera,
-			Model_matrice,
-			Material,
-			Light
+			Texture = 1,
+			Camera = 2,
+			Transform = 4,
+			Material = 8,
+			Light = 16,
+			Skybox = 32
 		};
-		using Function_t = std::function<void(vkn::CommandBuffer&, const VkViewport&, const VkRect2D&, const std::unordered_map<Hash_t, vkn::MemoryLocation>&, const std::unordered_map<Hash_t, uint32_t>&)>;
-		ShaderEffect(const std::string& vertexShaderPath, const std::string& fragmentShaderPath, Function_t& function, const VkImageLayout finalLayout);
-		void execute(vkn::CommandBuffer& cb, const VkViewport& viewport, const VkRect2D& renderArea, const std::unordered_map<Hash_t, vkn::MemoryLocation>& memoryLocations, const std::unordered_map<Hash_t, uint32_t>& drawables);
+		ShaderEffect(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+		void setViewport(const float x, const float y, const float width, const float height);
+		void setScissor(const glm::u32vec2& origin, const glm::u32vec2& extent);
+		void render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHolder, const gee::Occurence<Hash_t>& geometries) const;
 		void setPolygonMode(const VkPolygonMode mode);
 		void setLineWidth(const float width);
-		void setLoadOp(const VkAttachmentLoadOp op);
-		void setStoreOp(const VkAttachmentStoreOp op);
 		void setSampleCount(const VkSampleCountFlagBits count);
 		void updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view, const VkShaderStageFlagBits stage);
 		void updateTextures(const std::string& resourceName, const VkSampler sampler, const std::vector<VkImageView> views, const VkShaderStageFlagBits stage);
-		const Requirement getRequirement() const;
+		bool hasDepthBuffer() const;
+		bool hasStencilBuffer() const;
+		const std::vector<Shader::Attachment>& outputAttachments() const;
+		const std::vector<Shader::Attachment>& subpassInputAttachments() const;
+		const uint32_t getRequirement() const;
+		void preload(vkn::Device& device);
+		void active(vkn::Gpu& gpu, vkn::Device& device, const VkRenderPass& renderpass, const uint32_t subpass);
+		void bind(vkn::CommandBuffer& cb);
+		const uint32_t index() const;
 		template<class T>
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
 		template<class T>
 		void updateBuffer(const std::string& resourceName, const T& datas, const VkShaderStageFlagBits stage);
 
+		static std::unordered_map<Requirement, std::string> requirement_map;
 		friend class vkn::Framebuffer;
 	private:
 		Ptr<vkn::Pipeline> pipeline_;
-		Ptr<vkn::PipelineBuilder> pipelineBuilder_;
-		Function_t drawCall_;
-		const std::string vertexShaderPath_;
-		const std::string fragmentShaderPath_;
+		vkn::PipelineBuilder pipelineBuilder_;
+		VkViewport viewport_{};
+		VkRect2D scissor_{};
 		VkPolygonMode polyMode_{ VK_POLYGON_MODE_FILL };
 		VkSampleCountFlagBits sampleCount_{ VK_SAMPLE_COUNT_1_BIT };
 		float lineWidth_{ 1.0f };
-		VkImageLayout finalLayout_{};
-		VkAttachmentLoadOp loadOp_{ VK_ATTACHMENT_LOAD_OP_CLEAR };
-		VkAttachmentStoreOp storeOp_{ VK_ATTACHMENT_STORE_OP_DONT_CARE };
+		bool hasDepthBuffer_{ true };
+		bool hasStencilBuffer_{ false };
 		std::vector<VkFormat> attachmentFormats_;
-		Requirement requirement{};
-		void create(vkn::Gpu& gpu, vkn::Device& device, const vkn::Renderpass& renderpass);
-		void getSubpass(vkn::Gpu& gpu, vkn::Device& device, vkn::RenderpassBuilder& renderpassBuilder);
+		uint32_t renderingIndex_{};
+		VkRenderPass renderpass_;
+		uint32_t requirement_{};
+		void setRequirements(const std::vector<vkn::Pipeline::Uniform>& uniforms);
 	};
 	template<class T>
 	inline void ShaderEffect::pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas)

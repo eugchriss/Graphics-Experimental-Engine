@@ -1,6 +1,6 @@
 #include "..\headers\Renderpass.h"
 
-vkn::Renderpass::Renderpass(vkn::Device& device, const VkRenderPass& renderpass, std::vector<Renderpass::Attachment>& attachments) : 
+vkn::Renderpass::Renderpass(vkn::Device& device, const VkRenderPass& renderpass, std::vector<RenderpassAttachment>& attachments) : 
 	device_{ device }, renderpass_{ renderpass },
 	attachments_ { std::move(attachments) }
 {
@@ -22,7 +22,7 @@ vkn::Renderpass::Renderpass(vkn::Device& device, const VkRenderPass& renderpass,
 	}
 }
 
-bool vkn::Renderpass::isColorAttachment(const Attachment& attachment) const
+bool vkn::Renderpass::isColorAttachment(const vkn::RenderpassAttachment& attachment) const
 {
 	if (attachment.format == VK_FORMAT_D16_UNORM || attachment.format == VK_FORMAT_D32_SFLOAT ||
 		attachment.format == VK_FORMAT_S8_UINT || attachment.format == VK_FORMAT_D16_UNORM_S8_UINT ||
@@ -96,7 +96,7 @@ void vkn::Renderpass::setClearColor(const glm::vec3& color)
 	}
 }
 
-const std::vector<vkn::Renderpass::Attachment>& vkn::Renderpass::attachments() const
+std::vector<vkn::RenderpassAttachment>& vkn::Renderpass::attachments()
 {
 	return attachments_;
 }
