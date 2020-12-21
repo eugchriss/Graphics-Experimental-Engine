@@ -3,7 +3,6 @@
 #include "../headers/PipelineBuilder.h"
 #include "../headers/RenderpassBuilder.h"
 #include "../headers/imgui_impl_glfw.h"
-#include "../headers/imgui_impl_vulkan.h"
 #include <algorithm>
 #include <string>
 #include "../headers/TextureImageFactory.h"
@@ -61,17 +60,6 @@ std::ostream& vkn::Renderer::getGpuInfo(std::ostream& os) const
 	return os;
 }
 
-void vkn::Renderer::resize()
-{
-	isWindowMinimized_ = false;
-	device_->idle();
-	VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-	vkn::error_check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu_->device, surface_, &surfaceCapabilities), "Failed to get surface capabilities");
-	auto newExtent = surfaceCapabilities.currentExtent;
-
-	cbPool_ = std::make_unique<vkn::CommandPool>(*device_, queueFamily_->familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-}
-
 const std::optional<size_t> vkn::Renderer::objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y)
 {
 	return std::nullopt;
@@ -82,24 +70,14 @@ void vkn::Renderer::setWindowMinimized(const bool value)
 	isWindowMinimized_ = value;
 }
 
-void vkn::Renderer::updateGui(std::function<void()> guiContent)
+void vkn::Renderer::render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable)
 {
-	guiContent_ = guiContent;
+	fb.setupRendering(effectName, shaderCamera_, drawable);
 }
 
-void vkn::Renderer::render(vkn::Framebuffer& fb, vkn::ShaderEffect& effect, std::reference_wrapper<gee::Drawable>& drawable)
+void vkn::Renderer::render(vkn::Framebuffer& fb, const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
 {
-	fb.setupRendering(effect, shaderCamera_, drawable);
-}
-
-void vkn::Renderer::render(vkn::Framebuffer& fb, vkn::ShaderEffect& effect, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
-{
-	fb.setupRendering(effect, shaderCamera_, drawables);
-}
-
-void vkn::Renderer::render(vkn::Framebuffer& fb, std::function<void()>& guiDatas)
-{
-	fb.renderGui(guiContent_);
+	fb.setupRendering(effectName, shaderCamera_, drawables);
 }
 
 void vkn::Renderer::draw(vkn::Framebuffer& fb)
@@ -135,9 +113,9 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	shaderCamera_.projection[1][1] *= -1;
 }
 
-std::unique_ptr<vkn::Framebuffer> vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount)
+std::unique_ptr<vkn::Framebuffer> vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui, const uint32_t frameCount)
 {
-	return std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, frameCount);
+	return std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, enableGui, guiInitInfo_, frameCount);
 }
 
 vkn::Framebuffer vkn::Renderer::createFramebuffer(const glm::u32vec2& extent, std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount)
@@ -213,35 +191,16 @@ void vkn::Renderer::buildImguiContext(const gee::Window& window)
 	const auto imageCount = 2;
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForVulkan(window.window(), true);
-	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = instance_->instance;
-	init_info.PhysicalDevice = gpu_->device;
-	init_info.Device = device_->device;
-	init_info.QueueFamily = queueFamily_->familyIndex();
-	init_info.Queue = graphicsQueue_->queue();
-	init_info.PipelineCache = VK_NULL_HANDLE;
-	init_info.DescriptorPool = imguiDescriptorPool_;
-	init_info.Allocator = nullptr;
-	init_info.MinImageCount = imageCount;
-	init_info.ImageCount = imageCount;
-	init_info.CheckVkResultFn = nullptr;
-	/*ImGui_ImplVulkan_Init(&init_info, imguiRenderpass_->renderpass());
-
-	auto cb = cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-	cb.begin();
-	ImGui_ImplVulkan_CreateFontsTexture(cb.commandBuffer());
-	cb.end();
-	graphicsQueue_->submit(cb);
-	graphicsQueue_->idle();*/
-}
-
-void vkn::Renderer::prepareBindingBox(std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
-{
-	meshMemoryLocations_->get(gee::getCubeMesh().hash() , drawables[0].get().boundingBox().mesh());
-	boundingBoxModels_.clear(),
-	boundingBoxModels_.reserve(std::size(drawables));
-	for (auto i = 0u; i < std::size(drawables); ++i)
-	{
-		//boundingBoxModels_.push_back(modelMatrices_[i] * drawables[i].get().boundingBox().transformMatrix);
-	}
+	
+	guiInitInfo_.Instance = instance_->instance;
+	guiInitInfo_.PhysicalDevice = gpu_->device;
+	guiInitInfo_.Device = device_->device;
+	guiInitInfo_.QueueFamily = queueFamily_->familyIndex();
+	guiInitInfo_.Queue = graphicsQueue_->queue();
+	guiInitInfo_.PipelineCache = VK_NULL_HANDLE;
+	guiInitInfo_.DescriptorPool = imguiDescriptorPool_;
+	guiInitInfo_.Allocator = nullptr;
+	guiInitInfo_.MinImageCount = imageCount;
+	guiInitInfo_.ImageCount = imageCount;
+	guiInitInfo_.CheckVkResultFn = nullptr;
 }

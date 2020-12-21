@@ -30,7 +30,9 @@ namespace vkn
 			Light = 16,
 			Skybox = 32
 		};
-		ShaderEffect(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+		ShaderEffect(const std::string& name, const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+		ShaderEffect(ShaderEffect&&) = default;
+		const std::string& name() const;
 		void setViewport(const float x, const float y, const float width, const float height);
 		void setScissor(const glm::u32vec2& origin, const glm::u32vec2& extent);
 		void render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHolder, const gee::Occurence<Hash_t>& geometries) const;
@@ -56,6 +58,7 @@ namespace vkn
 		static std::unordered_map<Requirement, std::string> requirement_map;
 		friend class vkn::Framebuffer;
 	private:
+		std::string name_;
 		Ptr<vkn::Pipeline> pipeline_;
 		vkn::PipelineBuilder pipelineBuilder_;
 		VkViewport viewport_{};
@@ -69,6 +72,11 @@ namespace vkn
 		uint32_t renderingIndex_{};
 		VkRenderPass renderpass_;
 		uint32_t requirement_{};
+		const std::string vertexShaderPath_;
+		const std::string fragmentShaderPath_;
+		std::vector<vkn::Shader::Attachment> outputAttachments_;
+		std::vector<vkn::Shader::Attachment> subpassInputAttachments_;
+
 		void setRequirements(const std::vector<vkn::Pipeline::Uniform>& uniforms);
 	};
 	template<class T>

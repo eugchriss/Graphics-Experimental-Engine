@@ -57,6 +57,19 @@ void vkn::Renderpass::end(vkn::CommandBuffer& cb)
 	vkCmdEndRenderPass(cb.commandBuffer());
 }
 
+void vkn::Renderpass::clearDepthAttachment(vkn::CommandBuffer& cb, const VkRect2D& area, const VkClearValue& clearValue)
+{
+	VkClearAttachment clearAttachment{};
+	clearAttachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	clearAttachment.clearValue = clearValue;
+
+	VkClearRect clearRect{};
+	clearRect.baseArrayLayer = 0;
+	clearRect.layerCount = 1;
+	clearRect.rect = area;
+	vkCmdClearAttachments(cb.commandBuffer(), 1, &clearAttachment, 1, &clearRect);
+}
+
 #ifndef NDEBUG
 void vkn::Renderpass::setDebugName(const std::string& name)
 {

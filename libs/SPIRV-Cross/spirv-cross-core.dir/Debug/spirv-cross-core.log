@@ -1,7 +1,0 @@
-﻿  Building Custom Rule C:/Users/eugch/OneDrive/Documents/programmation/C++/vulkan/Graphics-Experimental-Engine/libs/SPIRV-Cross/CMakeLists.txt
-  spirv_cross.cpp
-  spirv_parser.cpp
-  spirv_cross_parsed_ir.cpp
-  spirv_cfg.cpp
-  Génération de code en cours...
-  spirv-cross-core.vcxproj -> C:\Users\eugch\OneDrive\Documents\programmation\C++\vulkan\Graphics-Experimental-Engine\libs\SPIRV-Cross\Debug\spirv-cross-cored.lib

@@ -18,18 +18,11 @@
 #include "QueueFamily.h"
 #include "Device.h"
 #include "Queue.h"
-#include "Swapchain.h"
-#include "Renderpass.h"
 #include "Framebuffer.h"
-#include "Pipeline.h"
 #include "CommandPool.h"
 #include "Drawable.h"
-#include "Mesh.h"
-#include "Buffer.h"
-#include "MeshMemoryLocation.h"
 #include "Texture.h"
 #include "Camera.h"
-#include "AABB.h"
 #include "ShaderEffect.h"
 #include "ResourceHolder.h"
 
@@ -41,16 +34,13 @@ namespace vkn
 		Renderer(gee::Window& window);
 		~Renderer();
 		std::ostream& getGpuInfo(std::ostream& os) const;
-		void resize();
 		const std::optional<size_t> objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y);
 		void setWindowMinimized(const bool value);
-		void updateGui(std::function<void()> guiContent);
-		void render(vkn::Framebuffer& fb, vkn::ShaderEffect& effect, std::reference_wrapper<gee::Drawable>& drawable);
-		void render(vkn::Framebuffer& fb, vkn::ShaderEffect& effect, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
-		void render(vkn::Framebuffer& fb, std::function<void()>& guiDatas);
+		void render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable);
+		void render(vkn::Framebuffer& fb, const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void draw(vkn::Framebuffer& fb);
 		void updateCamera(const gee::Camera& camera, const float aspectRatio);
-		std::unique_ptr<vkn::Framebuffer> getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount = 2u);
+		std::unique_ptr<vkn::Framebuffer> getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui = true, const uint32_t frameCount = 2u);
 		vkn::Framebuffer createFramebuffer(const glm::u32vec2& extent, std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount = 2u);
 
 	private:
@@ -67,26 +57,18 @@ namespace vkn
 		bool isWindowMinimized_{};
 		//imgui variables
 		VkDescriptorPool imguiDescriptorPool_{ VK_NULL_HANDLE };
-		std::unique_ptr<vkn::Renderpass> imguiRenderpass_;
-
+		ImGui_ImplVulkan_InitInfo guiInitInfo_{};
 		void checkGpuCompability(const vkn::Gpu& gpu);
-		void buildShaderTechnique();
 		void createSampler();
 		void buildImguiContext(const gee::Window& window);
-		std::function<void()> guiContent_;
 
 		void bindLights(std::vector<std::reference_wrapper<gee::Drawable>>& lights);
-		void prepareBindingBox(std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		
-		std::unique_ptr<vkn::MeshMemoryLocation> aabbMemoryLocation_;
 		std::vector<glm::mat4> boundingBoxModels_;
 
 		std::unique_ptr<MeshHolder_t> meshMemoryLocations_;
 		std::unique_ptr<TextureHolder_t> textureHolder_;
 		std::unique_ptr<MaterialHolder_t> materialHolder_;
-	
-		bool skyboxEnbaled_{ true };
-		bool showBindingBox_{ false };
 		
 		ShaderCamera shaderCamera_{};
 	};

@@ -2,7 +2,7 @@
 #include "../headers/vulkan_utils.h"
 #include <numeric>
 
-const uint32_t vkn::RenderpassBuilder::addAttachmentT(const vkn::RenderpassAttachment& attachment, const VkImageLayout finalLayout, const Attachment::Content& stencilOp)
+const uint32_t vkn::RenderpassBuilder::addAttachmentT(const vkn::RenderpassAttachment& attachment, const VkImageLayout finalLayout, const VkImageLayout initialLayout, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp)
 {
 	auto result = std::find_if(std::begin(attachments_), std::end(attachments_), [&](const auto pair) { return pair.first == attachment.name; });
 	if (result == std::end(attachments_))
@@ -11,11 +11,11 @@ const uint32_t vkn::RenderpassBuilder::addAttachmentT(const vkn::RenderpassAttac
 		att.flags = 0;
 		att.format = attachment.format;
 		att.samples = VK_SAMPLE_COUNT_1_BIT;
-		att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		att.loadOp = colorDepthOp.load;
+		att.storeOp = colorDepthOp.store;
 		att.stencilLoadOp = stencilOp.load;
 		att.stencilStoreOp = stencilOp.store;
-		att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		att.initialLayout = initialLayout;
 		att.finalLayout = finalLayout;
 		attachments_.emplace_back(attachment.name, att);
 		return std::size(attachments_) - 1;

@@ -13,16 +13,20 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	renderer_ = std::make_unique<vkn::Renderer>(window_);
 	std::ostringstream os;
 	renderer_->getGpuInfo(os);
-	//renderer_->setBackgroundColor(glm::vec3{0.2f});
 
 	window_.setTitle(name + ": " + os.str());
+	std::vector<vkn::ShaderEffect> effects;
+	effects.emplace_back("skybox technique", "../assets/Shaders/skybox/vert.spv", "../assets/Shaders/skybox/frag.spv");
+	effects.emplace_back("forward rendering", "../assets/shaders/vert.spv", "../assets/shaders/frag.spv");
+	mainFb_ = renderer_->getFramebuffer(effects);
+	mainFb_->setViewport(0.0f, 0.0f, static_cast<float>(window_.size().x), static_cast<float>(window_.size().y));
 
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
 		{
 			if (w != 0 && h != 0)
 			{
 				window_.resize();
-				renderer_->resize();
+				mainFb_->resize(glm::u32vec2{w, h});
 				firstMouseUse_ = true;
 			}
 			else
@@ -55,11 +59,6 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 			onMouseMoveEvent(x, y);
 		});
 
-	//auto& skybox = forwardRendering_.emplace_back("../assets/Shaders/skybox/vert.spv", "../assets/Shaders/skybox/frag.spv");
-	auto& forwardEffect = forwardRendering_.emplace_back("../assets/shaders/vert.spv", "../assets/shaders/frag.spv");
-
-	mainFb_ = renderer_->getFramebuffer(forwardRendering_);
-	mainFb_->setViewport(0.0f, 0.0f, static_cast<float>(window_.size().x), static_cast<float>(window_.size().y));
 }
 
 void gee::Application::setCameraPosition(const glm::vec3& position)
@@ -111,7 +110,6 @@ void gee::Application::updateGui()
 		displayPointLightInfo();
 	}
 	camera_.imguiDisplay();
-	ImGui::Render();
 }
 
 void gee::Application::displayDrawableInfo()
@@ -254,19 +252,19 @@ bool gee::Application::isRunning()
 {
 	if (renderingtimer_.ellapsedMs() >= 1000 / 60.0f)
 	{
-		//renderer_->updateGui([&]() { updateGui(); });
 		renderer_->updateCamera(camera_, window_.aspectRatio());
+		updateGui();
 
 		gee::Timer t{ "Draw time" };
 		std::vector<std::reference_wrapper<gee::Drawable>> v;
 		if (skybox_.has_value())
 		{
-			//v.emplace_back(skybox_.value());
-			//renderer_->render(*mainFb_, forwardRendering_[0], v);
+			v.emplace_back(skybox_.value());
+			renderer_->render(*mainFb_, "skybox technique", v);
 		}
-		renderer_->render(*mainFb_, forwardRendering_[0], drawables_);
+		renderer_->render(*mainFb_, "forward rendering", drawables_);
 		renderer_->draw(*mainFb_);
-		//std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
+		std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
 		renderingtimer_.reset();
 	}
 

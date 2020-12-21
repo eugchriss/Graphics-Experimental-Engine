@@ -7,7 +7,7 @@ STRING(REGEX REPLACE "\n" ";" files "${files}")
 FOREACH(file ${files})
   MESSAGE(STATUS "Uninstalling \"$ENV{DESTDIR}${file}\"")
   EXEC_PROGRAM(
-    "C:/Users/eugch/OneDrive/Documents/programmation/C++/cmake/bin/cmake.exe" ARGS "-E remove \"$ENV{DESTDIR}${file}\""
+    "C:/Program Files (x86)/cmake/bin/cmake.exe" ARGS "-E remove \"$ENV{DESTDIR}${file}\""
     OUTPUT_VARIABLE rm_out
     RETURN_VALUE rm_retval
     )

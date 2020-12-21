@@ -36,6 +36,7 @@ namespace vkn
 		void addColorBlendStage(const VkBool32 logicEnabled = VK_FALSE, const VkLogicOp op = VK_LOGIC_OP_OR);
 		void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment);
 		void addDynamicState(const VkDynamicState state);
+		void setPolygonMode(const VkPolygonMode mode);
 		const std::vector<vkn::Shader::Attachment>& subpassInputAttachments() const;
 		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
 		const std::vector<vkn::Shader::Attachment> getColorOutputAttachment() const;

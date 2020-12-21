@@ -46,7 +46,6 @@ namespace gee
 
 		std::optional<gee::Drawable> activeDrawable_;
 		std::unique_ptr<vkn::Framebuffer> mainFb_;
-		std::vector<vkn::ShaderEffect> forwardRendering_;
 		std::optional<std::reference_wrapper<gee::Drawable>> skybox_{};
 	};
 }

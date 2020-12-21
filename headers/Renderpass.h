@@ -24,6 +24,7 @@ namespace vkn
 		const VkRenderPass renderpass() const;
 		void begin(vkn::CommandBuffer& cb, const VkFramebuffer& fb, const VkRect2D& renderArea, const VkSubpassContents subpassContent);
 		void end(vkn::CommandBuffer& cb);
+		void clearDepthAttachment(vkn::CommandBuffer& cb, const VkRect2D& area, const VkClearValue& clearValue);
 #ifndef NDEBUG
 		void setDebugName(const std::string& name);
 #endif

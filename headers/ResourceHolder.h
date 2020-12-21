@@ -164,7 +164,7 @@ inline const size_t gee::ResourceHolder<Factory, Resource, Key>::indexOf(const K
 	auto result = resources_.find(key);
 	assert(result != resources_.end() && "Indexing a non existent element");
 
-	return std::distance(resources_.begin(), result);
+	return std::distance(resources_.begin(), result) - 1;
 }
 
 template<class Factory, class Resource, class Key>

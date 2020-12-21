@@ -164,7 +164,7 @@ vkn::Pipeline vkn::PipelineBuilder::get(vkn::Gpu& gpu, vkn::Device& device)
 		}
 		vkn::error_check(vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "Failed to create the pipeline");
 	}
-
+	shaderStages_.clear();
 	return vkn::Pipeline{ gpu, device, pipeline, std::move(shaders_) };
 }
 
@@ -275,6 +275,11 @@ void vkn::PipelineBuilder::addColorBlendAttachment(const VkPipelineColorBlendAtt
 void vkn::PipelineBuilder::addDynamicState(const VkDynamicState state)
 {
 	dynamicStates_.push_back(state);
+}
+
+void vkn::PipelineBuilder::setPolygonMode(const VkPolygonMode mode)
+{
+	rasterizationCI_.polygonMode = mode;
 }
 
 const std::vector<vkn::Shader::Attachment> vkn::PipelineBuilder::getColorOutputAttachment() const

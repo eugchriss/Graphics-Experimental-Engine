@@ -156,6 +156,17 @@ const std::vector<vkn::Shader::Attachment>& vkn::Pipeline::outputAttachments() c
 	return fragmentShader->outputAttachments();
 }
 
+const std::vector<vkn::Shader::Attachment>& vkn::Pipeline::subpassInputAttachments() const
+{
+	auto fragmentShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
+	if (fragmentShader == std::end(shaders_))
+	{
+		throw std::runtime_error{ "The pipeline requires a fragment shader" };
+	}
+
+	return fragmentShader->subpassInputAttachments();
+}
+
 void vkn::Pipeline::createSets()
 {
 	auto layouts = layout_->layouts();

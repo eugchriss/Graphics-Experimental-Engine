@@ -1,7 +1,12 @@
 #include "..\headers\ShaderEffect.h"
 
 std::unordered_map<vkn::ShaderEffect::Requirement, std::string> vkn::ShaderEffect::requirement_map{};
-vkn::ShaderEffect::ShaderEffect(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
+vkn::ShaderEffect::ShaderEffect(const std::string& name, const std::string& vertexShaderPath, const std::string& fragmentShaderPath):
+	name_{ name },
+	vertexShaderPath_ {
+	vertexShaderPath
+},
+	fragmentShaderPath_{fragmentShaderPath}
 {
 	pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, vertexShaderPath);
 	pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShaderPath);
@@ -20,12 +25,22 @@ vkn::ShaderEffect::ShaderEffect(const std::string& vertexShaderPath, const std::
 	requirement_map[Requirement::Skybox] = "skybox";
 }
 
+const std::string& vkn::ShaderEffect::name() const
+{
+	return name_;
+}
+
 void vkn::ShaderEffect::setViewport(const float x, const float y, const float width, const float height)
 {
 	viewport_.x = x;
 	viewport_.y = y;
 	viewport_.width = width;
 	viewport_.height = height;
+	if (hasDepthBuffer())
+	{
+		viewport_.minDepth = 0.0f;
+		viewport_.maxDepth = 1.0f;
+	}
 	
 	glm::u32vec2 origin{ static_cast<uint32_t>(x), static_cast<uint32_t>(y)};
 	glm::u32vec2 extent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
@@ -58,6 +73,7 @@ void vkn::ShaderEffect::render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHol
 void vkn::ShaderEffect::setPolygonMode(const VkPolygonMode mode)
 {
 	polyMode_ = mode;
+	pipelineBuilder_.setPolygonMode(polyMode_);
 }
 
 void vkn::ShaderEffect::setLineWidth(const float width)
@@ -94,14 +110,12 @@ bool vkn::ShaderEffect::hasStencilBuffer() const
 
 const std::vector<vkn::Shader::Attachment>& vkn::ShaderEffect::outputAttachments() const
 {
-	//assert(pipeline_ && "The effect has not been activated yet");
-	return pipelineBuilder_.outputAttachments();
+	return outputAttachments_;
 }
 
 const std::vector<vkn::Shader::Attachment>& vkn::ShaderEffect::subpassInputAttachments() const
 {
-	//assert(pipeline_ && "The effect has not been activated yet");
-	return pipelineBuilder_.subpassInputAttachments();
+	return subpassInputAttachments_;
 }
 
 const uint32_t vkn::ShaderEffect::getRequirement() const
@@ -112,6 +126,8 @@ const uint32_t vkn::ShaderEffect::getRequirement() const
 void vkn::ShaderEffect::preload(vkn::Device& device)
 {
 	pipelineBuilder_.preBuild(device);
+	outputAttachments_ = pipelineBuilder_.outputAttachments();
+	subpassInputAttachments_ = pipelineBuilder_.subpassInputAttachments();
 }
 
 void vkn::ShaderEffect::active(vkn::Gpu& gpu, vkn::Device& device, const VkRenderPass& renderpass, const uint32_t subpass)
@@ -121,6 +137,12 @@ void vkn::ShaderEffect::active(vkn::Gpu& gpu, vkn::Device& device, const VkRende
 		pipelineBuilder_.renderpass = renderpass;
 		pipelineBuilder_.subpass = subpass;
 		renderingIndex_ = subpass;
+		if (pipeline_)
+		{
+			pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, vertexShaderPath_);
+			pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShaderPath_);
+			pipelineBuilder_.preBuild(device);
+		}
 		pipeline_ = std::make_unique<vkn::Pipeline>(pipelineBuilder_.get(gpu, device));
 		renderpass_ = renderpass;
 
