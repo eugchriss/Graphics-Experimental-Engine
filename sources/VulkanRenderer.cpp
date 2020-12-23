@@ -80,15 +80,13 @@ const std::optional<size_t> vkn::Renderer::objectAt(std::vector<std::reference_w
 	}
 }
 
-void vkn::Renderer::setWindowMinimized(const bool value)
-{
-	isWindowMinimized_ = value;
-}
-
 void vkn::Renderer::render(const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
 {
-	assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
-	mainFramebuffer_->setupRendering(effectName, shaderCamera_, drawables);
+	if (!isWindowMinimized_)
+	{
+		assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
+		mainFramebuffer_->setupRendering(effectName, shaderCamera_, drawables);
+	}
 }
 
 void vkn::Renderer::render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable)
@@ -103,8 +101,11 @@ void vkn::Renderer::render(vkn::Framebuffer& fb, const std::string& effectName, 
 
 void vkn::Renderer::draw(vkn::Framebuffer& fb)
 {
-	fb.render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
-	fb.submitTo(*graphicsQueue_);
+	if (!isWindowMinimized_)
+	{
+		fb.render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
+		fb.submitTo(*graphicsQueue_);
+	}
 }
 
 void vkn::Renderer::setViewport(const float x, const float y, const float width, const float height)
@@ -115,9 +116,12 @@ void vkn::Renderer::setViewport(const float x, const float y, const float width,
 
 void vkn::Renderer::draw()
 {
-	assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
-	mainFramebuffer_->render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
-	mainFramebuffer_->submitTo(*graphicsQueue_);
+	if (!isWindowMinimized_)
+	{
+		assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
+		mainFramebuffer_->render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
+		mainFramebuffer_->submitTo(*graphicsQueue_);
+	}
 }
 
 void vkn::Renderer::bindLights(std::vector<std::reference_wrapper<gee::Drawable>>& lights)
@@ -151,6 +155,12 @@ vkn::Framebuffer& vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& 
 	if (!mainFramebuffer_)
 	{
 		mainFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, enableGui, guiInitInfo_, frameCount);
+		if (enableGui)
+		{
+			ImGui_ImplVulkan_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+		}
 	}
 	return *mainFramebuffer_;
 }
@@ -162,12 +172,20 @@ vkn::Framebuffer vkn::Renderer::createFramebuffer(const glm::u32vec2& extent, st
 
 void vkn::Renderer::resize(const glm::u32vec2& size)
 {
-	std::vector<vkn::ShaderEffect> pixelPerfectEffect;
-	pixelPerfectEffect.emplace_back("pixel perfect", "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
-	pixelPerfectFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, *cbPool_, pixelPerfectEffect, VkExtent2D{ size.x, size.y }, 1);
-	if (mainFramebuffer_)
+	if (size.x != 0 || size.y != 0)
 	{
-		mainFramebuffer_->resize(size);
+		isWindowMinimized_ = false;
+		std::vector<vkn::ShaderEffect> pixelPerfectEffect;
+		pixelPerfectEffect.emplace_back("pixel perfect", "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
+		pixelPerfectFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, *cbPool_, pixelPerfectEffect, VkExtent2D{ size.x, size.y }, 1);
+		if (mainFramebuffer_)
+		{
+			mainFramebuffer_->resize(size);
+		}
+	}
+	else
+	{
+		isWindowMinimized_ = true;
 	}
 }
 

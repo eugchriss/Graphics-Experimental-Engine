@@ -43,8 +43,8 @@ namespace gee
 		bool rightButtonPressed_{ false };
 		bool firstMouseUse_{ true };
 		glm::vec2 lastPos_{};
-
-		std::optional<gee::Drawable> activeDrawable_;
+		size_t lastDrawableIndex_{};
+		std::optional<std::reference_wrapper<gee::Drawable>> activeDrawable_;
 		std::optional<std::reference_wrapper<gee::Drawable>> skybox_{};
 	};
 }

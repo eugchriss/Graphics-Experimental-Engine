@@ -121,6 +121,7 @@ void vkn::Framebuffer::setDebugName(const std::string& name)
 
 void vkn::Framebuffer::resize(const glm::u32vec2& size)
 {
+	renderingOrder_.clear();
 	renderArea_.extent.width = size.x;
 	renderArea_.extent.height = size.y;
 
@@ -184,6 +185,7 @@ const std::vector<vkn::Pixel> vkn::Framebuffer::frameContent(const uint32_t imag
 
 const float vkn::Framebuffer::rawContentAt(const VkDeviceSize offset, const uint32_t imageIndex)
 {
+	renderingFinishedSignals_[currentFrame_].waitForSignal();
 	return images_[imageIndex].rawContentAt(gpu_, offset);
 }
 
@@ -197,6 +199,7 @@ void vkn::Framebuffer::setupRendering(const std::string& effectName, const vkn::
 	auto effect = effects_.find(effectName);
 	assert(effect != std::end(effects_) && "The effect name doesn t match any registered effect");
 	renderingOrder_.emplace_back(std::make_tuple(std::ref(effect->second), std::ref(drawables), std::ref(camera)));
+	assert(std::size(renderingOrder_) <= std::size(effects_) && "Number of draw render calls doesn t match the number of effect");
 }
 
 void vkn::Framebuffer::setupRendering(const std::string& effectName, const vkn::ShaderCamera& camera, const std::reference_wrapper<gee::Drawable>& drawable)
@@ -237,6 +240,10 @@ void vkn::Framebuffer::render(MeshHolder_t& meshHolder, TextureHolder_t& texture
 			vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
 			ImGui::Render();
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
+			
+			ImGui_ImplVulkan_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
 		}
 		renderpass_->end(cb);
 
@@ -256,7 +263,6 @@ void vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
 	}else
 	{
 		graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_]);
-		renderingFinishedSignals_[currentFrame_].waitForSignal();
 	}
 	currentFrame_ = (currentFrame_ + 1) % std::size(framebuffers_);
 }

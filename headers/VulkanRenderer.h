@@ -35,7 +35,6 @@ namespace vkn
 		~Renderer();
 		std::ostream& getGpuInfo(std::ostream& os) const;
 		const std::optional<size_t> objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y);
-		void setWindowMinimized(const bool value);
 		void render(const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable);
 		void render(vkn::Framebuffer& fb, const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);

@@ -26,13 +26,9 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 			if (w != 0 && h != 0)
 			{
 				window_.resize();
-				renderer_->resize(glm::u32vec2{w, h});
 				firstMouseUse_ = true;
 			}
-			else
-			{
-				renderer_->setWindowMinimized(true);
-			}
+			renderer_->resize(glm::u32vec2{ w, h });
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 		{
@@ -97,13 +93,40 @@ void gee::Application::addCamera(const Camera& camera)
 
 void gee::Application::updateGui()
 {
-	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
-	if (std::size(drawables_) > 0)
+	if (activeDrawable_)
+	{
+		auto& drawable = activeDrawable_.value().get();
+		ImGui::Begin(drawable.name.c_str());
+		auto position = drawable.getPosition();
+		ImGui::SliderFloat3("position", &position.x, -50.0_m, 50.0_m, "%.1f");
+		ImGui::ColorEdit4("color", &drawable.color.x);
+
+		//the engine uses radians units in internal but degrees for display
+		auto rotation = drawable.getRotation();
+		glm::vec3 rotationDeg = glm::degrees(rotation);
+		ImGui::SliderFloat3("rotation", &rotationDeg.x, 0.0f, 360.0f, "%.1f");
+		rotation = glm::radians(rotationDeg);
+
+		auto lastScaleFactor = drawable.scaleFactor;
+		ImGui::SliderFloat("scale factor", &drawable.scaleFactor, 0.0f, 10.0f, "%.1f");
+
+		auto size = drawable.getSize();
+		auto sizeStr = std::string{ "x = " } + std::to_string(size.x) + std::string{ " y = " } + std::to_string(size.y) + std::string{ " z = " } + std::to_string(size.z);
+		ImGui::LabelText("size", sizeStr.c_str());
+		ImGui::End();
+
+		drawable.setPosition(position);
+		drawable.setRotation(rotation);
+		if (drawable.scaleFactor == 0.0f)
+		{
+			drawable.scaleFactor = lastScaleFactor;
+		}
+		drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
+	}
+	/*if (std::size(drawables_) > 0)
 	{
 		displayDrawableInfo();
-	}
+	}*/
 
 	if (std::size(lights_) > 0)
 	{
@@ -226,12 +249,18 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		auto drawableIndex = renderer_->objectAt(drawables_, x, y);
 		if (drawableIndex.has_value())
 		{
-			//activeDrawable_.emplace(drawables_[drawableIndex.value()].get());
-			std::cout << drawables_[drawableIndex.value()].get().name << "\n";
+			if(drawableIndex.value() != lastDrawableIndex_)
+			{
+				activeDrawable_.emplace(std::ref(drawables_[drawableIndex.value()].get()));
+				lastDrawableIndex_ = drawableIndex.value();
+			}
+			else
+			{
+				activeDrawable_ = std::nullopt;
+			}
 		}
 		else
 		{
-			std::cout << "no active drawable" << "\n";
 			activeDrawable_ = std::nullopt;
 		}
 	}
@@ -244,7 +273,6 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
 	{
 		rightButtonPressed_ = false;
-		activeDrawable_ = std::nullopt;
 	}
 }
 
