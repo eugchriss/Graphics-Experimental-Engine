@@ -18,15 +18,15 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	std::vector<vkn::ShaderEffect> effects;
 	effects.emplace_back("skybox technique", "../assets/Shaders/skybox/vert.spv", "../assets/Shaders/skybox/frag.spv");
 	effects.emplace_back("forward rendering", "../assets/shaders/vert.spv", "../assets/shaders/frag.spv");
-	mainFb_ = renderer_->getFramebuffer(effects);
-	mainFb_->setViewport(0.0f, 0.0f, static_cast<float>(window_.size().x), static_cast<float>(window_.size().y));
+	renderer_->getFramebuffer(effects);
+	renderer_->setViewport(0.0f, 0.0f, static_cast<float>(window_.size().x), static_cast<float>(window_.size().y));
 
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
 		{
 			if (w != 0 && h != 0)
 			{
 				window_.resize();
-				mainFb_->resize(glm::u32vec2{w, h});
+				renderer_->resize(glm::u32vec2{w, h});
 				firstMouseUse_ = true;
 			}
 			else
@@ -227,7 +227,7 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		if (drawableIndex.has_value())
 		{
 			//activeDrawable_.emplace(drawables_[drawableIndex.value()].get());
-			std::cout << activeDrawable_->name << "\n";
+			std::cout << drawables_[drawableIndex.value()].get().name << "\n";
 		}
 		else
 		{
@@ -260,11 +260,11 @@ bool gee::Application::isRunning()
 		if (skybox_.has_value())
 		{
 			v.emplace_back(skybox_.value());
-			renderer_->render(*mainFb_, "skybox technique", v);
+			renderer_->render("skybox technique", v);
 		}
-		renderer_->render(*mainFb_, "forward rendering", drawables_);
-		renderer_->draw(*mainFb_);
-		std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
+		renderer_->render("forward rendering", drawables_);
+		renderer_->draw();
+		//std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
 		renderingtimer_.reset();
 	}
 

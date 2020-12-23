@@ -36,13 +36,16 @@ namespace vkn
 		std::ostream& getGpuInfo(std::ostream& os) const;
 		const std::optional<size_t> objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y);
 		void setWindowMinimized(const bool value);
+		void render(const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable);
 		void render(vkn::Framebuffer& fb, const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
+		void draw();
 		void draw(vkn::Framebuffer& fb);
+		void setViewport(const float x, const float y, const float width, const float height);
 		void updateCamera(const gee::Camera& camera, const float aspectRatio);
-		std::unique_ptr<vkn::Framebuffer> getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui = true, const uint32_t frameCount = 2u);
+		vkn::Framebuffer& getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui = true, const uint32_t frameCount = 2u);
 		vkn::Framebuffer createFramebuffer(const glm::u32vec2& extent, std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount = 2u);
-
+		void resize(const glm::u32vec2& size);
 	private:
 		std::unique_ptr<vkn::Instance> instance_;
 		std::unique_ptr<vkn::DebugMessenger> debugMessenger_;
@@ -69,6 +72,8 @@ namespace vkn
 		std::unique_ptr<MeshHolder_t> meshMemoryLocations_;
 		std::unique_ptr<TextureHolder_t> textureHolder_;
 		std::unique_ptr<MaterialHolder_t> materialHolder_;
+		std::unique_ptr<vkn::Framebuffer> mainFramebuffer_;
+		std::unique_ptr<vkn::Framebuffer> pixelPerfectFramebuffer_;
 		
 		ShaderCamera shaderCamera_{};
 	};

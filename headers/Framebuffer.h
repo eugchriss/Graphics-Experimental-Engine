@@ -41,7 +41,7 @@ namespace vkn
 #endif
 		void resize(const glm::u32vec2& size);
 		const std::vector<vkn::Pixel> frameContent(const uint32_t index);
-		const float rawContentAt(const uint32_t index, const VkDeviceSize offset);
+		const float rawContentAt(const VkDeviceSize offset, const uint32_t imageIndex = 0u);
 		const std::vector<float> frameRawContent(const uint32_t index);
 		void setupRendering(const std::string& effectName, const vkn::ShaderCamera& camera, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void setupRendering(const std::string& effectName, const vkn::ShaderCamera& camera, const std::reference_wrapper<gee::Drawable>& drawable);
@@ -49,6 +49,7 @@ namespace vkn
 		void submitTo(vkn::Queue& graphicsQueue);
 		void setViewport(const float x, const float y, const float width, const float height);
 		vkn::ShaderEffect& getEffect(const std::string& name);
+		const glm::u32vec2 renderArea() const;
 	private:
 		vkn::Gpu& gpu_;
 		vkn::Device& device_;

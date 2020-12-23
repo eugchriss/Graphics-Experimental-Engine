@@ -45,7 +45,6 @@ namespace gee
 		glm::vec2 lastPos_{};
 
 		std::optional<gee::Drawable> activeDrawable_;
-		std::unique_ptr<vkn::Framebuffer> mainFb_;
 		std::optional<std::reference_wrapper<gee::Drawable>> skybox_{};
 	};
 }

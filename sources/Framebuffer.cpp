@@ -65,7 +65,8 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR s
 vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const VkExtent2D& extent, const uint32_t frameCount) :
 	gpu_{ gpu },
 	device_{ device },
-	cbPool_{ cbPool }
+	cbPool_{ cbPool },
+	renderArea_{{0,0}, extent}
 {
 	framebuffers_.resize(frameCount);
 	for (auto& effect : shaderEffects)
@@ -76,6 +77,10 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 	createRenderpass(effects_, false);
 	const auto& renderpassAttachments = renderpass_->attachments();
 	createSignals();
+	for (auto i = 0u; i < frameCount; ++i)
+	{
+		cbs_.emplace_back(cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY));
+	}
 	VkFramebufferCreateInfo fbInfo{};
 	fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	fbInfo.pNext = nullptr;
@@ -86,9 +91,12 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 	fbInfo.renderPass = renderpass_->renderpass();
 
 	createFramebufer(fbInfo, renderpassAttachments, frameCount);
-	for (auto i = 0u; i < std::size(shaderEffects); ++i)
+	auto subpassIndex = 0u;
+	for (auto& [name, effectRef] : effects_)
 	{
-		shaderEffects[i].active(gpu_, device_, renderpass_->renderpass(), i);
+		effectRef.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
+		effectRef.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
+		++subpassIndex;
 	}
 }
 
@@ -174,7 +182,7 @@ const std::vector<vkn::Pixel> vkn::Framebuffer::frameContent(const uint32_t imag
 	return images_[imageIndex].content(gpu_);
 }
 
-const float vkn::Framebuffer::rawContentAt(const uint32_t imageIndex, const VkDeviceSize offset)
+const float vkn::Framebuffer::rawContentAt(const VkDeviceSize offset, const uint32_t imageIndex)
 {
 	return images_[imageIndex].rawContentAt(gpu_, offset);
 }
@@ -243,11 +251,12 @@ void vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
 	if (swapchain_)
 	{
 		swapchain_->setImageAvailableSignal(imageAvailableSignals_[currentFrame_]);
-	}
-	graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_], imageAvailableSignals_[currentFrame_], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
-	if (swapchain_)
-	{
+		graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_], imageAvailableSignals_[currentFrame_], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
 		graphicsQueue.present(*swapchain_, renderingFinishedSignals_[currentFrame_]);
+	}else
+	{
+		graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_]);
+		renderingFinishedSignals_[currentFrame_].waitForSignal();
 	}
 	currentFrame_ = (currentFrame_ + 1) % std::size(framebuffers_);
 }
@@ -265,6 +274,11 @@ vkn::ShaderEffect& vkn::Framebuffer::getEffect(const std::string& name)
 	auto& effect = effects_.find(name);
 	assert(effect != std::end(effects_) && "That effect is not been used by the framebuffer");
 	return effect->second;
+}
+
+const glm::u32vec2 vkn::Framebuffer::renderArea() const
+{
+	return glm::u32vec2{ renderArea_.extent.width, renderArea_.extent.height };
 }
 
 void vkn::Framebuffer::initGui(vkn::CommandBuffer& cb, ImGui_ImplVulkan_InitInfo& info)
@@ -323,7 +337,8 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 		views.reserve(std::size(renderpassAttachments));
 		for (const auto& attachment : renderpassAttachments)
 		{
-			images_.emplace_back(gpu_, device_, getUsageFlag(attachment), attachment.format, VkExtent3D{ swapchain_->extent().width, swapchain_->extent().height, 1 });
+			images_.emplace_back(gpu_, device_, getUsageFlag(attachment), attachment.format, VkExtent3D{ renderArea_.extent.width, renderArea_.extent.height, 1 });
+			views.emplace_back(images_.back().getView(VK_IMAGE_ASPECT_COLOR_BIT));
 		}
 		fbInfo.attachmentCount = std::size(views);
 		fbInfo.pAttachments = std::data(views);

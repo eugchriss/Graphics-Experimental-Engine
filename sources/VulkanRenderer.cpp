@@ -17,7 +17,7 @@ vkn::Renderer::Renderer(gee::Window& window)
 	instance_ = std::make_unique<vkn::Instance>(std::initializer_list<const char*>{});
 #endif // ENABLE_VALIDATION_LAYERS
 
-	VkDebugUtilsMessageSeverityFlagsEXT severityFlags = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	VkDebugUtilsMessageSeverityFlagsEXT severityFlags = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT /*| VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT*/;
 	VkDebugUtilsMessageTypeFlagsEXT messageTypeFlags = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	debugMessenger_ = std::make_unique<vkn::DebugMessenger>(*instance_, severityFlags, messageTypeFlags);
 
@@ -41,6 +41,10 @@ vkn::Renderer::Renderer(gee::Window& window)
 	meshMemoryLocations_ = std::make_unique<MeshHolder_t>(vkn::MeshMemoryLocationFactory{*gpu_, *device_});
 	textureHolder_ = std::make_unique<TextureHolder_t>(vkn::TextureImageFactory{ *gpu_, *device_ });
 	materialHolder_ = std::make_unique<MaterialHolder_t>(gee::MaterialHelperFactory<TextureKey_t>{});
+
+	std::vector<vkn::ShaderEffect> pixelPerfectEffect;
+	pixelPerfectEffect.emplace_back("pixel perfect", "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
+	pixelPerfectFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, *cbPool_, pixelPerfectEffect, VkExtent2D{ window.size().x, window.size().y }, 1);
 }
 
 vkn::Renderer::~Renderer()
@@ -62,12 +66,29 @@ std::ostream& vkn::Renderer::getGpuInfo(std::ostream& os) const
 
 const std::optional<size_t> vkn::Renderer::objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y)
 {
-	return std::nullopt;
+	pixelPerfectFramebuffer_->setupRendering("pixel perfect", shaderCamera_, drawables);
+	pixelPerfectFramebuffer_->render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
+	pixelPerfectFramebuffer_->submitTo(*graphicsQueue_);
+	auto pixel = pixelPerfectFramebuffer_->rawContentAt((x + y * pixelPerfectFramebuffer_->renderArea().x ) * 4);
+	if (pixel == 0.0f)
+	{
+		return std::nullopt;
+	}
+	else
+	{
+		return std::make_optional(pixel * 255 - 1);
+	}
 }
 
 void vkn::Renderer::setWindowMinimized(const bool value)
 {
 	isWindowMinimized_ = value;
+}
+
+void vkn::Renderer::render(const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
+{
+	assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
+	mainFramebuffer_->setupRendering(effectName, shaderCamera_, drawables);
 }
 
 void vkn::Renderer::render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable)
@@ -86,6 +107,19 @@ void vkn::Renderer::draw(vkn::Framebuffer& fb)
 	fb.submitTo(*graphicsQueue_);
 }
 
+void vkn::Renderer::setViewport(const float x, const float y, const float width, const float height)
+{
+	assert(mainFramebuffer_ && "The main framebuffer has not been created yet");
+	mainFramebuffer_->setViewport(x, y, width, height);
+}
+
+void vkn::Renderer::draw()
+{
+	assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
+	mainFramebuffer_->render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
+	mainFramebuffer_->submitTo(*graphicsQueue_);
+}
+
 void vkn::Renderer::bindLights(std::vector<std::reference_wrapper<gee::Drawable>>& lights)
 {
 	std::vector<gee::ShaderPointLight> shaderLights;
@@ -101,7 +135,6 @@ void vkn::Renderer::bindLights(std::vector<std::reference_wrapper<gee::Drawable>
 		l.linear = light.linear;
 		l.quadratic = light.quadratic;
 		shaderLights.push_back(l);
-
 	}
 }
 
@@ -113,14 +146,29 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	shaderCamera_.projection[1][1] *= -1;
 }
 
-std::unique_ptr<vkn::Framebuffer> vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui, const uint32_t frameCount)
+vkn::Framebuffer& vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui, const uint32_t frameCount)
 {
-	return std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, enableGui, guiInitInfo_, frameCount);
+	if (!mainFramebuffer_)
+	{
+		mainFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, enableGui, guiInitInfo_, frameCount);
+	}
+	return *mainFramebuffer_;
 }
 
 vkn::Framebuffer vkn::Renderer::createFramebuffer(const glm::u32vec2& extent, std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount)
 {
 	return vkn::Framebuffer{ *gpu_, *device_, *cbPool_, effects, VkExtent2D{extent.x, extent.y}, frameCount};
+}
+
+void vkn::Renderer::resize(const glm::u32vec2& size)
+{
+	std::vector<vkn::ShaderEffect> pixelPerfectEffect;
+	pixelPerfectEffect.emplace_back("pixel perfect", "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
+	pixelPerfectFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, *cbPool_, pixelPerfectEffect, VkExtent2D{ size.x, size.y }, 1);
+	if (mainFramebuffer_)
+	{
+		mainFramebuffer_->resize(size);
+	}
 }
 
 void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
