@@ -29,6 +29,7 @@ namespace gee
 		bool hasLightComponent() const;
 		const BoundingBox& boundingBox() const;
 		gee::Optics& light();
+		const gee::Optics& light() const;
 		const size_t hash() const;
 		std::string name;
 		glm::vec4 color;

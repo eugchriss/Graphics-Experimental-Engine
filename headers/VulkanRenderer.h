@@ -63,8 +63,6 @@ namespace vkn
 		void checkGpuCompability(const vkn::Gpu& gpu);
 		void createSampler();
 		void buildImguiContext(const gee::Window& window);
-
-		void bindLights(std::vector<std::reference_wrapper<gee::Drawable>>& lights);
 		
 		std::vector<glm::mat4> boundingBoxModels_;
 

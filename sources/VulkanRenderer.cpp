@@ -17,7 +17,7 @@ vkn::Renderer::Renderer(gee::Window& window)
 	instance_ = std::make_unique<vkn::Instance>(std::initializer_list<const char*>{});
 #endif // ENABLE_VALIDATION_LAYERS
 
-	VkDebugUtilsMessageSeverityFlagsEXT severityFlags = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT /*| VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT*/;
+	VkDebugUtilsMessageSeverityFlagsEXT severityFlags = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT*/;
 	VkDebugUtilsMessageTypeFlagsEXT messageTypeFlags = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	debugMessenger_ = std::make_unique<vkn::DebugMessenger>(*instance_, severityFlags, messageTypeFlags);
 
@@ -121,24 +121,6 @@ void vkn::Renderer::draw()
 		assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
 		mainFramebuffer_->render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
 		mainFramebuffer_->submitTo(*graphicsQueue_);
-	}
-}
-
-void vkn::Renderer::bindLights(std::vector<std::reference_wrapper<gee::Drawable>>& lights)
-{
-	std::vector<gee::ShaderPointLight> shaderLights;
-	shaderLights.reserve(std::size(lights));
-	for (const auto& lightRef : lights)
-	{
-		const auto& light = lightRef.get().light();
-		gee::ShaderPointLight l;
-		l.position = glm::vec4{ light.position, 1.0f };
-		l.ambient = glm::vec4{ light.ambient, 1.0f };
-		l.diffuse = glm::vec4{ light.diffuse, 1.0f };
-		l.specular = glm::vec4{ light.specular, 1.0f };
-		l.linear = light.linear;
-		l.quadratic = light.quadratic;
-		shaderLights.push_back(l);
 	}
 }
 

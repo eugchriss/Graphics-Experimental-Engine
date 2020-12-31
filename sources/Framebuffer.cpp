@@ -223,8 +223,8 @@ void vkn::Framebuffer::render(MeshHolder_t& meshHolder, TextureHolder_t& texture
 		{
 			auto& effect = effectRef.get();
 			effect.bind(cb);
-			const auto& [sortedDrawables, textures, materials, drawableMaterials, modelMatrices] = createShaderEffectResource(meshHolder, textureHolder, materialHolder, drawablesRef.get());
-			bindUniforms(effect, cameraRef.get(), sampler, textureHolder, materialHolder, textures, materials, drawableMaterials, modelMatrices);
+			const auto& [sortedDrawables, textures, materials, drawableMaterials, modelMatrices, pointLights] = createShaderEffectResource(meshHolder, textureHolder, materialHolder, drawablesRef.get());
+			bindUniforms(effect, cameraRef.get(), sampler, textureHolder, materialHolder, textures, materials, drawableMaterials, modelMatrices, pointLights);
 			effect.render(cb, meshHolder, sortedDrawables);
 
 			if (!isLastEffect(effect))
@@ -542,11 +542,27 @@ const vkn::Framebuffer::ShaderEffectResource vkn::Framebuffer::createShaderEffec
 	MaterialSet_t materialSet;
 	std::vector<size_t> drawableMaterials;
 	std::vector<glm::mat4> modelMatrices{};
+	std::vector<gee::ShaderPointLight> pointLights{};
+
 	modelMatrices.reserve(std::size(drawables));
+	pointLights.reserve(std::size(drawables));
 	for (const auto& drawableRef : drawables)
 	{
 		const auto& drawable = drawableRef.get();
 		modelMatrices.push_back(drawable.transform);
+		if (drawable.hasLightComponent())
+		{
+			const auto& light = drawable.light();
+			gee::ShaderPointLight shaderLight{};
+			shaderLight.position = glm::vec4{ drawable.getPosition(), 0.0f };
+			shaderLight.ambient = glm::vec4{ light.ambient, 1.0f };
+			shaderLight.diffuse = glm::vec4{ light.diffuse, 1.0f };
+			shaderLight.specular = glm::vec4{ light.specular, 1.0f };
+			shaderLight.linear = light.linear;
+			shaderLight.quadratic = light.quadratic;
+
+			pointLights.push_back(shaderLight);
+		}
 		meshHolder.get(drawable.mesh.hash(), drawable.mesh);
 
 		const auto& materialHash = drawable.mesh.material().hash;
@@ -561,7 +577,7 @@ const vkn::Framebuffer::ShaderEffectResource vkn::Framebuffer::createShaderEffec
 			materialSet.emplace_back(materialHash);
 		}
 	}
-	return { meshHolder.occurences(), textureSet, materialSet, drawableMaterials, modelMatrices };
+	return { meshHolder.occurences(), textureSet, materialSet, drawableMaterials, modelMatrices, pointLights };
 }
 
 void vkn::Framebuffer::bindTexture(TextureHolder_t& textureHolder, const TextureSet_t& textures, vkn::ShaderEffect& effect, const VkSampler& sampler) const
@@ -597,6 +613,11 @@ void vkn::Framebuffer::bindMaterial(MaterialHolder_t& materialHolder, const Text
 	effect.updateBuffer("Materials", shaderMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
+void vkn::Framebuffer::bindLight(vkn::ShaderEffect& effect, const std::vector<gee::ShaderPointLight>& pointLights)
+{
+	effect.updateBuffer("PointLights", pointLights, VK_SHADER_STAGE_FRAGMENT_BIT);
+}
+
 void vkn::Framebuffer::bindDrawableMaterial(MaterialHolder_t& materialHolder, const std::vector<Hash_t>& materials, vkn::ShaderEffect& effect) const
 {
 	std::vector<uint32_t> drawableMaterials;
@@ -608,7 +629,7 @@ void vkn::Framebuffer::bindDrawableMaterial(MaterialHolder_t& materialHolder, co
 	effect.updateBuffer("DrawableMaterial", drawableMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
-void vkn::Framebuffer::bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms)
+void vkn::Framebuffer::bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms, const std::vector<gee::ShaderPointLight>& pointLights)
 {
 	auto requirementFlags = effect.getRequirement();
 	if ((requirementFlags & vkn::ShaderEffect::Requirement::Texture) == vkn::ShaderEffect::Requirement::Texture)
@@ -630,7 +651,7 @@ void vkn::Framebuffer::bindUniforms(vkn::ShaderEffect& effect, const vkn::Shader
 	}
 	if ((requirementFlags & vkn::ShaderEffect::Requirement::Light) == vkn::ShaderEffect::Requirement::Light)
 	{
-		//bindTexture(textureHolder, textures, effect, sampler);
+		bindLight(effect, pointLights);
 	}
 	if ((requirementFlags & vkn::ShaderEffect::Requirement::Skybox) == vkn::ShaderEffect::Requirement::Skybox)
 	{

@@ -82,13 +82,14 @@ namespace vkn
 		void createRenderpassSubpasses(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const std::vector<RenderpassAttachment>& attachments);
 		void createSubpassesDepencies(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const std::vector<RenderpassAttachment>& attachments);
 		void initGui(vkn::CommandBuffer& cb, ImGui_ImplVulkan_InitInfo& info);
-		using ShaderEffectResource = std::tuple<gee::Occurence<Hash_t>, TextureSet_t, MaterialSet_t, std::vector<MaterialKey_t>, std::vector<glm::mat4>>;
+		using ShaderEffectResource = std::tuple<gee::Occurence<Hash_t>, TextureSet_t, MaterialSet_t, std::vector<MaterialKey_t>, std::vector<glm::mat4>, std::vector<gee::ShaderPointLight>>;
 		const ShaderEffectResource createShaderEffectResource(MeshHolder_t& meshHolder, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void bindTexture(TextureHolder_t& textureHolder, const TextureSet_t& textures, vkn::ShaderEffect& effect, const VkSampler& sampler) const;
 		void bindSkybox(TextureHolder_t& textureHolder, const TextureSet_t& textures, vkn::ShaderEffect& effect, const VkSampler& sampler) const;
 		void bindMaterial( MaterialHolder_t& materialHolder, const TextureSet_t textures, const MaterialSet_t& materials, vkn::ShaderEffect& effect) const;
+		void bindLight(vkn::ShaderEffect& effect, const std::vector<gee::ShaderPointLight>& pointLights);
 		void bindDrawableMaterial(MaterialHolder_t& materialHolder, const std::vector<Hash_t>& materials, vkn::ShaderEffect& effect) const;
-		void bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms);
+		void bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms, const std::vector<gee::ShaderPointLight>& pointLights);
 		const bool isLastEffect(const vkn::ShaderEffect& effect) const;
 		void createGuiSubpass(vkn::RenderpassBuilder& builder, const std::vector<RenderpassAttachment>& attachments);
 		template<class T>

@@ -68,22 +68,12 @@ void gee::Application::setSkybox(Drawable& skybox)
 }
 
 void gee::Application::addDrawable(Drawable& drawable)
-{	
-	if (drawable.hasLightComponent())
+{
+	drawblesShouldBeSorted_ = true;
+	auto drawbleResult = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
+	if (drawbleResult == std::end(drawables_))
 	{
-		auto result = std::find_if(std::begin(lights_), std::end(lights_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
-		if (result == std::end(lights_))
-		{
-			lights_.emplace_back(std::ref(drawable));
-		}
-	}
-	else
-	{
-		auto drawbleResult = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
-		if (drawbleResult == std::end(drawables_))
-		{
-			drawables_.emplace_back(std::ref(drawable));
-		}
+		drawables_.emplace_back(std::ref(drawable));
 	}
 }
 
@@ -113,6 +103,17 @@ void gee::Application::updateGui()
 		auto size = drawable.getSize();
 		auto sizeStr = std::string{ "x = " } + std::to_string(size.x) + std::string{ " y = " } + std::to_string(size.y) + std::string{ " z = " } + std::to_string(size.z);
 		ImGui::LabelText("size", sizeStr.c_str());
+		if (drawable.hasLightComponent())
+		{
+			auto& light = drawable.light();
+			ImGui::ColorEdit3("ambient", &light.ambient.x);
+			ImGui::ColorEdit3("diffuse", &light.diffuse.x);
+			ImGui::SliderFloat("specular", &light.specular.x, 0.0f, 256.0f, "%f");
+			light.specular.y = light.specular.x;
+			light.specular.z = light.specular.x;
+			ImGui::SliderFloat("linear", &light.linear, 0.0014f, 0.7, "%.4f");
+			ImGui::SliderFloat("quadratic", &light.quadratic, 0.0000007f, 1.8, "%.7f");
+		}
 		ImGui::End();
 
 		drawable.setPosition(position);
@@ -123,81 +124,7 @@ void gee::Application::updateGui()
 		}
 		drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
 	}
-	/*if (std::size(drawables_) > 0)
-	{
-		displayDrawableInfo();
-	}*/
-
-	if (std::size(lights_) > 0)
-	{
-		displayPointLightInfo();
-	}
 	camera_.imguiDisplay();
-}
-
-void gee::Application::displayDrawableInfo()
-{
-	std::vector<const char*> names;
-	names.reserve(std::size(drawables_));
-	for (const auto& drawable: drawables_)
-	{
-		names.push_back(drawable.get().name.c_str());
-	}
-
-	ImGui::Begin("Drawables");
-	static int selected_drawable = 0;
-	ImGui::Combo("Names", &selected_drawable, std::data(names), std::size(names));
-	auto& drawable = drawables_[selected_drawable].get();
-	auto position = drawable.getPosition();
-	ImGui::SliderFloat3("position", &position.x, -50.0_m, 50.0_m, "%.1f");
-	ImGui::ColorEdit4("color", &drawable.color.x);
-
-	//the engine uses radians units in internal but degrees for display
-	auto rotation = drawable.getRotation();
-	glm::vec3 rotationDeg = glm::degrees(rotation);
-	ImGui::SliderFloat3("rotation", &rotationDeg.x, 0.0f, 360.0f, "%.1f");
-	rotation = glm::radians(rotationDeg);
-	
-	auto lastScaleFactor = drawable.scaleFactor;
-	ImGui::SliderFloat("scale factor", &drawable.scaleFactor, 0.0f, 10.0f, "%.1f");
-
-	auto size = drawable.getSize();
-	auto sizeStr = std::string{ "x = " } + std::to_string(size.x) + std::string{ " y = " } + std::to_string(size.y) + std::string{ " z = " } + std::to_string(size.z);
-	ImGui::LabelText("size", sizeStr.c_str());
-	ImGui::End();
-
-	drawable.setPosition(position);
-	drawable.setRotation(rotation);
-	if (drawable.scaleFactor == 0.0f)
-	{
-		drawable.scaleFactor = lastScaleFactor;
-	}
-	drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
-}
-
-void gee::Application::displayPointLightInfo()
-{
-	std::vector<const char*> names;
-	names.reserve(std::size(lights_));
-	for (const auto& light : lights_)
-	{
-		names.push_back(light.get().name.c_str());
-	}
-
-	ImGui::Begin("PointLights");
-	static int selected_pointLight = 0;
-	ImGui::Combo("Names", &selected_pointLight, std::data(names), std::size(names));
-	auto& light = lights_[selected_pointLight].get().light();
-
-	ImGui::SliderFloat3("position", &light.position.x, -50.0_m, 50.0_m, "%.1f");
-	ImGui::ColorEdit3("ambient", &light.ambient.x);
-	ImGui::ColorEdit3("diffuse", &light.diffuse.x);
-	ImGui::SliderFloat("specular", &light.specular.x, 0.0f, 256.0f , "%f");
-	light.specular.y = light.specular.x;
-	light.specular.z = light.specular.x;
-	ImGui::SliderFloat("linear", &light.linear, 0.0014f, 0.7, "%.4f");
-	ImGui::SliderFloat("quadratic", &light.quadratic, 0.0000007f, 1.8, "%.7f");
-	ImGui::End();
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -214,12 +141,12 @@ void gee::Application::onMouseMoveEvent(double x, double y)
 		auto yaw = (x - lastPos_.x) * 2.0f * 360.0f / windowSize.x;
 		auto pitch = (lastPos_.y - y) * 2.0f * 360.0f / windowSize.y;
 		lastPos_ = glm::vec2{ x, y };
-		
+
 		camera_.rotate(pitch, yaw);
 	}
 	if (rightButtonPressed_)
 	{
-		
+
 	}
 }
 
@@ -247,21 +174,22 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		double x, y;
 		glfwGetCursorPos(window_.window(), &x, &y);
 		auto drawableIndex = renderer_->objectAt(drawables_, x, y);
+		activeDrawable_ = std::nullopt;
 		if (drawableIndex.has_value())
 		{
-			if(drawableIndex.value() != lastDrawableIndex_)
+			if (drawableIndex.value() != lastDrawableIndex_)
 			{
 				activeDrawable_.emplace(std::ref(drawables_[drawableIndex.value()].get()));
 				lastDrawableIndex_ = drawableIndex.value();
 			}
 			else
 			{
-				activeDrawable_ = std::nullopt;
+				lastDrawableIndex_ = -1;
 			}
 		}
 		else
 		{
-			activeDrawable_ = std::nullopt;
+			lastDrawableIndex_ = -1;
 		}
 	}
 
@@ -280,6 +208,10 @@ bool gee::Application::isRunning()
 {
 	if (renderingtimer_.ellapsedMs() >= 1000 / 60.0f)
 	{
+		if (drawblesShouldBeSorted_)
+		{
+			std::sort(std::begin(drawables_), std::end(drawables_), [&](const auto& lhs, const auto& rhs) { return rhs.get().mesh.hash() < lhs.get().mesh.hash(); });
+		}
 		renderer_->updateCamera(camera_, window_.aspectRatio());
 		updateGui();
 

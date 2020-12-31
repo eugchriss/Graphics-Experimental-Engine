@@ -83,7 +83,10 @@ void gee::Drawable::setPosition(const glm::vec3& pos)
 void gee::Drawable::setColor(const glm::vec3& col)
 {
 	color = glm::vec4{ col, 1.0f };
-	light_->diffuse = col;
+	if (light_)
+	{
+		light_->diffuse = col;
+	}
 }
 
 void gee::Drawable::setRotation(const glm::vec3& rot)
@@ -142,14 +145,14 @@ const gee::BoundingBox& gee::Drawable::boundingBox() const
 
 gee::Optics& gee::Drawable::light()
 {
-	if (light_.has_value())
-	{
-		return *light_;
-	}
-	else
-	{
-		throw std::runtime_error{ "This drawable has no optics component" };
-	}
+	assert(light_.has_value() && "This drawable is not a light source");
+	return light_.value();
+}
+
+const gee::Optics& gee::Drawable::light() const
+{
+	assert(light_.has_value() && "This drawable is not a light source");
+	return light_.value();
 }
 
 const size_t gee::Drawable::hash() const

@@ -23,6 +23,7 @@ vkn::ShaderEffect::ShaderEffect(const std::string& name, const std::string& vert
 	requirement_map[Requirement::Transform] = "Model_Matrix";
 	requirement_map[Requirement::Material] = "Materials";
 	requirement_map[Requirement::Skybox] = "skybox";
+	requirement_map[Requirement::Light] = "PointLights";
 }
 
 const std::string& vkn::ShaderEffect::name() const
