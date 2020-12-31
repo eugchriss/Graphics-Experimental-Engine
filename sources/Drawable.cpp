@@ -43,7 +43,7 @@ gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const gl
 	}
 	size_ /= scaleFactor;
 }
-gee::Drawable::Drawable(const std::string& noun, gee::Mesh&& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot):
+gee::Drawable::Drawable(const std::string& noun, gee::Mesh&& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
 	name{ noun }, mesh{ std::move(mesh) },
 	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
 {
@@ -74,7 +74,7 @@ void gee::Drawable::setPosition(const glm::vec3& pos)
 		position_ = pos;
 		if (light_)
 		{
-			light_->position = position_;
+			light_->position = position_ * size_ ;
 		}
 		transform = glm::translate(transform, relativePos);
 	}

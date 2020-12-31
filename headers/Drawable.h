@@ -40,6 +40,7 @@ namespace gee
 		glm::vec3 position_{};
 		glm::vec3 size_{ 1.0f };
 		glm::vec3 rotation_{};
+		glm::vec3 sizeOffset_{};
 		std::optional<gee::Optics> light_;
 		static uint32_t count; //solely used for default naming
 		gee::BoundingBox boundingBox_;

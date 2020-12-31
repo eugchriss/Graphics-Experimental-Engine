@@ -554,7 +554,7 @@ const vkn::Framebuffer::ShaderEffectResource vkn::Framebuffer::createShaderEffec
 		{
 			const auto& light = drawable.light();
 			gee::ShaderPointLight shaderLight{};
-			shaderLight.position = glm::vec4{ drawable.getPosition(), 0.0f };
+			shaderLight.position = glm::vec4{ light.position, 0.0f };
 			shaderLight.ambient = glm::vec4{ light.ambient, 1.0f };
 			shaderLight.diffuse = glm::vec4{ light.diffuse, 1.0f };
 			shaderLight.specular = glm::vec4{ light.specular, 1.0f };

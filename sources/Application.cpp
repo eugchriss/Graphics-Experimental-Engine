@@ -88,7 +88,7 @@ void gee::Application::updateGui()
 		auto& drawable = activeDrawable_.value().get();
 		ImGui::Begin(drawable.name.c_str());
 		auto position = drawable.getPosition();
-		ImGui::SliderFloat3("position", &position.x, -50.0_m, 50.0_m, "%.1f");
+		ImGui::SliderFloat3("position", &position.x, -500.0_m, 500.0_m, "%.1f");
 		ImGui::ColorEdit4("color", &drawable.color.x);
 
 		//the engine uses radians units in internal but degrees for display
