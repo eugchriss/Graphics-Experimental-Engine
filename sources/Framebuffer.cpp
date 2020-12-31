@@ -548,8 +548,8 @@ const vkn::Framebuffer::ShaderEffectResource vkn::Framebuffer::createShaderEffec
 	pointLights.reserve(std::size(drawables));
 	for (const auto& drawableRef : drawables)
 	{
-		const auto& drawable = drawableRef.get();
-		modelMatrices.push_back(drawable.transform);
+		auto& drawable = drawableRef.get();
+		modelMatrices.push_back(drawable.getTransform());
 		if (drawable.hasLightComponent())
 		{
 			const auto& light = drawable.light();

@@ -68,15 +68,14 @@ gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const Op
 
 void gee::Drawable::setPosition(const glm::vec3& pos)
 {
-	const auto relativePos = pos - position_;
-	if (relativePos != glm::vec3{ 0.0f })
+	if (position_ != pos)
 	{
+		shouldRecomputeTransform_ = true;
 		position_ = pos;
 		if (light_)
 		{
-			light_->position = position_ * size_ ;
+			light_->position = position_;
 		}
-		transform = glm::translate(transform, relativePos);
 	}
 }
 
@@ -91,31 +90,20 @@ void gee::Drawable::setColor(const glm::vec3& col)
 
 void gee::Drawable::setRotation(const glm::vec3& rot)
 {
-	const auto relativeRot = rot - rotation_;
-	if (relativeRot != glm::vec3{ 0.0f })
+	if (rotation_ != rot)
 	{
+		shouldRecomputeTransform_ = true;
 		rotation_ = rot;
-
-		transform = glm::rotate(transform, relativeRot.x, glm::vec3{ 1.0, 0.0f, 0.0f });
-		transform = glm::rotate(transform, relativeRot.y, glm::vec3{ 0.0, 1.0f, 0.0f });
-		transform = glm::rotate(transform, relativeRot.z, glm::vec3{ 0.0, 0.0f, 1.0f });
 	}
 }
 
 void gee::Drawable::setSize(const glm::vec3& size)
 {
-	auto relativeSize = size / size_;
-	if (std::isinf(relativeSize.x))
-		relativeSize.x = 1.0f;
-	if (std::isinf(relativeSize.y))
-		relativeSize.y = 1.0f;
-	if (std::isinf(relativeSize.z))
-		relativeSize.z = 1.0f;
-	if (relativeSize != glm::vec3{ 1.0f })
+	if (size_ != size)
 	{
+		shouldRecomputeTransform_ = true;
 		size_ = size;
-		transform = glm::scale(transform, relativeSize);
-	}
+	}	
 }
 
 const glm::vec3& gee::Drawable::getPosition() const
@@ -131,6 +119,22 @@ const glm::vec3& gee::Drawable::getSize() const
 const glm::vec3& gee::Drawable::getRotation() const
 {
 	return rotation_;
+}
+
+const glm::mat4& gee::Drawable::getTransform()
+{
+	if (shouldRecomputeTransform_)
+	{
+		transform_ = glm::mat4{ 1.0f };
+		transform_ = glm::translate(transform_, position_);
+		transform_ = glm::scale(transform_, size_);
+		transform_ = glm::rotate(transform_, rotation_.x, glm::vec3{ 1.0, 0.0f, 0.0f });
+		transform_ = glm::rotate(transform_, rotation_.y, glm::vec3{ 0.0, 1.0f, 0.0f });
+		transform_ = glm::rotate(transform_, rotation_.z, glm::vec3{ 0.0, 0.0f, 1.0f });
+
+		shouldRecomputeTransform_ = false;
+	}
+	return transform_;
 }
 
 bool gee::Drawable::hasLightComponent() const

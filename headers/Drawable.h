@@ -26,6 +26,7 @@ namespace gee
 		const glm::vec3& getPosition() const;
 		const glm::vec3& getSize() const;
 		const glm::vec3& getRotation() const;
+		const glm::mat4& getTransform();
 		bool hasLightComponent() const;
 		const BoundingBox& boundingBox() const;
 		gee::Optics& light();
@@ -33,14 +34,14 @@ namespace gee
 		const size_t hash() const;
 		std::string name;
 		glm::vec4 color;
-		glm::mat4 transform{ 1.0f };
 		float scaleFactor{ 1.0f };
 		const gee::Mesh& mesh;
 	private:
 		glm::vec3 position_{};
 		glm::vec3 size_{ 1.0f };
 		glm::vec3 rotation_{};
-		glm::vec3 sizeOffset_{};
+		glm::mat4 transform_{ 1.0f };
+		bool shouldRecomputeTransform_ = false;
 		std::optional<gee::Optics> light_;
 		static uint32_t count; //solely used for default naming
 		gee::BoundingBox boundingBox_;
