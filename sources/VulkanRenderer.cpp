@@ -1,10 +1,6 @@
-#include "../headers/VulkanRenderer.h"
-#include "../headers/vulkan_utils.h"
-#include "../headers/PipelineBuilder.h"
-#include "../headers/RenderpassBuilder.h"
-#include "../headers/imgui_impl_glfw.h"
-#include <algorithm>
 #include <string>
+#include "../headers/VulkanRenderer.h"
+#include "../headers/imgui_impl_glfw.h"
 #include "../headers/TextureImageFactory.h"
 
 #define ENABLE_VALIDATION_LAYERS

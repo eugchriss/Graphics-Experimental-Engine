@@ -48,8 +48,8 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR s
 	fbInfo.pNext = nullptr;
 	fbInfo.flags = 0;
 	fbInfo.layers = 1;
-	fbInfo.height = swapchain_->extent().height;
 	fbInfo.width = swapchain_->extent().width;
+	fbInfo.height = swapchain_->extent().height;
 	fbInfo.renderPass = renderpass_->renderpass();
 
 	createFramebufer(fbInfo, renderpassAttachments, outputColorBufferAttachmentIndex, frameCount);
@@ -86,8 +86,8 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 	fbInfo.pNext = nullptr;
 	fbInfo.flags = 0;
 	fbInfo.layers = 1;
-	fbInfo.height = extent.height;
 	fbInfo.width = extent.width;
+	fbInfo.height = extent.height;
 	fbInfo.renderPass = renderpass_->renderpass();
 
 	createFramebufer(fbInfo, renderpassAttachments, frameCount);
@@ -150,8 +150,8 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	fbInfo.pNext = nullptr;
 	fbInfo.flags = 0;
 	fbInfo.layers = 1;
-	fbInfo.height = size.x;
-	fbInfo.width = size.y;
+	fbInfo.width = size.x;
+	fbInfo.height = size.y;
 	fbInfo.renderPass = renderpass_->renderpass();
 	auto& renderpassAttachments = renderpass_->attachments();
 
@@ -616,14 +616,16 @@ void vkn::Framebuffer::bindTexture(TextureHolder_t& textureHolder, const Texture
 	{
 		textureViews.push_back(textureHolder.get(texture).getView(VK_IMAGE_ASPECT_COLOR_BIT));
 	}
-	effect.updateTextures("textures", sampler, textureViews, VK_SHADER_STAGE_FRAGMENT_BIT);
+	auto textureName = vkn::ShaderEffect::requirement_map[vkn::ShaderEffect::Requirement::Texture];
+	effect.updateTextures(textureName, sampler, textureViews, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 void vkn::Framebuffer::bindSkybox(TextureHolder_t& textureHolder, const TextureSet_t& textures, vkn::ShaderEffect& effect, const VkSampler& sampler) const
 {
 	const auto& diffuseTex = *textures.begin();
 	const auto& view = textureHolder.get(diffuseTex).getView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_CUBE, 6);
-	effect.updateTexture("skybox", sampler, view, VK_SHADER_STAGE_FRAGMENT_BIT);
+	auto skyboxName = vkn::ShaderEffect::requirement_map[vkn::ShaderEffect::Requirement::Skybox];
+	effect.updateTexture(skyboxName, sampler, view, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 void vkn::Framebuffer::bindMaterial(MaterialHolder_t& materialHolder, const TextureSet_t textures, const MaterialSet_t& materials, vkn::ShaderEffect& effect) const
@@ -638,12 +640,14 @@ void vkn::Framebuffer::bindMaterial(MaterialHolder_t& materialHolder, const Text
 		shaderMaterial.specularIndex = indexOf(textures, materialHolder.get(material).specular);
 		shaderMaterials.push_back(shaderMaterial);
 	}
-	effect.updateBuffer("Materials", shaderMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
+	auto materialName = vkn::ShaderEffect::requirement_map[vkn::ShaderEffect::Requirement::Material];
+	effect.updateBuffer(materialName, shaderMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 void vkn::Framebuffer::bindLight(vkn::ShaderEffect& effect, const std::vector<gee::ShaderPointLight>& pointLights)
 {
-	effect.updateBuffer("PointLights", pointLights, VK_SHADER_STAGE_FRAGMENT_BIT);
+	auto pointLightName = vkn::ShaderEffect::requirement_map[vkn::ShaderEffect::Requirement::Light];
+	effect.updateBuffer(pointLightName, pointLights, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 void vkn::Framebuffer::bindDrawableMaterial(MaterialHolder_t& materialHolder, const std::vector<Hash_t>& materials, vkn::ShaderEffect& effect) const
