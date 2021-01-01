@@ -13,6 +13,12 @@ namespace vkn
 		VkFormat format;
 		bool isUsedForPresent{ false };
 	};
+	struct SubpassAttachmentUsage
+	{
+		uint32_t subpassIndex{};
+		VkPipelineStageFlags stageFlag{};
+		VkAccessFlagBits accessFlag{};
+	};
 
 	class Renderpass
 	{

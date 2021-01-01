@@ -21,25 +21,27 @@ namespace gee
 		Drawable(Drawable&&) = default;
 		void setPosition(const glm::vec3& pos);
 		void setColor(const glm::vec3& col);
+		void setColor(const glm::vec4& col);
 		void setRotation(const glm::vec3& rot);
 		void setSize(const glm::vec3& size);
 		const glm::vec3& getPosition() const;
 		const glm::vec3& getSize() const;
 		const glm::vec3& getRotation() const;
 		const glm::mat4& getTransform();
+		const glm::vec4& getColor() const;
 		bool hasLightComponent() const;
 		const BoundingBox& boundingBox() const;
 		gee::Optics& light();
 		const gee::Optics& light() const;
 		const size_t hash() const;
 		std::string name;
-		glm::vec4 color;
 		float scaleFactor{ 1.0f };
 		const gee::Mesh& mesh;
 	private:
 		glm::vec3 position_{};
 		glm::vec3 size_{ 1.0f };
 		glm::vec3 rotation_{};
+		glm::vec4 color{ 1.0f };
 		glm::mat4 transform_{ 1.0f };
 		bool shouldRecomputeTransform_ = false;
 		std::optional<gee::Optics> light_;

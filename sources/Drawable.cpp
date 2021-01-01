@@ -84,6 +84,17 @@ void gee::Drawable::setColor(const glm::vec3& col)
 	color = glm::vec4{ col, 1.0f };
 	if (light_)
 	{
+		light_->ambient = 0.2f * col;
+		light_->diffuse = col;
+	}
+}
+
+void gee::Drawable::setColor(const glm::vec4& col)
+{
+	color = col;
+	if (light_)
+	{
+		light_->ambient = 0.2f * col;
 		light_->diffuse = col;
 	}
 }
@@ -135,6 +146,11 @@ const glm::mat4& gee::Drawable::getTransform()
 		shouldRecomputeTransform_ = false;
 	}
 	return transform_;
+}
+
+const glm::vec4& gee::Drawable::getColor() const
+{
+	return color;
 }
 
 bool gee::Drawable::hasLightComponent() const

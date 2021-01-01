@@ -32,15 +32,15 @@ const uint32_t vkn::RenderpassBuilder::addSubpass(Subpass::Requirement& requimen
 	return std::size(subpassesRequirements_) - 1;
 }
 
-void vkn::RenderpassBuilder::addDependecy(const Dependency::Subpass& src, const Dependency::Subpass& dst)
+void vkn::RenderpassBuilder::addDependecy(const vkn::SubpassAttachmentUsage& src, const vkn::SubpassAttachmentUsage& dst)
 {
 	VkSubpassDependency dependency{};
-	dependency.srcSubpass = src.subpass;
+	dependency.srcSubpass = src.subpassIndex;
 	dependency.srcStageMask = src.stageFlag;
-	dependency.srcAccessMask = src.accesFlag;
-	dependency.dstSubpass = dst.subpass;
+	dependency.srcAccessMask = src.accessFlag;
+	dependency.dstSubpass = dst.subpassIndex;
 	dependency.dstStageMask = dst.stageFlag;
-	dependency.dstAccessMask = dst.accesFlag;
+	dependency.dstAccessMask = dst.accessFlag;
 	dependency.dependencyFlags = 0;
 	dependencies_.push_back(dependency);
 }

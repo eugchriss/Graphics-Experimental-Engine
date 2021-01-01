@@ -344,7 +344,7 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 		for (const auto& attachment : renderpassAttachments)
 		{
 			images_.emplace_back(gpu_, device_, getUsageFlag(attachment), attachment.format, VkExtent3D{ renderArea_.extent.width, renderArea_.extent.height, 1 });
-			views.emplace_back(images_.back().getView(VK_IMAGE_ASPECT_COLOR_BIT));
+			views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
 		}
 		fbInfo.attachmentCount = std::size(views);
 		fbInfo.pAttachments = std::data(views);
@@ -364,18 +364,8 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 		for (const auto& attachment : renderpassAttachments)
 		{
 			auto& image = images_.emplace_back(gpu_, device_, getUsageFlag(attachment), attachment.format, VkExtent3D{ swapchain_->extent().width, swapchain_->extent().height, 1 });
-			if (attachment.name == "depth_buffer")
-			{
-				views.emplace_back(image.getView(VK_IMAGE_ASPECT_DEPTH_BIT));
-			}
-			else if (attachment.name == "stencil_buffer")
-			{
-				views.emplace_back(image.getView(VK_IMAGE_ASPECT_STENCIL_BIT));
-			}
-			else
-			{
-				views.emplace_back(image.getView(VK_IMAGE_ASPECT_COLOR_BIT));
-			}
+			views.emplace_back(image.getView(getAspectFlag(attachment)));
+
 		}
 		views.insert(std::begin(views) + presentAttachmentIndex, swapchainImages[i].getView(VK_IMAGE_ASPECT_COLOR_BIT));
 		fbInfo.attachmentCount = std::size(views);
@@ -431,12 +421,12 @@ void vkn::Framebuffer::createRenderpass(const std::unordered_map<std::string, vk
 {
 	vkn::RenderpassBuilder renderpassBuilder{};
 	auto& renderpassAttachments = createRenderpassAttachments(renderpassBuilder, effectRefs);
-	createRenderpassSubpasses(renderpassBuilder, effectRefs, renderpassAttachments);
+	auto attachmentDependencies = createRenderpassSubpasses(renderpassBuilder, effectRefs, renderpassAttachments);
 	if (enableGui)
 	{
-		createGuiSubpass(renderpassBuilder, renderpassAttachments);
+		createGuiSubpass(renderpassBuilder, renderpassAttachments, attachmentDependencies);
 	}
-	createSubpassesDepencies(renderpassBuilder, effectRefs, renderpassAttachments);
+	createSubpassesDepencies(renderpassBuilder, attachmentDependencies);
 
 	renderpass_ = std::make_unique<vkn::Renderpass>(renderpassBuilder.get(device_));
 }
@@ -491,8 +481,10 @@ const std::vector<vkn::RenderpassAttachment> vkn::Framebuffer::createRenderpassA
 	return renderpassAttachments;
 }
 
-void vkn::Framebuffer::createRenderpassSubpasses(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const std::vector<RenderpassAttachment>& attachments)
+const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> vkn::Framebuffer::createRenderpassSubpasses(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const std::vector<RenderpassAttachment>& attachments)
 {
+	std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> attachmentDependencies;
+	auto subpassIndex = 0u;
 	for (const auto& [name, effectRef] : effectRefs)
 	{
 		const auto& effect = effectRef;
@@ -503,6 +495,12 @@ void vkn::Framebuffer::createRenderpassSubpasses(vkn::RenderpassBuilder& builder
 			auto result = std::find_if(std::begin(attachments), std::end(attachments), [&](const auto& rpAttachment) {return rpAttachment.name == attachment.name; });
 			assert(result != std::end(attachments) && "Not all attachments have been registered to the renderpass attachments");
 			requirements.addInputAttachment(std::distance(std::begin(attachments), result));
+
+			vkn::SubpassAttachmentUsage attachmentUsage{};
+			attachmentUsage.subpassIndex = subpassIndex;
+			attachmentUsage.stageFlag = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; //Assuming that for now all input attachments are consumed in the frag shader
+			attachmentUsage.accessFlag = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+			attachmentDependencies[attachment.name].push_back(attachmentUsage);
 		}
 
 		const auto& outputAttachments = effect.outputAttachments();
@@ -511,6 +509,12 @@ void vkn::Framebuffer::createRenderpassSubpasses(vkn::RenderpassBuilder& builder
 			auto result = std::find_if(std::begin(attachments), std::end(attachments), [&](const auto& rpAttachment) {return rpAttachment.name == attachment.name; });
 			assert(result != std::end(attachments) && "Not all attachments have been registered to the renderpass attachments");
 			requirements.addColorAttachment(std::distance(std::begin(attachments), result));
+
+			vkn::SubpassAttachmentUsage attachmentUsage{};
+			attachmentUsage.subpassIndex = subpassIndex;
+			attachmentUsage.stageFlag = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			attachmentUsage.accessFlag = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			attachmentDependencies[attachment.name].push_back(attachmentUsage);
 		}
 
 		if (effect.hasDepthBuffer())
@@ -518,21 +522,45 @@ void vkn::Framebuffer::createRenderpassSubpasses(vkn::RenderpassBuilder& builder
 			auto result = std::find_if(std::begin(attachments), std::end(attachments), [&](const auto& rpAttachment) {return rpAttachment.name == "depth_buffer"; });
 			assert(result != std::end(attachments) && "No depth buffer has been registered to the renderpass attachments");
 			requirements.addDepthAttachment(std::distance(std::begin(attachments), result));
+
+			vkn::SubpassAttachmentUsage attachmentUsage{};
+			attachmentUsage.subpassIndex = subpassIndex;
+			attachmentUsage.stageFlag = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			attachmentUsage.accessFlag = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			attachmentDependencies["depth_buffer"].push_back(attachmentUsage);
 		}
 		if (effect.hasStencilBuffer())
 		{
 			auto result = std::find_if(std::begin(attachments), std::end(attachments), [&](const auto& rpAttachment) {return rpAttachment.name == "stencil_buffer"; });
 			assert(result != std::end(attachments) && "No stencil buffer has been registered to the renderpass attachments");
 			requirements.addStencilAttachment(std::distance(std::begin(attachments), result));
+			
+			vkn::SubpassAttachmentUsage attachmentUsage{};
+			attachmentUsage.subpassIndex = subpassIndex;
+			attachmentUsage.stageFlag = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			attachmentUsage.accessFlag = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			attachmentDependencies["stencil_buffer"].push_back(attachmentUsage);
 		}
-
+		++subpassIndex;
 		requirements.setPreservedAttachments(attachments);
 		builder.addSubpass(requirements);
 	}
+
+	return attachmentDependencies;
 }
 
-void vkn::Framebuffer::createSubpassesDepencies(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const std::vector<RenderpassAttachment>& attachments)
+void vkn::Framebuffer::createSubpassesDepencies(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>>& attachmentDependencies)
 {
+	for (const auto& [attachmentName, attachmentUsages] : attachmentDependencies)
+	{
+		if (std::size(attachmentUsages) > 1)
+		{
+			for (auto i = 0u; i < std::size(attachmentUsages) - 1; ++i)
+			{
+				builder.addDependecy(attachmentUsages[i], attachmentUsages[i + 1]);
+			}
+		}
+	}
 }
 
 const vkn::Framebuffer::ShaderEffectResource vkn::Framebuffer::createShaderEffectResource(MeshHolder_t& meshHolder, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
@@ -659,13 +687,19 @@ void vkn::Framebuffer::bindUniforms(vkn::ShaderEffect& effect, const vkn::Shader
 	}
 }
 
-void vkn::Framebuffer::createGuiSubpass(vkn::RenderpassBuilder& builder, const std::vector<RenderpassAttachment>& attachments)
+void vkn::Framebuffer::createGuiSubpass(vkn::RenderpassBuilder& builder, const std::vector<RenderpassAttachment>& attachments, std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>>& attachmentDependencies)
 {
 	auto presentAttachment = std::find_if(std::begin(attachments), std::end(attachments), [](const auto& attachment) { return attachment.isUsedForPresent; });
 	assert(presentAttachment != std::end(attachments) && "The renderpass has no present attachment created");
 	vkn::RenderpassBuilder::Subpass::Requirement requirement;
 	requirement.addColorAttachment(std::distance(std::begin(attachments), presentAttachment));
 	requirement.setPreservedAttachments(attachments);
+
+	vkn::SubpassAttachmentUsage attachmentUsage{};
+	attachmentUsage.subpassIndex = std::size(effects_);
+	attachmentUsage.stageFlag = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	attachmentUsage.accessFlag = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	attachmentDependencies[presentAttachment->name].push_back(attachmentUsage);
 	builder.addSubpass(requirement);
 }
 

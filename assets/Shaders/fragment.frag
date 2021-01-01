@@ -33,6 +33,8 @@ struct PointLight
     vec4 specular;
     float linear;
     float quadratic;
+    float padding1;
+    float padding2;
 };
 
 layout(binding = 5) uniform PointLights
@@ -55,9 +57,12 @@ void main()
     vec3 normal = texture(textures[material.normal], texCoord).rgb;
     vec3 viewDir = normalize(viewPos.xyz - fragPos.xyz);
     normal = 2.0 * normal - vec3(1.0);
-    outColor = computePointLight(material, pointLights.values[0], normal, fragPos, viewDir);
-
-    //outColor = texture(textures[material.diffuse], texCoord);
+    
+    outColor = vec4(0.0, 0.0, 0.0, 0.0);
+    for(int i = 0; i < 2; ++i)
+    {
+	 outColor += computePointLight(material, pointLights.values[i], normal, fragPos, viewDir);
+    };
     outColor = pow(outColor, vec4(1.0/2.2));
 }
 

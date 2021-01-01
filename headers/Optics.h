@@ -35,6 +35,8 @@ namespace gee
 		glm::vec4 specular{};
 		float linear{};
 		float quadratic{};
+		float padding1;
+		float padding2;
 	};
 
 	struct ShaderSpotLight
