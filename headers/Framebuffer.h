@@ -72,7 +72,6 @@ namespace vkn
 		std::unordered_map<std::string, vkn::ShaderEffect> effects_;
 		std::vector<std::tuple<ShaderEffectRef, DrawablesRef, CameraConstRef>> renderingOrder_;
 		VkImageAspectFlags getAspectFlag(const vkn::RenderpassAttachment& attachment);
-		VkImageUsageFlags getUsageFlag(const vkn::RenderpassAttachment& attachment);
 		void createFramebufer(VkFramebufferCreateInfo& fbInfo, const std::vector<vkn::RenderpassAttachment>& renderpassAttachments, const uint32_t frameCount);
 		void createFramebufer(VkFramebufferCreateInfo& fbInfo, const std::vector<vkn::RenderpassAttachment>& renderpassAttachments, const uint32_t presentAttachmentIndex, const uint32_t frameCount);
 		void createSignals();

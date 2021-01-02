@@ -46,7 +46,7 @@ namespace vkn
 
 		RenderpassBuilder() = default;
 		RenderpassBuilder(RenderpassBuilder&&) = default;
-		const uint32_t addAttachmentT(const vkn::RenderpassAttachment& attachment, const VkImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, const VkImageLayout initialLayout = { VK_IMAGE_LAYOUT_UNDEFINED }, const Attachment::Content& colorDepthOp = { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE }, const Attachment::Content& stencilOp = { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE });
+		const uint32_t addAttachmentT(const vkn::RenderpassAttachment& attachment, const VkImageLayout initialLayout = { VK_IMAGE_LAYOUT_UNDEFINED }, const Attachment::Content& colorDepthOp = { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE }, const Attachment::Content& stencilOp = { VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE });
 		const uint32_t addSubpass(Subpass::Requirement& requiments);
 		void addDependecy(const vkn::SubpassAttachmentUsage &scr, const vkn::SubpassAttachmentUsage& dst);
 		vkn::Renderpass get(vkn::Device& device);

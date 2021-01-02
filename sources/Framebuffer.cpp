@@ -143,7 +143,12 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	}
 	imageAvailableSignals_.clear();
 	renderingFinishedSignals_.clear();
+	for (auto fb : framebuffers_)
+	{
+		vkDestroyFramebuffer(device_.device, fb, nullptr);
+	}
 	createSignals();
+	framebuffers_.resize(frameCount);
 	
 	VkFramebufferCreateInfo fbInfo{};
 	fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -259,10 +264,18 @@ void vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
 	{
 		swapchain_->setImageAvailableSignal(imageAvailableSignals_[currentFrame_]);
 		graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_], imageAvailableSignals_[currentFrame_], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
+		for (auto& image : images_)
+		{
+			image.setAfterRenderpassLayout();
+		}
 		graphicsQueue.present(*swapchain_, renderingFinishedSignals_[currentFrame_]);
 	}else
 	{
 		graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_]);
+		for (auto& image : images_)
+		{
+			image.setAfterRenderpassLayout();
+		}
 	}
 	currentFrame_ = (currentFrame_ + 1) % std::size(framebuffers_);
 }
@@ -321,20 +334,6 @@ VkImageAspectFlags vkn::Framebuffer::getAspectFlag(const vkn::RenderpassAttachme
 	}
 }
 
-VkImageUsageFlags vkn::Framebuffer::getUsageFlag(const vkn::RenderpassAttachment& attachment)
-{
-	if (attachment.format == VK_FORMAT_D16_UNORM || attachment.format == VK_FORMAT_D32_SFLOAT ||
-		attachment.format == VK_FORMAT_S8_UINT || attachment.format == VK_FORMAT_D16_UNORM_S8_UINT ||
-		attachment.format == VK_FORMAT_D24_UNORM_S8_UINT || attachment.format == VK_FORMAT_D32_SFLOAT_S8_UINT)
-	{
-		return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	}
-	else
-	{
-		return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	}
-}
-
 void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const std::vector<vkn::RenderpassAttachment>& renderpassAttachments, const uint32_t frameCount)
 {
 	for (auto i = 0u; i < frameCount; ++i)
@@ -343,7 +342,7 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 		views.reserve(std::size(renderpassAttachments));
 		for (const auto& attachment : renderpassAttachments)
 		{
-			images_.emplace_back(gpu_, device_, getUsageFlag(attachment), attachment.format, VkExtent3D{ renderArea_.extent.width, renderArea_.extent.height, 1 });
+			images_.emplace_back(gpu_, device_, attachment, VkExtent3D{ renderArea_.extent.width, renderArea_.extent.height, 1 });
 			views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
 		}
 		fbInfo.attachmentCount = std::size(views);
@@ -363,7 +362,7 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 		views.reserve(std::size(renderpassAttachments));
 		for (const auto& attachment : renderpassAttachments)
 		{
-			auto& image = images_.emplace_back(gpu_, device_, getUsageFlag(attachment), attachment.format, VkExtent3D{ swapchain_->extent().width, swapchain_->extent().height, 1 });
+			auto& image = images_.emplace_back(gpu_, device_, attachment, VkExtent3D{ swapchain_->extent().width, swapchain_->extent().height, 1 });
 			views.emplace_back(image.getView(getAspectFlag(attachment)));
 
 		}
@@ -460,10 +459,12 @@ const std::vector<vkn::RenderpassAttachment> vkn::Framebuffer::createRenderpassA
 	{
 		if (attachment.isUsedForPresent)
 		{
-			attachment.attachmentIndex = builder.addAttachmentT(attachment, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+			attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			attachment.attachmentIndex = builder.addAttachmentT(attachment);
 		}
 		else
 		{
+			attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			attachment.attachmentIndex = builder.addAttachmentT(attachment);
 		}
 	}
@@ -471,13 +472,14 @@ const std::vector<vkn::RenderpassAttachment> vkn::Framebuffer::createRenderpassA
 	vkn::RenderpassAttachment depthAttachment{};
 	depthAttachment.name = "depth_buffer";
 	depthAttachment.format = VK_FORMAT_D32_SFLOAT;
-	depthAttachment.attachmentIndex = builder.addAttachmentT(depthAttachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthAttachment.attachmentIndex = builder.addAttachmentT(depthAttachment);
 	renderpassAttachments.emplace_back(depthAttachment);
 
 	vkn::RenderpassAttachment stencilAttachment{};
 	stencilAttachment.name = "stencil_buffer";
 	stencilAttachment.format = VK_FORMAT_S8_UINT;
-
+	stencilAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	return renderpassAttachments;
 }
 

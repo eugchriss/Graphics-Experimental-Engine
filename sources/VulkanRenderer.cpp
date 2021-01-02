@@ -46,6 +46,8 @@ vkn::Renderer::Renderer(gee::Window& window)
 vkn::Renderer::~Renderer()
 {
 	device_->idle();
+	pixelPerfectFramebuffer_.reset();
+	mainFramebuffer_.reset();
 	vkDestroySurfaceKHR(instance_->instance, surface_, nullptr);
 	vkDestroySampler(device_->device, sampler_, nullptr);
 	vkDestroyDescriptorPool(device_->device, imguiDescriptorPool_, nullptr);

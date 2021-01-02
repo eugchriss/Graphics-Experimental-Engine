@@ -52,6 +52,13 @@ vkn::Image::Image(vkn::Device& device, const VkImage image, const VkFormat forma
 #endif
 }
 
+vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, const vkn::RenderpassAttachment& attachment, const VkExtent3D extent, const uint32_t layerCount) :
+Image(gpu, device, getUsageFlag(attachment), attachment.format, extent, layerCount)
+{
+	isRenderpassAttachment_ = true ;
+	afterRenderpassLayout_ = attachment.finalLayout;
+}
+
 vkn::Image::Image(Image&& other) : device_{ other.device_ }
 {
 	memory_ = std::move(other.memory_);
@@ -61,6 +68,8 @@ vkn::Image::Image(Image&& other) : device_{ other.device_ }
 	format_ = other.format_;
 	extent_ = other.extent_;
 	layout_ = other.layout_;
+	afterRenderpassLayout_ = other.afterRenderpassLayout_;
+	isRenderpassAttachment_ = other.isRenderpassAttachment_;
 	layerCount_ = other.layerCount_;
 
 	other.image = VK_NULL_HANDLE;
@@ -144,7 +153,7 @@ const std::vector<vkn::Pixel> vkn::Image::content(const vkn::Gpu& gpu, const VkI
 	}return std::move(datas);
 }
 
-const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize offset, const VkImageAspectFlags& apect)
+const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize offset, const VkImageAspectFlags& aspect)
 {
 	auto requirements = getMemoryRequirement();
 	vkn::Buffer buffer{ device_, VK_BUFFER_USAGE_TRANSFER_DST_BIT, requirements.size };
@@ -155,8 +164,11 @@ const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize off
 	vkn:CommandPool cbPool{ device_, transferQueueFamily.familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
 	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
+	auto previousLayout = layout_;
 	cb.begin();
-	copyToBuffer(cb, buffer, VK_IMAGE_ASPECT_COLOR_BIT);
+	transitionLayout(cb, aspect, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	copyToBuffer(cb, buffer, aspect);
+	transitionLayout(cb, aspect, previousLayout);
 	cb.end();
 
 	auto transferQueue = transferQueueFamily.getQueue(device_);
@@ -386,6 +398,14 @@ const VkImageView vkn::Image::getView(const VkImageAspectFlags aspect, const VkI
 	}
 }
 
+void vkn::Image::setAfterRenderpassLayout()
+{
+	if (isRenderpassAttachment_)
+	{	
+		layout_ = afterRenderpassLayout_;
+	}
+}
+
 const std::string vkn::Image::getStringUsage(const VkImageUsageFlags usageFlag) const
 {
 	auto bits = unwrapFlags(usageFlag);
@@ -463,3 +483,16 @@ const std::string vkn::Image::getStringViewType(const VkImageViewType type) cons
 	return str;
 }
 
+VkImageUsageFlags vkn::Image::getUsageFlag(const vkn::RenderpassAttachment& attachment)
+{
+	if (attachment.format == VK_FORMAT_D16_UNORM || attachment.format == VK_FORMAT_D32_SFLOAT ||
+		attachment.format == VK_FORMAT_S8_UINT || attachment.format == VK_FORMAT_D16_UNORM_S8_UINT ||
+		attachment.format == VK_FORMAT_D24_UNORM_S8_UINT || attachment.format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+	{
+		return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	}
+	else
+	{
+		return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	}
+}

@@ -2,7 +2,7 @@
 #include "../headers/vulkan_utils.h"
 #include <numeric>
 
-const uint32_t vkn::RenderpassBuilder::addAttachmentT(const vkn::RenderpassAttachment& attachment, const VkImageLayout finalLayout, const VkImageLayout initialLayout, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp)
+const uint32_t vkn::RenderpassBuilder::addAttachmentT(const vkn::RenderpassAttachment& attachment, const VkImageLayout initialLayout, const Attachment::Content& colorDepthOp, const Attachment::Content& stencilOp)
 {
 	auto result = std::find_if(std::begin(attachments_), std::end(attachments_), [&](const auto pair) { return pair.first == attachment.name; });
 	if (result == std::end(attachments_))
@@ -16,7 +16,7 @@ const uint32_t vkn::RenderpassBuilder::addAttachmentT(const vkn::RenderpassAttac
 		att.stencilLoadOp = stencilOp.load;
 		att.stencilStoreOp = stencilOp.store;
 		att.initialLayout = initialLayout;
-		att.finalLayout = finalLayout;
+		att.finalLayout = attachment.finalLayout;
 		attachments_.emplace_back(attachment.name, att);
 		return std::size(attachments_) - 1;
 	}

@@ -12,6 +12,7 @@ namespace vkn
 		std::string name;
 		VkFormat format;
 		bool isUsedForPresent{ false };
+		VkImageLayout finalLayout{ VK_IMAGE_LAYOUT_UNDEFINED };
 	};
 	struct SubpassAttachmentUsage
 	{
