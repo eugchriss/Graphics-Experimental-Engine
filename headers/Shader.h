@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <variant>
 
 namespace vkn
 {
@@ -37,6 +38,12 @@ namespace vkn
 			std::vector<VkDeviceSize> ranges{};
 			uint32_t size{};
 		};
+		struct Tweaking
+		{
+			using glslType = std::variant<bool, uint32_t, int32_t, float>;
+			std::string name{};
+			glslType data{};
+		};
 		struct Attachment
 		{
 			uint32_t layoutIndex{};
@@ -47,26 +54,30 @@ namespace vkn
 
 		const std::vector<Binding>& bindings() const;
 		const std::vector<PushConstant>& pushConstants() const;
+		const std::vector<Tweaking>& tweakings() const;
 		const std::vector<VkDescriptorPoolSize> poolSize() const;
 		const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributeDescriptions() const;
 		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
 		const std::vector<std::string>& inputTexturesNames() const;
 		const std::vector<vkn::Shader::Attachment>& subpassInputAttachments() const;
+		static void setTweakingsName(const std::string& name);
 	private:
 		vkn::Device& device_;
 		VkShaderModule module_{ VK_NULL_HANDLE };
 		VkShaderStageFlagBits stage_;
 		std::vector<Binding> bindings_;
 		std::vector<PushConstant> pushConstants_;
+		std::vector<Tweaking> tweakings_;
 		std::vector<vkn::Shader::Attachment> outputAttachments_;
 		std::vector<vkn::Shader::Attachment> subpassInputAttachments_;
 		std::vector<std::string> inputTexturesNames_;
 		std::unique_ptr<spirv_cross::CompilerGLSL> spirv_;
-
+		static std::string tweakingName_;
 		const std::vector<char> readFile(const std::string& path);
 		void getShaderResources(const std::string& path);
 		void introspect(const VkShaderStageFlagBits stage);
 		const Binding parseBinding(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage, const VkDescriptorType type);
 		const PushConstant parsePushConstant(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage);
+		void getTweakingDataType(vkn::Shader::Tweaking& tweaking, const spirv_cross::SPIRType::BaseType& type);
 	};
 }

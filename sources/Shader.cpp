@@ -2,6 +2,7 @@
 
 #include <fstream>
 
+std::string vkn::Shader::tweakingName_{ "tweakings" };
 vkn::Shader::Shader(vkn::Device& device, const VkShaderStageFlagBits stage, const std::string& path) : device_{ device }, stage_{ stage }
 {
 	auto spirv = readFile(path);
@@ -19,7 +20,7 @@ vkn::Shader::Shader(vkn::Device& device, const VkShaderStageFlagBits stage, cons
 	introspect(stage);
 }
 
-vkn::Shader::Shader(Shader&& other): device_{other.device_}
+vkn::Shader::Shader(Shader&& other) : device_{ other.device_ }
 {
 	module_ = other.module_;
 	stage_ = other.stage_;
@@ -59,6 +60,11 @@ const std::vector<vkn::Shader::Binding>& vkn::Shader::bindings() const
 const std::vector<vkn::Shader::PushConstant>& vkn::Shader::pushConstants() const
 {
 	return pushConstants_;
+}
+
+const std::vector<vkn::Shader::Tweaking>& vkn::Shader::tweakings() const
+{
+	return tweakings_;
 }
 
 const std::vector<VkDescriptorPoolSize> vkn::Shader::poolSize() const
@@ -110,6 +116,11 @@ const std::vector<vkn::Shader::Attachment>& vkn::Shader::subpassInputAttachments
 	return subpassInputAttachments_;
 }
 
+void vkn::Shader::setTweakingsName(const std::string& name)
+{
+	tweakingName_ = name;
+}
+
 const std::vector<char> vkn::Shader::readFile(const std::string& path)
 {
 	std::ifstream file{ path, std::ios::ate | std::ios::binary };
@@ -155,6 +166,7 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 	}
 	for (const auto& resource : resources.push_constant_buffers)
 	{
+		//Tweakings parsing only supports primitives types. No vectors or matrices.
 		pushConstants_.push_back(parsePushConstant(resource, stage_));
 	}
 	for (const auto& resource : resources.stage_outputs)
@@ -202,7 +214,7 @@ const vkn::Shader::Binding vkn::Shader::parseBinding(const spirv_cross::Resource
 	descriptorBinding.descriptorType = type;
 	descriptorBinding.descriptorCount = size;
 	descriptorBinding.pImmutableSamplers = nullptr;
-	
+
 	Binding binding;
 	binding.name = resource.name;
 	binding.set = spirv_->get_decoration(resource.id, spv::DecorationDescriptorSet);
@@ -218,7 +230,7 @@ const vkn::Shader::Binding vkn::Shader::parseBinding(const spirv_cross::Resource
 
 const vkn::Shader::PushConstant vkn::Shader::parsePushConstant(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage)
 {
-	auto spirvType = spirv_->get_type(resource.base_type_id);
+	auto resourceType = spirv_->get_type(resource.base_type_id);
 	auto pushConstantRanges = spirv_->get_active_buffer_ranges(resource.id);
 
 	PushConstant pc{};
@@ -230,5 +242,51 @@ const vkn::Shader::PushConstant vkn::Shader::parsePushConstant(const spirv_cross
 		pc.ranges.push_back(pushConstantRanges[i].range);
 		pc.size += pushConstantRanges[i].range;
 	}
+
+	if (resource.name == tweakingName_)
+	{
+		if (resourceType.basetype == spirv_cross::SPIRType::Struct)
+		{
+			const auto member_count = resourceType.member_types.size();
+			for (auto i = 0u; i < member_count; ++i)
+			{
+				Tweaking tweaking{};
+				tweaking.name = spirv_->get_member_name(resourceType.self, i);
+				auto tweakingType = spirv_->get_type(resourceType.member_types[i]);
+				getTweakingDataType(tweaking, tweakingType.basetype);
+				tweakings_.emplace_back(tweaking);
+			}
+		}
+		else
+		{
+			Tweaking tweaking{};
+			tweaking.name = tweakingName_;
+			auto tweakingType = spirv_->get_type(resourceType.self);
+			getTweakingDataType(tweaking, tweakingType.basetype);
+			tweakings_.emplace_back(tweaking);
+		}
+	}
 	return pc;
+}
+
+void vkn::Shader::getTweakingDataType(vkn::Shader::Tweaking& tweaking, const spirv_cross::SPIRType::BaseType& type)
+{
+	switch (type)
+	{
+	case spirv_cross::SPIRType::BaseType::Boolean:
+		tweaking.data = false;
+		break;
+	case spirv_cross::SPIRType::BaseType::UInt:
+		tweaking.data = 0u;
+		break;
+	case spirv_cross::SPIRType::BaseType::Int:
+		tweaking.data = 0;
+		break;
+	case spirv_cross::SPIRType::BaseType::Float:
+		tweaking.data = 0.0f;
+		break;
+	default:
+		throw std::runtime_error{ "untreated type" };
+		break;
+	}
 }
