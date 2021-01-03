@@ -100,6 +100,11 @@ const std::vector<vkn::Shader::Attachment>& vkn::Shader::outputAttachments() con
 	return outputAttachments_;
 }
 
+const std::vector<std::string>& vkn::Shader::inputTexturesNames() const
+{
+	return inputTexturesNames_;
+}
+
 const std::vector<vkn::Shader::Attachment>& vkn::Shader::subpassInputAttachments() const
 {
 	return subpassInputAttachments_;
@@ -145,6 +150,7 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 	}
 	for (const auto& resource : resources.sampled_images)
 	{
+		inputTexturesNames_.emplace_back(resource.name);
 		bindings_.push_back(parseBinding(resource, stage, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER));
 	}
 	for (const auto& resource : resources.push_constant_buffers)

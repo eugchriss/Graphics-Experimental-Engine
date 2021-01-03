@@ -44,19 +44,21 @@ vkn::Pipeline::Pipeline(vkn::Gpu& gpu, vkn::Device& device, const VkPipeline pip
 		std::copy(std::begin(pushConstants), std::end(pushConstants), std::back_inserter(pushConstants_));
 	}
 	//create the buffer and the memory, then bind both
+	if (size == 0)
 	{
-		buffer_ = std::make_unique<vkn::Buffer>(device_, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, size);
-
-		VkMemoryRequirements requirements;
-		vkGetBufferMemoryRequirements(device_.device, buffer_->buffer, &requirements);
-		memory_ = std::make_unique<vkn::DeviceMemory>(gpu_, device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits, requirements.size);
-
-		buffer_->bind(*memory_);
+		size = 1;
 	}
+	buffer_ = std::make_unique<vkn::Buffer>(device_, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, size);
+
+	VkMemoryRequirements requirements;
+	vkGetBufferMemoryRequirements(device_.device, buffer_->buffer, &requirements);
+	memory_ = std::make_unique<vkn::DeviceMemory>(gpu_, device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits, requirements.size);
+
+	buffer_->bind(*memory_);
 
 }
 
-vkn::Pipeline::Pipeline(vkn::Pipeline&& other): gpu_{other.gpu_}, device_{other.device_}
+vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : gpu_{ other.gpu_ }, device_{ other.device_ }
 {
 	pipeline_ = other.pipeline_;
 	layout_ = std::move(other.layout_);

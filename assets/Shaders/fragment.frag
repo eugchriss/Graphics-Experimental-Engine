@@ -63,7 +63,6 @@ void main()
     {
 	 outColor += computePointLight(material, pointLights.values[i], normal, fragPos, viewDir);
     };
-    outColor = pow(outColor, vec4(1.0/2.2));
 }
 
 vec4 computePointLight(Material material, PointLight light, vec3 normal, vec3 pos, vec3 viewDir)

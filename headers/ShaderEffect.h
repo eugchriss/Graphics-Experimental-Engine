@@ -30,12 +30,14 @@ namespace vkn
 			Light = 16,
 			Skybox = 32
 		};
-		ShaderEffect(const std::string& name, const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+		ShaderEffect(const std::string& name, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const bool isPostProcessEffect = false);
 		ShaderEffect(ShaderEffect&&) = default;
 		const std::string& name() const;
+		const bool isPostProcessEffect() const;
 		void setViewport(const float x, const float y, const float width, const float height);
 		void setScissor(const glm::u32vec2& origin, const glm::u32vec2& extent);
 		void render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHolder, const gee::Occurence<Hash_t>& geometries) const;
+		void render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHolder) const;
 		void setPolygonMode(const VkPolygonMode mode);
 		void setLineWidth(const float width);
 		void setSampleCount(const VkSampleCountFlagBits count);
@@ -45,6 +47,7 @@ namespace vkn
 		bool hasStencilBuffer() const;
 		const std::vector<Shader::Attachment>& outputAttachments() const;
 		const std::vector<Shader::Attachment>& subpassInputAttachments() const;
+		const std::vector<std::string>& inputTexturesNames() const;
 		const uint32_t getRequirement() const;
 		void preload(vkn::Device& device);
 		void active(vkn::Gpu& gpu, vkn::Device& device, const VkRenderPass& renderpass, const uint32_t subpass);
@@ -56,9 +59,11 @@ namespace vkn
 		void updateBuffer(const std::string& resourceName, const T& datas, const VkShaderStageFlagBits stage);
 
 		static std::unordered_map<Requirement, std::string> requirement_map;
+		static std::string attachmentPrefix;
 		friend class vkn::Framebuffer;
 	private:
 		std::string name_;
+		bool isPostProcessEffect_{ false };
 		Ptr<vkn::Pipeline> pipeline_;
 		vkn::PipelineBuilder pipelineBuilder_;
 		VkViewport viewport_{};
@@ -76,6 +81,7 @@ namespace vkn
 		const std::string fragmentShaderPath_;
 		std::vector<vkn::Shader::Attachment> outputAttachments_;
 		std::vector<vkn::Shader::Attachment> subpassInputAttachments_;
+		std::vector<std::string> inputTexturesNames_;
 
 		void setRequirements(const std::vector<vkn::Pipeline::Uniform>& uniforms);
 	};

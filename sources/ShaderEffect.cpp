@@ -1,12 +1,14 @@
 #include "..\headers\ShaderEffect.h"
 
 std::unordered_map<vkn::ShaderEffect::Requirement, std::string> vkn::ShaderEffect::requirement_map{};
-vkn::ShaderEffect::ShaderEffect(const std::string& name, const std::string& vertexShaderPath, const std::string& fragmentShaderPath):
+std::string vkn::ShaderEffect::attachmentPrefix{ "input_" };
+vkn::ShaderEffect::ShaderEffect(const std::string& name, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const bool isPostProcessEffect) :
 	name_{ name },
-	vertexShaderPath_ {
+	isPostProcessEffect_{ isPostProcessEffect },
+	vertexShaderPath_{
 	vertexShaderPath
 },
-	fragmentShaderPath_{fragmentShaderPath}
+fragmentShaderPath_{ fragmentShaderPath }
 {
 	pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, vertexShaderPath);
 	pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShaderPath);
@@ -17,18 +19,24 @@ vkn::ShaderEffect::ShaderEffect(const std::string& name, const std::string& vert
 	pipelineBuilder_.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
 	pipelineBuilder_.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 	pipelineBuilder_.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-	
+
 	requirement_map[Requirement::Texture] = "textures";
 	requirement_map[Requirement::Camera] = "Camera";
 	requirement_map[Requirement::Transform] = "Model_Matrix";
 	requirement_map[Requirement::Material] = "Materials";
 	requirement_map[Requirement::Skybox] = "skybox";
 	requirement_map[Requirement::Light] = "PointLights";
+
 }
 
 const std::string& vkn::ShaderEffect::name() const
 {
 	return name_;
+}
+
+const bool vkn::ShaderEffect::isPostProcessEffect() const
+{
+	return isPostProcessEffect_;
 }
 
 void vkn::ShaderEffect::setViewport(const float x, const float y, const float width, const float height)
@@ -42,9 +50,9 @@ void vkn::ShaderEffect::setViewport(const float x, const float y, const float wi
 		viewport_.minDepth = 0.0f;
 		viewport_.maxDepth = 1.0f;
 	}
-	
-	glm::u32vec2 origin{ static_cast<uint32_t>(x), static_cast<uint32_t>(y)};
-	glm::u32vec2 extent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+
+	glm::u32vec2 origin{ static_cast<uint32_t>(x), static_cast<uint32_t>(y) };
+	glm::u32vec2 extent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 	setScissor(origin, extent);
 }
 
@@ -69,6 +77,16 @@ void vkn::ShaderEffect::render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHol
 		vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, instanceCount, 0, 0, instanceIndex);
 		instanceIndex += instanceCount;
 	}
+}
+
+void vkn::ShaderEffect::render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHolder) const
+{
+	VkDeviceSize offset{ 0 };
+	auto& memoryLocation = geometryHolder.get(std::hash<std::string>{}("custom gee quad"), gee::getQuadMesh());
+
+	vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
+	vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdDrawIndexed(cb.commandBuffer(), memoryLocation.indicesCount, 1, 0, 0, 0);
 }
 
 void vkn::ShaderEffect::setPolygonMode(const VkPolygonMode mode)
@@ -119,6 +137,11 @@ const std::vector<vkn::Shader::Attachment>& vkn::ShaderEffect::subpassInputAttac
 	return subpassInputAttachments_;
 }
 
+const std::vector<std::string>& vkn::ShaderEffect::inputTexturesNames() const
+{
+	return inputTexturesNames_;
+}
+
 const uint32_t vkn::ShaderEffect::getRequirement() const
 {
 	return requirement_;
@@ -129,6 +152,15 @@ void vkn::ShaderEffect::preload(vkn::Device& device)
 	pipelineBuilder_.preBuild(device);
 	outputAttachments_ = pipelineBuilder_.outputAttachments();
 	subpassInputAttachments_ = pipelineBuilder_.subpassInputAttachments();
+	const auto& shaderTexturesNames = pipelineBuilder_.inputTexturesNames();
+	for (const auto& textureName : shaderTexturesNames)
+	{
+		const auto prefix = textureName.substr(0u, std::size(attachmentPrefix));
+		if (prefix == attachmentPrefix)
+		{
+			inputTexturesNames_.emplace_back(textureName);
+		}
+	}
 }
 
 void vkn::ShaderEffect::active(vkn::Gpu& gpu, vkn::Device& device, const VkRenderPass& renderpass, const uint32_t subpass)

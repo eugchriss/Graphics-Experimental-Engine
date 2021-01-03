@@ -1,5 +1,6 @@
 #pragma once
 #include <unordered_map>
+#include <string>
 #include <set>
 #include "vulkan/vulkan.hpp"
 #include "gpu.h"
@@ -62,6 +63,8 @@ namespace vkn
 		std::vector<vkn::Signal> imageAvailableSignals_;
 		std::vector<vkn::Signal> renderingFinishedSignals_;
 		vkn::Shader::Attachment finalColorAttachment_;
+		std::unordered_map<std::string, size_t> attachementImageIndexes_;
+		std::string presentAttachmentName_{};
 		uint32_t currentFrame_{};
 		VkRect2D renderArea_{};
 		bool guiEnabled_{ false };
@@ -76,14 +79,15 @@ namespace vkn
 		void createFramebufer(VkFramebufferCreateInfo& fbInfo, const std::vector<vkn::RenderpassAttachment>& renderpassAttachments, const uint32_t presentAttachmentIndex, const uint32_t frameCount);
 		void createSignals();
 		bool shouldRender();
-		void createRenderpass(const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const bool enableGui);
-		const std::vector<RenderpassAttachment> createRenderpassAttachments(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs);
-		const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> createRenderpassSubpasses(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const std::vector<RenderpassAttachment>& attachments);
+		void createRenderpass(const bool enableGui);
+		const std::vector<RenderpassAttachment> createRenderpassAttachments(vkn::RenderpassBuilder& builder);
+		const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> createRenderpassSubpasses(vkn::RenderpassBuilder& builder, const std::vector<RenderpassAttachment>& attachments);
 		void createSubpassesDepencies(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>>& attachmentDependencies);
 		void initGui(vkn::CommandBuffer& cb, ImGui_ImplVulkan_InitInfo& info);
 		using ShaderEffectResource = std::tuple<gee::Occurence<Hash_t>, TextureSet_t, MaterialSet_t, std::vector<MaterialKey_t>, std::vector<glm::mat4>, std::vector<gee::ShaderPointLight>>;
 		const ShaderEffectResource createShaderEffectResource(MeshHolder_t& meshHolder, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void bindTexture(TextureHolder_t& textureHolder, const TextureSet_t& textures, vkn::ShaderEffect& effect, const VkSampler& sampler) const;
+		void bindInputTexture(vkn::ShaderEffect& effect, const VkSampler& sampler);
 		void bindSkybox(TextureHolder_t& textureHolder, const TextureSet_t& textures, vkn::ShaderEffect& effect, const VkSampler& sampler) const;
 		void bindMaterial( MaterialHolder_t& materialHolder, const TextureSet_t textures, const MaterialSet_t& materials, vkn::ShaderEffect& effect) const;
 		void bindLight(vkn::ShaderEffect& effect, const std::vector<gee::ShaderPointLight>& pointLights);

@@ -50,6 +50,7 @@ namespace vkn
 		const std::vector<VkDescriptorPoolSize> poolSize() const;
 		const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributeDescriptions() const;
 		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
+		const std::vector<std::string>& inputTexturesNames() const;
 		const std::vector<vkn::Shader::Attachment>& subpassInputAttachments() const;
 	private:
 		vkn::Device& device_;
@@ -59,6 +60,7 @@ namespace vkn
 		std::vector<PushConstant> pushConstants_;
 		std::vector<vkn::Shader::Attachment> outputAttachments_;
 		std::vector<vkn::Shader::Attachment> subpassInputAttachments_;
+		std::vector<std::string> inputTexturesNames_;
 		std::unique_ptr<spirv_cross::CompilerGLSL> spirv_;
 
 		const std::vector<char> readFile(const std::string& path);

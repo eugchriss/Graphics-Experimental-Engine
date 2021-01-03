@@ -33,7 +33,8 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR s
 	auto& outputColorBufferAttachment = *outputColorBufferAttachmentIt;
 	const_cast<vkn::Shader::Attachment&>(outputColorBufferAttachment).format = swapchain_->imageFormat();
 	const_cast<vkn::Shader::Attachment&>(outputColorBufferAttachment).isPresentBuffer = true;
-	createRenderpass(effects_, enableGui);
+	presentAttachmentName_ = outputColorBufferAttachment.name;
+	createRenderpass(enableGui);
 	if (enableGui)
 	{
 		auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -54,10 +55,10 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR s
 
 	createFramebufer(fbInfo, renderpassAttachments, outputColorBufferAttachmentIndex, frameCount);
 	auto subpassIndex = 0u;
-	for (auto& [name, effectRef] : effects_)
+	for (auto& [name, effect] : effects_)
 	{
-		effectRef.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
-		effectRef.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
+		effect.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
+		effect.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
 		++subpassIndex;
 	}
 }
@@ -66,7 +67,7 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 	gpu_{ gpu },
 	device_{ device },
 	cbPool_{ cbPool },
-	renderArea_{{0,0}, extent}
+	renderArea_{ {0,0}, extent }
 {
 	framebuffers_.resize(frameCount);
 	for (auto& effect : shaderEffects)
@@ -74,7 +75,7 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 		effect.preload(device);
 		effects_.emplace(effect.name(), std::move(effect));
 	}
-	createRenderpass(effects_, false);
+	createRenderpass(false);
 	const auto& renderpassAttachments = renderpass_->attachments();
 	createSignals();
 	for (auto i = 0u; i < frameCount; ++i)
@@ -92,10 +93,10 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 
 	createFramebufer(fbInfo, renderpassAttachments, frameCount);
 	auto subpassIndex = 0u;
-	for (auto& [name, effectRef] : effects_)
+	for (auto& [name, effect] : effects_)
 	{
-		effectRef.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
-		effectRef.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
+		effect.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
+		effect.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
 		++subpassIndex;
 	}
 }
@@ -126,12 +127,12 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	renderArea_.extent.height = size.y;
 
 	device_.idle();
-	createRenderpass(effects_, guiEnabled_);
+	createRenderpass(guiEnabled_);
 	auto subpassIndex = 0u;
-	for (auto& [name, effectRef] : effects_)
+	for (auto& [name, effect] : effects_)
 	{
-		effectRef.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
-		effectRef.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
+		effect.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
+		effect.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
 		++subpassIndex;
 	}
 
@@ -149,7 +150,7 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	}
 	createSignals();
 	framebuffers_.resize(frameCount);
-	
+
 	VkFramebufferCreateInfo fbInfo{};
 	fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	fbInfo.pNext = nullptr;
@@ -180,7 +181,7 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	{
 		createFramebufer(fbInfo, renderpassAttachments, frameCount);
 	}
-	
+
 }
 
 const std::vector<vkn::Pixel> vkn::Framebuffer::frameContent(const uint32_t imageIndex)
@@ -240,18 +241,33 @@ void vkn::Framebuffer::render(MeshHolder_t& meshHolder, TextureHolder_t& texture
 				vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
 			}
 		}
+		for (auto& [name, effect] : effects_)
+		{
+			if (effect.isPostProcessEffect())
+			{
+				effect.bind(cb);
+				bindInputTexture(effect, sampler);
+				effect.render(cb, meshHolder);
+				if (!isLastEffect(effect))
+				{
+					VkClearValue clear{};
+					clear.depthStencil = { 1.0f, 0 };
+					renderpass_->clearDepthAttachment(cb, renderArea_, clear);
+					vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
+				}
+			}
+		}
 		if (guiEnabled_)
 		{
 			vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
 			ImGui::Render();
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
-			
+
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
 		}
 		renderpass_->end(cb);
-
 		cb.end();
 
 		renderingOrder_.clear();
@@ -269,7 +285,8 @@ void vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
 			image.setAfterRenderpassLayout();
 		}
 		graphicsQueue.present(*swapchain_, renderingFinishedSignals_[currentFrame_]);
-	}else
+	}
+	else
 	{
 		graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_]);
 		for (auto& image : images_)
@@ -282,9 +299,9 @@ void vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
 
 void vkn::Framebuffer::setViewport(const float x, const float y, const float width, const float height)
 {
-	for (auto& [name, effectRef] : effects_)
+	for (auto& [name, effect] : effects_)
 	{
-		effectRef.setViewport(x, y, width, height);
+		effect.setViewport(x, y, width, height);
 	}
 }
 
@@ -342,6 +359,7 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 		views.reserve(std::size(renderpassAttachments));
 		for (const auto& attachment : renderpassAttachments)
 		{
+			attachementImageIndexes_[attachment.name] = std::size(images_);
 			images_.emplace_back(gpu_, device_, attachment, VkExtent3D{ renderArea_.extent.width, renderArea_.extent.height, 1 });
 			views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
 		}
@@ -362,16 +380,16 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 		views.reserve(std::size(renderpassAttachments));
 		for (const auto& attachment : renderpassAttachments)
 		{
+			attachementImageIndexes_[attachment.name] = std::size(images_);
 			auto& image = images_.emplace_back(gpu_, device_, attachment, VkExtent3D{ swapchain_->extent().width, swapchain_->extent().height, 1 });
 			views.emplace_back(image.getView(getAspectFlag(attachment)));
-
 		}
 		views.insert(std::begin(views) + presentAttachmentIndex, swapchainImages[i].getView(VK_IMAGE_ASPECT_COLOR_BIT));
 		fbInfo.attachmentCount = std::size(views);
 		fbInfo.pAttachments = std::data(views);
 
 		vkn::error_check(vkCreateFramebuffer(device_.device, &fbInfo, nullptr, &framebuffers_[i]), "Failed to create the framebuffer");
-	}
+	}	
 }
 
 void vkn::Framebuffer::createSignals()
@@ -416,11 +434,11 @@ bool vkn::Framebuffer::shouldRender()
 	return shouldRender;
 }
 
-void vkn::Framebuffer::createRenderpass(const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const bool enableGui)
+void vkn::Framebuffer::createRenderpass(const bool enableGui)
 {
 	vkn::RenderpassBuilder renderpassBuilder{};
-	auto& renderpassAttachments = createRenderpassAttachments(renderpassBuilder, effectRefs);
-	auto attachmentDependencies = createRenderpassSubpasses(renderpassBuilder, effectRefs, renderpassAttachments);
+	auto& renderpassAttachments = createRenderpassAttachments(renderpassBuilder);
+	auto attachmentDependencies = createRenderpassSubpasses(renderpassBuilder, renderpassAttachments);
 	if (enableGui)
 	{
 		createGuiSubpass(renderpassBuilder, renderpassAttachments, attachmentDependencies);
@@ -430,12 +448,12 @@ void vkn::Framebuffer::createRenderpass(const std::unordered_map<std::string, vk
 	renderpass_ = std::make_unique<vkn::Renderpass>(renderpassBuilder.get(device_));
 }
 
-const std::vector<vkn::RenderpassAttachment> vkn::Framebuffer::createRenderpassAttachments(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs)
+const std::vector<vkn::RenderpassAttachment> vkn::Framebuffer::createRenderpassAttachments(vkn::RenderpassBuilder& builder)
 {
 	std::vector<RenderpassAttachment> renderpassAttachments;
-	for (const auto& [name, effectRef] : effectRefs)
+	for (const auto& [name, effect] : effects_)
 	{
-		auto& attachments = effectRef.outputAttachments();
+		auto& attachments = effect.outputAttachments();
 		for (const auto& attachment : attachments)
 		{
 			auto result = std::find_if(std::begin(renderpassAttachments), std::end(renderpassAttachments), [&](const auto& att) { return att.name == attachment.name; });
@@ -483,13 +501,12 @@ const std::vector<vkn::RenderpassAttachment> vkn::Framebuffer::createRenderpassA
 	return renderpassAttachments;
 }
 
-const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> vkn::Framebuffer::createRenderpassSubpasses(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, vkn::ShaderEffect>& effectRefs, const std::vector<RenderpassAttachment>& attachments)
+const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> vkn::Framebuffer::createRenderpassSubpasses(vkn::RenderpassBuilder& builder, const std::vector<RenderpassAttachment>& attachments)
 {
 	std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> attachmentDependencies;
 	auto subpassIndex = 0u;
-	for (const auto& [name, effectRef] : effectRefs)
+	for (const auto& [name, effect] : effects_)
 	{
-		const auto& effect = effectRef;
 		vkn::RenderpassBuilder::Subpass::Requirement requirements{};
 		const auto& inputAttachments = effect.subpassInputAttachments();
 		for (const auto& attachment : inputAttachments)
@@ -536,7 +553,7 @@ const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> 
 			auto result = std::find_if(std::begin(attachments), std::end(attachments), [&](const auto& rpAttachment) {return rpAttachment.name == "stencil_buffer"; });
 			assert(result != std::end(attachments) && "No stencil buffer has been registered to the renderpass attachments");
 			requirements.addStencilAttachment(std::distance(std::begin(attachments), result));
-			
+
 			vkn::SubpassAttachmentUsage attachmentUsage{};
 			attachmentUsage.subpassIndex = subpassIndex;
 			attachmentUsage.stageFlag = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -646,6 +663,26 @@ void vkn::Framebuffer::bindMaterial(MaterialHolder_t& materialHolder, const Text
 	effect.updateBuffer(materialName, shaderMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
+void vkn::Framebuffer::bindInputTexture(vkn::ShaderEffect& effect, const VkSampler& sampler)
+{
+	const auto& texturesNames = effect.inputTexturesNames();
+	for (const auto& name : texturesNames)
+	{
+		if (name.substr(std::size(vkn::ShaderEffect::attachmentPrefix)) == presentAttachmentName_)
+		{
+			auto view = swapchain_->images()[currentFrame_].getView(VK_IMAGE_ASPECT_COLOR_BIT);
+			effect.updateTexture(name, sampler, view, VK_SHADER_STAGE_FRAGMENT_BIT);
+		}
+		else
+		{
+			auto textureIndex = attachementImageIndexes_.find(name.substr(std::size(vkn::ShaderEffect::attachmentPrefix)));
+			assert(textureIndex != std::end(attachementImageIndexes_) && "The texture doesn t match any renderpass attachment");
+			auto view = images_[textureIndex->second].getView(VK_IMAGE_ASPECT_COLOR_BIT);
+			effect.updateTexture(name, sampler, view, VK_SHADER_STAGE_FRAGMENT_BIT);
+		}
+	}
+}
+
 void vkn::Framebuffer::bindLight(vkn::ShaderEffect& effect, const std::vector<gee::ShaderPointLight>& pointLights)
 {
 	auto pointLightName = vkn::ShaderEffect::requirement_map[vkn::ShaderEffect::Requirement::Light];
@@ -665,6 +702,7 @@ void vkn::Framebuffer::bindDrawableMaterial(MaterialHolder_t& materialHolder, co
 
 void vkn::Framebuffer::bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms, const std::vector<gee::ShaderPointLight>& pointLights)
 {
+	bindInputTexture(effect, sampler);
 	auto requirementFlags = effect.getRequirement();
 	if ((requirementFlags & vkn::ShaderEffect::Requirement::Texture) == vkn::ShaderEffect::Requirement::Texture)
 	{
@@ -711,5 +749,5 @@ void vkn::Framebuffer::createGuiSubpass(vkn::RenderpassBuilder& builder, const s
 
 const bool vkn::Framebuffer::isLastEffect(const vkn::ShaderEffect& effect) const
 {
-	return effect.index() == std::size(renderingOrder_) - 1;
+	return effect.index() ==  (std::size(effects_) - 1);
 }

@@ -37,9 +37,9 @@ namespace vkn
 		void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment);
 		void addDynamicState(const VkDynamicState state);
 		void setPolygonMode(const VkPolygonMode mode);
+		const std::vector<std::string>& inputTexturesNames() const;
 		const std::vector<vkn::Shader::Attachment>& subpassInputAttachments() const;
 		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
-		const std::vector<vkn::Shader::Attachment> getColorOutputAttachment() const;
 
 		VkFrontFace frontFace;
 		VkCullModeFlags cullMode;

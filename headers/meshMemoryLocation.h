@@ -8,6 +8,7 @@ namespace vkn
 	struct MeshMemoryLocation
 	{
 		MeshMemoryLocation(vkn::DeviceMemory&& mem, vkn::Buffer&& vertexBuff, vkn::Buffer&& indexBuff, const uint32_t indicesSize);
+		MeshMemoryLocation(MeshMemoryLocation&&) = default;
 		vkn::DeviceMemory memory;
 		vkn::Buffer vertexBuffer;
 		vkn::Buffer indexBuffer;

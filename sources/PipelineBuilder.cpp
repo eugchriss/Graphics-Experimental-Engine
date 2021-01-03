@@ -69,7 +69,7 @@ vkn::Pipeline vkn::PipelineBuilder::get(vkn::Gpu& gpu, vkn::Device& device)
 	auto shader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_VERTEX_BIT; });
 	if (shader != std::end(shaders_))
 	{
-		if (!std::empty(shader->attributeDescriptions().first) && !std::empty(shader->bindings()))
+		if (!std::empty(shader->attributeDescriptions().first))
 		{
 			attributesDesc = shader->attributeDescriptions();
 
@@ -282,14 +282,15 @@ void vkn::PipelineBuilder::setPolygonMode(const VkPolygonMode mode)
 	rasterizationCI_.polygonMode = mode;
 }
 
-const std::vector<vkn::Shader::Attachment> vkn::PipelineBuilder::getColorOutputAttachment() const
+const std::vector<std::string>& vkn::PipelineBuilder::inputTexturesNames() const
 {
-	auto result = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
-	if (result == std::end(shaders_))
+	auto fragmentShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
+	if (fragmentShader == std::end(shaders_))
 	{
-		return{};
+		throw std::runtime_error{ "The pipeline requires a fragment shader" };
 	}
-	return result->outputAttachments();
+
+	return fragmentShader->inputTexturesNames();
 }
 
 const std::vector<vkn::Shader::Attachment>& vkn::PipelineBuilder::subpassInputAttachments() const

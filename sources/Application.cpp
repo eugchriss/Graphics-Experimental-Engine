@@ -18,6 +18,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	std::vector<vkn::ShaderEffect> effects;
 	effects.emplace_back("skybox technique", "../assets/Shaders/skybox/vert.spv", "../assets/Shaders/skybox/frag.spv");
 	effects.emplace_back("forward rendering", "../assets/shaders/vert.spv", "../assets/shaders/frag.spv");
+	effects.emplace_back("gamma correction", "../assets/Shaders/gamma correction/vert.spv", "../assets/Shaders/gamma correction/frag.spv", true);
 	renderer_->getFramebuffer(effects);
 	renderer_->setViewport(0.0f, 0.0f, static_cast<float>(window_.size().x), static_cast<float>(window_.size().y));
 

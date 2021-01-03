@@ -26,7 +26,7 @@ vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags us
 	imageInfo.arrayLayers = layerCount_;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	imageInfo.usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -164,7 +164,7 @@ const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize off
 	vkn:CommandPool cbPool{ device_, transferQueueFamily.familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
 	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-	auto previousLayout = layout_;
+	const auto previousLayout = layout_;
 	cb.begin();
 	transitionLayout(cb, aspect, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	copyToBuffer(cb, buffer, aspect);
