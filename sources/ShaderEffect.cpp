@@ -66,6 +66,7 @@ void vkn::ShaderEffect::setScissor(const glm::u32vec2& origin, const glm::u32vec
 
 void vkn::ShaderEffect::render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHolder, const gee::Occurence<Hash_t>& geometries) const
 {
+	recordTweakings(cb);
 	uint32_t instanceIndex{ 0 };
 	for (const auto [meshHashKey, instanceCount] : geometries)
 	{
@@ -81,6 +82,7 @@ void vkn::ShaderEffect::render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHol
 
 void vkn::ShaderEffect::render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHolder) const
 {
+	recordTweakings(cb);
 	VkDeviceSize offset{ 0 };
 	auto& memoryLocation = geometryHolder.get(std::hash<std::string>{}("custom gee quad"), gee::getQuadMesh());
 
@@ -142,6 +144,11 @@ const std::vector<std::string>& vkn::ShaderEffect::inputTexturesNames() const
 	return inputTexturesNames_;
 }
 
+std::vector<std::reference_wrapper<vkn::Shader::Tweaking>>& vkn::ShaderEffect::tweakings()
+{
+	return tweakings_;
+}
+
 const uint32_t vkn::ShaderEffect::getRequirement() const
 {
 	return requirement_;
@@ -175,6 +182,14 @@ void vkn::ShaderEffect::active(vkn::Gpu& gpu, vkn::Device& device, const VkRende
 			pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, vertexShaderPath_);
 			pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShaderPath_);
 			pipelineBuilder_.preBuild(device);
+		} 
+		tweakings_ = pipelineBuilder_.tweakings();
+		for (auto& tweaking : tweakings_)
+		{
+			if (std::find_if(std::begin(booleanTweakings_), std::end(booleanTweakings_), [&](const auto& booleanName) {return booleanName == tweaking.get().name; }) != std::end(booleanTweakings_))
+			{
+				tweaking.get().dataType = vkn::Shader::GLSL_Type::BOOL;
+			}
 		}
 		pipeline_ = std::make_unique<vkn::Pipeline>(pipelineBuilder_.get(gpu, device));
 		renderpass_ = renderpass;
@@ -190,6 +205,14 @@ void vkn::ShaderEffect::bind(vkn::CommandBuffer& cb)
 	vkCmdSetScissor(cb.commandBuffer(), 0, 1, &scissor_);
 }
 
+void vkn::ShaderEffect::setBooleanTweaking(const std::string& tweakingName)
+{
+	auto result = std::find_if(std::begin(tweakings_), std::end(tweakings_), [&](const auto& tweakingRef) { return tweakingRef.get().name == tweakingName; });
+	assert(result != std::end(tweakings_) && "Trying to set a non existant tweaking");
+	result->get().dataType = vkn::Shader::GLSL_Type::BOOL;
+	booleanTweakings_.emplace_back(result->get().name);
+}
+
 const uint32_t vkn::ShaderEffect::index() const
 {
 	return renderingIndex_;
@@ -202,6 +225,29 @@ void vkn::ShaderEffect::setRequirements(const std::vector<vkn::Pipeline::Uniform
 		if (std::find_if(std::begin(uniforms), std::end(uniforms), [&](const auto& uniform) { return uniform.name == name; }) != std::end(uniforms))
 		{
 			requirement_ |= requirement;
+		}
+	}
+}
+
+void vkn::ShaderEffect::recordTweakings(vkn::CommandBuffer& cb) const
+{
+	for (const auto& tweaking : tweakings_)
+	{
+		uint32_t data = tweaking.get().data;
+		switch (tweaking.get().dataType)
+		{
+		case vkn::Shader::GLSL_Type::BOOL:
+			pipeline_->pushConstant(cb, vkn::Shader::tweakingName_, tweaking.get().offset, tweaking.get().size, data);
+			break;
+		case vkn::Shader::GLSL_Type::UINT:
+			pipeline_->pushConstant(cb, vkn::Shader::tweakingName_, tweaking.get().offset, tweaking.get().size, data);
+			break;
+		case vkn::Shader::GLSL_Type::FLOAT:
+			pipeline_->pushConstant(cb, vkn::Shader::tweakingName_, tweaking.get().offset, tweaking.get().size, tweaking.get().data);
+			break;
+		default:
+			throw std::runtime_error{ "untreated type" };
+			break;
 		}
 	}
 }

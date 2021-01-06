@@ -48,10 +48,12 @@ namespace vkn
 		const std::vector<Shader::Attachment>& outputAttachments() const;
 		const std::vector<Shader::Attachment>& subpassInputAttachments() const;
 		const std::vector<std::string>& inputTexturesNames() const;
+		std::vector<std::reference_wrapper<vkn::Shader::Tweaking>>& tweakings();
 		const uint32_t getRequirement() const;
 		void preload(vkn::Device& device);
 		void active(vkn::Gpu& gpu, vkn::Device& device, const VkRenderPass& renderpass, const uint32_t subpass);
 		void bind(vkn::CommandBuffer& cb);
+		void setBooleanTweaking(const std::string& tweakingName);
 		const uint32_t index() const;
 		template<class T>
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
@@ -81,9 +83,12 @@ namespace vkn
 		const std::string fragmentShaderPath_;
 		std::vector<vkn::Shader::Attachment> outputAttachments_;
 		std::vector<vkn::Shader::Attachment> subpassInputAttachments_;
+		std::vector<std::reference_wrapper<vkn::Shader::Tweaking>> tweakings_;
 		std::vector<std::string> inputTexturesNames_;
+		std::vector<std::string> booleanTweakings_;
 
 		void setRequirements(const std::vector<vkn::Pipeline::Uniform>& uniforms);
+		void recordTweakings(vkn::CommandBuffer& cb) const;
 	};
 	template<class T>
 	inline void ShaderEffect::pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas)

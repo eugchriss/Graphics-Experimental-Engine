@@ -59,6 +59,12 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR s
 	{
 		effect.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
 		effect.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
+		
+		auto& effectTweakings = effect.tweakings();
+		for (auto& tweaking : effectTweakings)
+		{
+			shaderTweakings_.emplace_back(std::ref(tweaking));
+		}
 		++subpassIndex;
 	}
 }
@@ -97,6 +103,11 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 	{
 		effect.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
 		effect.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
+		auto& effectTweakings = effect.tweakings();
+		for (auto& tweaking : effectTweakings)
+		{
+			shaderTweakings_.emplace_back(std::ref(tweaking));
+		}
 		++subpassIndex;
 	}
 }
@@ -133,6 +144,11 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	{
 		effect.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
 		effect.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
+		auto& effectTweakings = effect.tweakings();
+		for (auto& tweaking : effectTweakings)
+		{
+			shaderTweakings_.emplace_back(std::ref(tweaking));
+		}
 		++subpassIndex;
 	}
 
@@ -315,6 +331,11 @@ vkn::ShaderEffect& vkn::Framebuffer::getEffect(const std::string& name)
 const glm::u32vec2 vkn::Framebuffer::renderArea() const
 {
 	return glm::u32vec2{ renderArea_.extent.width, renderArea_.extent.height };
+}
+
+std::vector<std::reference_wrapper<vkn::Shader::Tweaking>>& vkn::Framebuffer::shaderTweakings()
+{
+	return shaderTweakings_;
 }
 
 void vkn::Framebuffer::initGui(vkn::CommandBuffer& cb, ImGui_ImplVulkan_InitInfo& info)

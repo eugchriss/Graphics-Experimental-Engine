@@ -35,6 +35,7 @@ namespace gee
 		void onMouseMoveEvent(double x, double y);
 		void onMouseScrollEvent(double x, double y);
 		void onMouseButtonEvent(uint32_t button, uint32_t action, uint32_t mods);
+		void displayShaderTweakings(std::vector<std::reference_wrapper<vkn::Shader::Tweaking>>& tweakings);
 		//Mouse buttons
 		bool leftButtonPressed_{ false };
 		bool rightButtonPressed_{ false };

@@ -28,6 +28,7 @@ vkn::Shader::Shader(Shader&& other) : device_{ other.device_ }
 	bindings_ = std::move(other.bindings_);
 	pushConstants_ = std::move(other.pushConstants_);
 	outputAttachments_ = std::move(other.outputAttachments_);
+	tweakings_ = std::move(other.tweakings_);
 	spirv_ = std::move(other.spirv_);
 	/*****/
 
@@ -62,7 +63,7 @@ const std::vector<vkn::Shader::PushConstant>& vkn::Shader::pushConstants() const
 	return pushConstants_;
 }
 
-const std::vector<vkn::Shader::Tweaking>& vkn::Shader::tweakings() const
+std::vector<vkn::Shader::Tweaking>& vkn::Shader::tweakings()
 {
 	return tweakings_;
 }
@@ -114,11 +115,6 @@ const std::vector<std::string>& vkn::Shader::inputTexturesNames() const
 const std::vector<vkn::Shader::Attachment>& vkn::Shader::subpassInputAttachments() const
 {
 	return subpassInputAttachments_;
-}
-
-void vkn::Shader::setTweakingsName(const std::string& name)
-{
-	tweakingName_ = name;
 }
 
 const std::vector<char> vkn::Shader::readFile(const std::string& path)
@@ -242,28 +238,20 @@ const vkn::Shader::PushConstant vkn::Shader::parsePushConstant(const spirv_cross
 		pc.ranges.push_back(pushConstantRanges[i].range);
 		pc.size += pushConstantRanges[i].range;
 	}
-
+	assert(std::size(pc.offsets) && "The push constant is not ACTIVELY used by the shader");
 	if (resource.name == tweakingName_)
 	{
-		if (resourceType.basetype == spirv_cross::SPIRType::Struct)
+		assert(std::size(resourceType.array) == 0 && "Tweaking should only be primitives type (AKA no veci or mati)");
+
+		const auto member_count = resourceType.member_types.size();
+		for (auto i = 0u; i < member_count; ++i)
 		{
-			const auto member_count = resourceType.member_types.size();
-			for (auto i = 0u; i < member_count; ++i)
-			{
-				Tweaking tweaking{};
-				tweaking.name = spirv_->get_member_name(resourceType.self, i);
-				auto tweakingType = spirv_->get_type(resourceType.member_types[i]);
-				getTweakingDataType(tweaking, tweakingType.basetype);
-				tweakings_.emplace_back(tweaking);
-			}
-		}
-		else
-		{
-			Tweaking tweaking{};
-			tweaking.name = tweakingName_;
-			auto tweakingType = spirv_->get_type(resourceType.self);
+			auto tweakingType = spirv_->get_type(resourceType.member_types[i]);
+			auto& tweaking = tweakings_.emplace_back(Tweaking{});
+			tweaking.name = spirv_->get_member_name(resourceType.self, i);
+			tweaking.size = spirv_->get_declared_struct_member_size(resourceType, i);
+			tweaking.offset = spirv_->type_struct_member_offset(resourceType, i);
 			getTweakingDataType(tweaking, tweakingType.basetype);
-			tweakings_.emplace_back(tweaking);
 		}
 	}
 	return pc;
@@ -273,17 +261,14 @@ void vkn::Shader::getTweakingDataType(vkn::Shader::Tweaking& tweaking, const spi
 {
 	switch (type)
 	{
-	case spirv_cross::SPIRType::BaseType::Boolean:
-		tweaking.data = false;
-		break;
 	case spirv_cross::SPIRType::BaseType::UInt:
-		tweaking.data = 0u;
+		tweaking.dataType = Shader::GLSL_Type::UINT;
 		break;
 	case spirv_cross::SPIRType::BaseType::Int:
-		tweaking.data = 0;
+		tweaking.dataType = Shader::GLSL_Type::INT;
 		break;
 	case spirv_cross::SPIRType::BaseType::Float:
-		tweaking.data = 0.0f;
+		tweaking.dataType = Shader::GLSL_Type::FLOAT;
 		break;
 	default:
 		throw std::runtime_error{ "untreated type" };

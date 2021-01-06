@@ -42,6 +42,7 @@ namespace vkn
 		void draw(vkn::Framebuffer& fb);
 		void setViewport(const float x, const float y, const float width, const float height);
 		void updateCamera(const gee::Camera& camera, const float aspectRatio);
+		vkn::Framebuffer& getFramebuffer();
 		vkn::Framebuffer& getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui = true, const uint32_t frameCount = 2u);
 		vkn::Framebuffer createFramebuffer(const glm::u32vec2& extent, std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount = 2u);
 		void resize(const glm::u32vec2& size);

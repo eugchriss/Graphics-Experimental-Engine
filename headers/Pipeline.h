@@ -11,6 +11,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+
 namespace vkn
 {
 	class Pipeline
@@ -35,6 +36,8 @@ namespace vkn
 		const std::vector<Uniform> uniforms() const;
 		template<class T>
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
+		template<class T>
+		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const VkDeviceSize offset, const VkDeviceSize size, const T& datas);
 		template<class T>
 		void updateBuffer(const std::string& resourceName, const T& datas, const VkShaderStageFlagBits stage);
 		const std::vector<Shader::Attachment>& outputAttachments() const;
@@ -92,7 +95,34 @@ namespace vkn
 		}
 		else
 		{
-			vkCmdPushConstants(cb.commandBuffer(), layout_->layout, result->stageFlag, result->offsets[0], result->size, &datas);
+			if (std::is_same<T, void*>::value)
+			{
+				vkCmdPushConstants(cb.commandBuffer(), layout_->layout, result->stageFlag, result->offsets[0], result->size, datas);
+			}
+			else
+			{
+				vkCmdPushConstants(cb.commandBuffer(), layout_->layout, result->stageFlag, result->offsets[0], result->size, &datas);
+			}
+		}
+	}
+	template<class T>
+	inline void Pipeline::pushConstant(vkn::CommandBuffer& cb, const std::string& name, const VkDeviceSize offset, const VkDeviceSize size, const T& datas)
+	{
+		auto result = std::find_if(std::begin(pushConstants_), std::end(pushConstants_), [&](const auto& pc) { return pc.name == name; });
+		if (result == std::end(pushConstants_))
+		{
+			throw std::runtime_error{ "There is no push constant with that name" };
+		}
+		else
+		{
+			if constexpr (std::is_same<T, void*>::value)
+			{
+				vkCmdPushConstants(cb.commandBuffer(), layout_->layout, result->stageFlag, offset, size, datas);
+			}
+			else
+			{
+				vkCmdPushConstants(cb.commandBuffer(), layout_->layout, result->stageFlag, offset, size, &datas);
+			}
 		}
 	}
 }

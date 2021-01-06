@@ -30,6 +30,13 @@ namespace vkn
 			vkn::Format format;
 		};
 
+		enum class GLSL_Type
+		{
+			BOOL,
+			UINT,
+			INT,
+			FLOAT
+		};
 		struct PushConstant
 		{
 			std::string name{};
@@ -40,9 +47,17 @@ namespace vkn
 		};
 		struct Tweaking
 		{
-			using glslType = std::variant<bool, uint32_t, int32_t, float>;
+			Tweaking() = default;
+			Tweaking(Tweaking& t) = delete;
+			Tweaking(Tweaking&&)
+			{
+				int i = 11;
+			}
 			std::string name{};
-			glslType data{};
+			VkDeviceSize offset{};
+			VkDeviceSize size{};
+			GLSL_Type dataType{};
+			float data{};
 		};
 		struct Attachment
 		{
@@ -54,13 +69,13 @@ namespace vkn
 
 		const std::vector<Binding>& bindings() const;
 		const std::vector<PushConstant>& pushConstants() const;
-		const std::vector<Tweaking>& tweakings() const;
+		std::vector<Tweaking>& tweakings();
 		const std::vector<VkDescriptorPoolSize> poolSize() const;
 		const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributeDescriptions() const;
 		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
 		const std::vector<std::string>& inputTexturesNames() const;
 		const std::vector<vkn::Shader::Attachment>& subpassInputAttachments() const;
-		static void setTweakingsName(const std::string& name);
+		static std::string tweakingName_;
 	private:
 		vkn::Device& device_;
 		VkShaderModule module_{ VK_NULL_HANDLE };
@@ -72,7 +87,6 @@ namespace vkn
 		std::vector<vkn::Shader::Attachment> subpassInputAttachments_;
 		std::vector<std::string> inputTexturesNames_;
 		std::unique_ptr<spirv_cross::CompilerGLSL> spirv_;
-		static std::string tweakingName_;
 		const std::vector<char> readFile(const std::string& path);
 		void getShaderResources(const std::string& path);
 		void introspect(const VkShaderStageFlagBits stage);
@@ -80,4 +94,5 @@ namespace vkn
 		const PushConstant parsePushConstant(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage);
 		void getTweakingDataType(vkn::Shader::Tweaking& tweaking, const spirv_cross::SPIRType::BaseType& type);
 	};
+
 }

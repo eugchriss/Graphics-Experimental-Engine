@@ -51,6 +51,7 @@ namespace vkn
 		void setViewport(const float x, const float y, const float width, const float height);
 		vkn::ShaderEffect& getEffect(const std::string& name);
 		const glm::u32vec2 renderArea() const;
+		std::vector<std::reference_wrapper<vkn::Shader::Tweaking>>& shaderTweakings();
 	private:
 		vkn::Gpu& gpu_;
 		vkn::Device& device_;
@@ -68,6 +69,7 @@ namespace vkn
 		uint32_t currentFrame_{};
 		VkRect2D renderArea_{};
 		bool guiEnabled_{ false };
+		std::vector<std::reference_wrapper<vkn::Shader::Tweaking>> shaderTweakings_;
 		uint32_t outputColorBufferAttachmentIndex{};
 		using DrawablesRef = std::reference_wrapper<const std::vector<std::reference_wrapper<gee::Drawable>>>;
 		using ShaderEffectRef = std::reference_wrapper<vkn::ShaderEffect>;

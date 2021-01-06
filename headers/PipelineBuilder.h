@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <string>
+#include <utility>
 namespace vkn
 {
 	class PipelineBuilder
@@ -40,6 +41,7 @@ namespace vkn
 		const std::vector<std::string>& inputTexturesNames() const;
 		const std::vector<vkn::Shader::Attachment>& subpassInputAttachments() const;
 		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
+		std::vector<std::reference_wrapper<vkn::Shader::Tweaking>> tweakings();
 
 		VkFrontFace frontFace;
 		VkCullModeFlags cullMode;

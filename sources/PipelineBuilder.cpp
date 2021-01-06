@@ -313,3 +313,17 @@ const std::vector<vkn::Shader::Attachment>& vkn::PipelineBuilder::outputAttachme
 
 	return fragmentShader->outputAttachments();
 }
+
+std::vector<std::reference_wrapper<vkn::Shader::Tweaking>> vkn::PipelineBuilder::tweakings()
+{
+	std::vector<std::reference_wrapper<vkn::Shader::Tweaking>> tweakings;
+	for (auto& shader : shaders_)
+	{
+		auto& shaderTweakings = shader.tweakings();
+		for (auto& tweaking : shaderTweakings)
+		{
+			tweakings.emplace_back(std::ref(tweaking));
+		}
+	}
+	return std::move(tweakings);
+}

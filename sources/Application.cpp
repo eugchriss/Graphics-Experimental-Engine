@@ -22,6 +22,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	renderer_->getFramebuffer(effects);
 	renderer_->setViewport(0.0f, 0.0f, static_cast<float>(window_.size().x), static_cast<float>(window_.size().y));
 
+	renderer_->getFramebuffer().getEffect("gamma correction").setBooleanTweaking("gammaCorrection");
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
 		{
 			if (w != 0 && h != 0)
@@ -129,6 +130,7 @@ void gee::Application::updateGui()
 		drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
 	}
 	camera_.imguiDisplay();
+	displayShaderTweakings(renderer_->getFramebuffer().shaderTweakings());
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -206,6 +208,22 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 	{
 		rightButtonPressed_ = false;
 	}
+}
+
+void gee::Application::displayShaderTweakings(std::vector<std::reference_wrapper<vkn::Shader::Tweaking>>& tweakings)
+{
+	ImGui::Begin("Shader Tweakings");
+	for (auto& tweakingRef : tweakings)
+	{
+		auto& tweaking = tweakingRef.get();
+		if (tweaking.dataType == vkn::Shader::GLSL_Type::BOOL)
+		{
+			bool value = tweaking.data;
+			ImGui::Checkbox(tweaking.name.c_str(), &value);
+			tweaking.data = value;
+		}
+	}
+	ImGui::End();
 }
 
 bool gee::Application::isRunning()

@@ -130,6 +130,12 @@ void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRa
 	shaderCamera_.projection[1][1] *= -1;
 }
 
+vkn::Framebuffer& vkn::Renderer::getFramebuffer()
+{
+	assert(mainFramebuffer_ && "The main framebuffer has not been created yet");
+	return *mainFramebuffer_;
+}
+
 vkn::Framebuffer& vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui, const uint32_t frameCount)
 {
 	if (!mainFramebuffer_)
