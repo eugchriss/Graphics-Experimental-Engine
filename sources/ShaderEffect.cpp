@@ -213,6 +213,17 @@ void vkn::ShaderEffect::setBooleanTweaking(const std::string& tweakingName)
 	booleanTweakings_.emplace_back(result->get().name);
 }
 
+void vkn::ShaderEffect::setTweakingRange(const std::string& tweakingName, const float min, const float max)
+{
+	auto result = std::find_if(std::begin(tweakings_), std::end(tweakings_), [&](const auto& tweakingRef) { return tweakingRef.get().name == tweakingName; });
+	assert(result != std::end(tweakings_) && "Trying to set a non existant tweaking");
+	if (result->get().dataType != vkn::Shader::GLSL_Type::BOOL)
+	{
+		result->get().min = min;
+		result->get().max = max;
+	}
+}
+
 const uint32_t vkn::ShaderEffect::index() const
 {
 	return renderingIndex_;

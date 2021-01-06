@@ -23,6 +23,8 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	renderer_->setViewport(0.0f, 0.0f, static_cast<float>(window_.size().x), static_cast<float>(window_.size().y));
 
 	renderer_->getFramebuffer().getEffect("gamma correction").setBooleanTweaking("gammaCorrection");
+	renderer_->getFramebuffer().getEffect("gamma correction").setBooleanTweaking("hdr");
+	renderer_->getFramebuffer().getEffect("gamma correction").setTweakingRange("exposure", 0.0f, 5.0f);
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
 		{
 			if (w != 0 && h != 0)
@@ -221,6 +223,10 @@ void gee::Application::displayShaderTweakings(std::vector<std::reference_wrapper
 			bool value = tweaking.data;
 			ImGui::Checkbox(tweaking.name.c_str(), &value);
 			tweaking.data = value;
+		}
+		else if (tweaking.dataType == vkn::Shader::GLSL_Type::FLOAT)
+		{
+			ImGui::SliderFloat(tweaking.name.c_str(), &tweaking.data, tweaking.min, tweaking.max, "%.1f");
 		}
 	}
 	ImGui::End();

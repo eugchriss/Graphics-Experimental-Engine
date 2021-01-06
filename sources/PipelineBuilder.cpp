@@ -137,6 +137,16 @@ vkn::Pipeline vkn::PipelineBuilder::get(vkn::Gpu& gpu, vkn::Device& device)
 		dynamicStateCI_.pDynamicStates = std::data(dynamicStates_);
 	}
 	//create the pipeline
+	VkPhysicalDeviceProperties props{};
+	vkGetPhysicalDeviceProperties(gpu.device, &props);
+	for (auto& shader : shaders_)
+	{
+		const auto& tweakings = shader.tweakings();
+		if (!std::empty(tweakings))
+		{
+			assert(tweakings.back().offset < props.limits.maxPushConstantsSize && "The tweakings have too much parameters");
+		}
+	}
 	vkn::PipelineLayout pipelineLayout{ device, shaders_ };
 	VkPipeline pipeline{ VK_NULL_HANDLE };
 	{

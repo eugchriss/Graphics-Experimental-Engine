@@ -54,6 +54,7 @@ namespace vkn
 		void active(vkn::Gpu& gpu, vkn::Device& device, const VkRenderPass& renderpass, const uint32_t subpass);
 		void bind(vkn::CommandBuffer& cb);
 		void setBooleanTweaking(const std::string& tweakingName);
+		void setTweakingRange(const std::string& tweakingName, const float min, const float max);
 		const uint32_t index() const;
 		template<class T>
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);

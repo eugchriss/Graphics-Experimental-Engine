@@ -238,20 +238,21 @@ const vkn::Shader::PushConstant vkn::Shader::parsePushConstant(const spirv_cross
 		pc.ranges.push_back(pushConstantRanges[i].range);
 		pc.size += pushConstantRanges[i].range;
 	}
+	std::sort(std::begin(pc.offsets), std::end(pc.offsets)); // assuming for now that all pushconstant ranges have the same size
 	assert(std::size(pc.offsets) && "The push constant is not ACTIVELY used by the shader");
 	if (resource.name == tweakingName_)
 	{
 		assert(std::size(resourceType.array) == 0 && "Tweaking should only be primitives type (AKA no veci or mati)");
-
 		const auto member_count = resourceType.member_types.size();
 		for (auto i = 0u; i < member_count; ++i)
 		{
 			auto tweakingType = spirv_->get_type(resourceType.member_types[i]);
-			auto& tweaking = tweakings_.emplace_back(Tweaking{});
+			Tweaking tweaking{};
 			tweaking.name = spirv_->get_member_name(resourceType.self, i);
 			tweaking.size = spirv_->get_declared_struct_member_size(resourceType, i);
 			tweaking.offset = spirv_->type_struct_member_offset(resourceType, i);
 			getTweakingDataType(tweaking, tweakingType.basetype);
+			tweakings_.emplace_back(std::move(tweaking));
 		}
 	}
 	return pc;

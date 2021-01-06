@@ -49,15 +49,14 @@ namespace vkn
 		{
 			Tweaking() = default;
 			Tweaking(Tweaking& t) = delete;
-			Tweaking(Tweaking&&)
-			{
-				int i = 11;
-			}
+			Tweaking(Tweaking&&) = default;
 			std::string name{};
 			VkDeviceSize offset{};
 			VkDeviceSize size{};
 			GLSL_Type dataType{};
 			float data{};
+			float min{};
+			float max{ 10.0f };
 		};
 		struct Attachment
 		{
