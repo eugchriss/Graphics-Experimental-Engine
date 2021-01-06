@@ -18,8 +18,7 @@ layout(location = 7) out flat uint drawableIndex;
 layout(binding = 0) uniform Camera
 {
     vec4 pos;
-    mat4 view;
-    mat4 proj;
+    mat4 viewProj;
 }camera;	
 
 layout(binding = 1) uniform Model_Matrix
@@ -35,7 +34,7 @@ layout(binding = 2) uniform Colors
 void main() {
     mat4 modelMatrix = models.matrices[gl_InstanceIndex];
     fragPos = vec3( modelMatrix * vec4(inPosition, 1.0));
-    gl_Position = camera.proj * camera.view * vec4(fragPos, 1.0);
+    gl_Position = camera.viewProj * vec4(fragPos, 1.0);
     fragColor = colors.color[gl_InstanceIndex];
     
     texCoord = inTexCoord;

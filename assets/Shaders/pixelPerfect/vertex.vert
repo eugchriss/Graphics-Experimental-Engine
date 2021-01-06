@@ -13,8 +13,7 @@ layout(location = 0) out flat uint index;
 layout(binding = 0) uniform Camera
 {
     vec4 pos;
-    mat4 view;
-    mat4 proj;
+    mat4 viewProj;
 }camera;	
 
 layout(binding = 1) uniform Model_Matrix
@@ -25,7 +24,7 @@ layout(binding = 1) uniform Model_Matrix
 
 void main() {
     mat4 modelMatrix = models.matrices[gl_InstanceIndex];
-    gl_Position = camera.proj * camera.view * modelMatrix * vec4(inPosition, 1.0);
+    gl_Position = camera.viewProj * modelMatrix * vec4(inPosition, 1.0);
     //+1 to make sure 0 means no object
     index = gl_InstanceIndex + 1;
 }

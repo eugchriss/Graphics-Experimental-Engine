@@ -122,12 +122,13 @@ void vkn::Renderer::draw()
 	}
 }
 
-void vkn::Renderer::updateCamera(const gee::Camera& camera, const float aspectRatio)
+void vkn::Renderer::updateCamera(gee::Camera& camera, const float aspectRatio)
 {
 	shaderCamera_.position = glm::vec4{camera.position_, 1.0f};
-	shaderCamera_.view = camera.pointOfView();
-	shaderCamera_.projection = camera.perspectiveProjection(aspectRatio);
-	shaderCamera_.projection[1][1] *= -1;
+	shaderCamera_.viewProj = camera.viewProjMatrix(aspectRatio);
+	/*shaderCamera_.view = camera.pointOfView();
+	shaderCamera_.projection = camera.perspectiveProjection();
+	shaderCamera_.projection[1][1] *= -1;*/
 }
 
 vkn::Framebuffer& vkn::Renderer::getFramebuffer()

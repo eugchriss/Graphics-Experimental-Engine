@@ -3,7 +3,9 @@
 #include "../headers/vulkan_utils.h"
 #include "../headers/imgui_impl_vulkan.h"
 #include "../headers/imgui_impl_glfw.h"
+#include "../headers/Timer.h"
 #include <cassert>
+#include <iostream>
 
 vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR surface, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const bool enableGui, ImGui_ImplVulkan_InitInfo guiInfo, const uint32_t frameCount) :
 	gpu_{ gpu },
@@ -295,7 +297,10 @@ void vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
 	if (swapchain_)
 	{
 		swapchain_->setImageAvailableSignal(imageAvailableSignals_[currentFrame_]);
+		gee::Timer t{ "rendering time" };
 		graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_], imageAvailableSignals_[currentFrame_], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
+		renderingFinishedSignals_[currentFrame_].waitForSignal();
+		std::cout << "rendering time " << t.ellapsedMs() << "ms\n";
 		for (auto& image : images_)
 		{
 			image.setAfterRenderpassLayout();

@@ -11,8 +11,7 @@ layout(location = 5) in vec3 inBitangent;
 layout(binding = 0) uniform Camera
 {
     vec4 pos;
-    mat4 view;
-    mat4 proj;
+    mat4 viewProj;
 }camera;	
 
 layout(binding = 1) uniform Model_Matrix
@@ -22,5 +21,5 @@ layout(binding = 1) uniform Model_Matrix
 
 void main()
 {
-    gl_Position = camera.proj * camera.view * models.matrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
+    gl_Position = camera.viewProj * models.matrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
 }

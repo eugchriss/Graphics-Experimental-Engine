@@ -75,6 +75,7 @@ namespace gee
 		const glm::mat4 pointOfView() const;
 		const glm::mat4 perspectiveProjection(const float aspectRatio) const;
 		const glm::mat4 orhtogonalProjection() const;
+		const glm::mat4& viewProjMatrix(const float aspectRatio);
 		inline bool isViewable(const glm::vec3& pos) const
 		{
 			return viewFrustum_.isInside(pos);
@@ -100,7 +101,8 @@ namespace gee
 		float absolutePitch_{};
 		float absouluteYaw_{};
 		bool moved_{ false };
-
+		bool shouldRecomputeViewProjMatrix{ true };
+		glm::mat4 viewProjMatrix_{ 1.0f };
 		ViewFrustum viewFrustum_;
 		void createCameraSpace();
 		const ViewFrustum getViewFrustum();
