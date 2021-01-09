@@ -82,7 +82,13 @@ const VkQueue vkn::Queue::queue() const
 	return queue_;
 }
 
-vkn::Queue::Queue(const vkn::Device& device, const uint32_t familyIndex, const uint32_t index) : device_{ device }, familyIndex_{ familyIndex }
+const uint32_t vkn::Queue::timestampValidBits() const
 {
-	vkGetDeviceQueue(device_.device, familyIndex_, index, &queue_);
+	return timestampValidBits_;
+}
+
+vkn::Queue::Queue(const vkn::Device& device, const vkn::QueueFamily& queueFamily, const uint32_t index) : device_{ device }, familyIndex_{ queueFamily.familyIndex() }
+{
+	vkGetDeviceQueue(device_.device, queueFamily.familyIndex(), index, &queue_);
+	timestampValidBits_ = queueFamily.timestampValidBits();
 }

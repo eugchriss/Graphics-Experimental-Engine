@@ -3,9 +3,7 @@
 #include "../headers/vulkan_utils.h"
 #include "../headers/imgui_impl_vulkan.h"
 #include "../headers/imgui_impl_glfw.h"
-#include "../headers/Timer.h"
 #include <cassert>
-#include <iostream>
 
 vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR surface, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const bool enableGui, ImGui_ImplVulkan_InitInfo guiInfo) :
 	gpu_{ gpu },
@@ -60,7 +58,7 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR s
 	{
 		effect.setViewport(renderArea_.offset.x, renderArea_.offset.y, renderArea_.extent.width, renderArea_.extent.height);
 		effect.active(gpu_, device_, renderpass_->renderpass(), subpassIndex);
-		
+
 		auto& effectTweakings = effect.tweakings();
 		for (auto& tweaking : effectTweakings)
 		{
@@ -68,6 +66,10 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR s
 		}
 		++subpassIndex;
 	}
+
+	queryPool_ = std::make_unique<vkn::QueryPool>(device, VK_QUERY_TYPE_TIMESTAMP, 2);
+	beginQuery_ = std::make_unique<vkn::Query>(queryPool_->getQuery());
+	endQuery_ = std::make_unique<vkn::Query>(queryPool_->getQuery());
 }
 
 vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const VkExtent2D& extent, const uint32_t frameCount) :
@@ -110,6 +112,10 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 		}
 		++subpassIndex;
 	}
+
+	queryPool_ = std::make_unique<vkn::QueryPool>(device, VK_QUERY_TYPE_TIMESTAMP, 2);
+	beginQuery_ = std::make_unique<vkn::Query>(queryPool_->getQuery());
+	endQuery_ = std::make_unique<vkn::Query>(queryPool_->getQuery());
 }
 
 
@@ -239,6 +245,8 @@ void vkn::Framebuffer::render(MeshHolder_t& meshHolder, TextureHolder_t& texture
 			});
 		auto& cb = cbs_[currentFrame_];
 		cb.begin();
+		queryPool_->reset(cb);
+		beginQuery_->writeTimeStamp(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
 		renderpass_->begin(cb, framebuffers_[currentFrame_], renderArea_, VK_SUBPASS_CONTENTS_INLINE);
 
 		for (auto& [effectRef, drawablesRef, cameraRef] : renderingOrder_)
@@ -284,21 +292,19 @@ void vkn::Framebuffer::render(MeshHolder_t& meshHolder, TextureHolder_t& texture
 			ImGui::NewFrame();
 		}
 		renderpass_->end(cb);
+		endQuery_->writeTimeStamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 		cb.end();
 
 		renderingOrder_.clear();
 	}
 }
 
-void vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
+float vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
 {
 	if (swapchain_)
 	{
 		swapchain_->setImageAvailableSignal(imageAvailableSignals_[currentFrame_]);
-		gee::Timer t{ "rendering time" };
 		graphicsQueue.submit(cbs_[currentFrame_], renderingFinishedSignals_[currentFrame_], imageAvailableSignals_[currentFrame_], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
-		renderingFinishedSignals_[currentFrame_].waitForSignal();
-		std::cout << "rendering time " << t.ellapsedMs() << "ms\n";
 		for (auto& image : images_)
 		{
 			image.setAfterRenderpassLayout();
@@ -314,6 +320,14 @@ void vkn::Framebuffer::submitTo(vkn::Queue& graphicsQueue)
 		}
 	}
 	currentFrame_ = (currentFrame_ + 1) % std::size(framebuffers_);
+	queryPool_->getResults();
+	auto begin = queryPool_->getResult(*beginQuery_, gpu_.timeStamp());
+	auto end = queryPool_->getResult(*endQuery_, gpu_.timeStamp());
+	if (begin > end)
+	{
+		return (begin - end) / 1000000.0f;
+	}
+	return (end - begin) / 1000000.0f;
 }
 
 void vkn::Framebuffer::setViewport(const float x, const float y, const float width, const float height)
@@ -415,7 +429,7 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 		fbInfo.pAttachments = std::data(views);
 
 		vkn::error_check(vkCreateFramebuffer(device_.device, &fbInfo, nullptr, &framebuffers_[i]), "Failed to create the framebuffer");
-	}	
+	}
 }
 
 void vkn::Framebuffer::createSignals()
@@ -779,5 +793,5 @@ void vkn::Framebuffer::createGuiSubpass(vkn::RenderpassBuilder& builder, const s
 
 const bool vkn::Framebuffer::isLastEffect(const vkn::ShaderEffect& effect) const
 {
-	return effect.index() ==  (std::size(effects_) - 1);
+	return effect.index() == (std::size(effects_) - 1);
 }

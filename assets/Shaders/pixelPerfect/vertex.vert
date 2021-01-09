@@ -21,6 +21,10 @@ layout(binding = 1) uniform Model_Matrix
     mat4[100] matrices;
 }models;
 
+layout(binding = 2) uniform Normal_Matrix
+{
+    mat4[100] matrices;
+}normals;
 
 void main() {
     mat4 modelMatrix = models.matrices[gl_InstanceIndex];

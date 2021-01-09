@@ -24,7 +24,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 
 	renderer_->getFramebuffer().getEffect("gamma correction").setBooleanTweaking("gammaCorrection");
 	renderer_->getFramebuffer().getEffect("gamma correction").setBooleanTweaking("hdr");
-	renderer_->getFramebuffer().getEffect("gamma correction").setTweakingRange("exposure", 0.0f, 5.0f);
+	renderer_->getFramebuffer().getEffect("gamma correction").setTweakingRange("exposure", 0.1f, 5.0f);
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
 		{
 			if (w != 0 && h != 0)
@@ -133,6 +133,11 @@ void gee::Application::updateGui()
 	}
 	camera_.imguiDisplay();
 	displayShaderTweakings(renderer_->getFramebuffer().shaderTweakings());
+
+	ImGui::Begin("Loop time");
+	ImGui::LabelText("cpu time", std::to_string(cpuTime_).c_str(), "0.3f");
+	ImGui::LabelText("gpu time", std::to_string(gpuTime_).c_str(), "0.3f");
+	ImGui::End();
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -234,16 +239,16 @@ void gee::Application::displayShaderTweakings(std::vector<std::reference_wrapper
 
 bool gee::Application::isRunning()
 {
-	if (renderingtimer_.ellapsedMs() >= 1000 / 60.0f)
+	if ((renderingtimer_.ellapsedMs() >= 100 / 6.0f))
 	{
+		renderingtimer_.reset();
+		cpuTimer_.reset();
 		if (drawblesShouldBeSorted_)
 		{
 			std::sort(std::begin(drawables_), std::end(drawables_), [&](const auto& lhs, const auto& rhs) { return rhs.get().mesh.hash() < lhs.get().mesh.hash(); });
 		}
 		renderer_->updateCamera(camera_, window_.aspectRatio());
 		updateGui();
-
-		gee::Timer t{ "Draw time" };
 		std::vector<std::reference_wrapper<gee::Drawable>> v;
 		if (skybox_.has_value())
 		{
@@ -251,10 +256,10 @@ bool gee::Application::isRunning()
 			renderer_->render("skybox technique", v);
 		}
 		renderer_->render("forward rendering", drawables_);
-		renderer_->draw();
-		//std::cout << "draw time : " << t.ellapsedMs() << "ms\n";
-		renderingtimer_.reset();
+		gpuTime_ = renderer_->draw();
+		cpuTime_ = cpuTimer_.ellapsedMs();
 	}
+	
 
 	return window_.isOpen();
 }

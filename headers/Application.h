@@ -45,5 +45,9 @@ namespace gee
 		size_t lastDrawableIndex_{-1u};
 		std::optional<std::reference_wrapper<gee::Drawable>> activeDrawable_;
 		std::optional<std::reference_wrapper<gee::Drawable>> skybox_{};
+		gee::Timer cpuTimer_{ "Draw time" };
+		float gpuTime_{};
+		float cpuTime_{};
+		
 	};
 }

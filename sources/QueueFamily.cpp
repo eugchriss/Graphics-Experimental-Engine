@@ -1,5 +1,6 @@
 #include "../headers/QueueFamily.h"
 #include "../headers/vulkan_utils.h"
+#include "../headers/queue.h"
 
 #include <vector>
 #include <stdexcept>
@@ -21,6 +22,7 @@ vkn::QueueFamily::QueueFamily(const vkn::Gpu& gpu, const VkQueueFlags queueType,
 	{
 		if ((familyProperties[familyIndex_].queueFlags & queueType) == queueType)
 		{
+			timestampValidBits_ = familyProperties[familyIndex_].timestampValidBits;
 			queueFamilyFound = true;
 		}
 		else
@@ -45,6 +47,7 @@ vkn::QueueFamily::QueueFamily(const vkn::Gpu& gpu, const VkQueueFlags queueType,
 	{
 		if ((familyProperties[familyIndex_].queueFlags & queueType) == queueType)
 		{
+			timestampValidBits_ = familyProperties[familyIndex_].timestampValidBits;
 			queueFamilyFound = true;
 		}
 		else
@@ -77,6 +80,7 @@ vkn::QueueFamily::QueueFamily(const vkn::Gpu& gpu, const VkQueueFlags queueType,
 	{
 		if ((familyProperties[familyIndex_].queueFlags & queueType) == queueType)
 		{
+			timestampValidBits_ = familyProperties[familyIndex_].timestampValidBits;
 			queueFamilyFound = true;
 			vkn::error_check(vkGetPhysicalDeviceSurfaceSupportKHR(gpu.device, familyIndex_, surface, &presentSupported), "Unable to get surface support");
 		}
@@ -104,6 +108,7 @@ vkn::QueueFamily::QueueFamily(const vkn::Gpu& gpu, const VkQueueFlags queueType,
 	{
 		if ((familyProperties[familyIndex_].queueFlags & queueType) == queueType)
 		{
+			timestampValidBits_ = familyProperties[familyIndex_].timestampValidBits;
 			queueFamilyFound = true;
 			vkn::error_check(vkGetPhysicalDeviceSurfaceSupportKHR(gpu.device, familyIndex_, surface, &presentSupported), "Unable to get surface support");
 		}
@@ -121,9 +126,14 @@ vkn::QueueFamily::QueueFamily(const vkn::Gpu& gpu, const VkQueueFlags queueType,
 std::unique_ptr<vkn::Queue> vkn::QueueFamily::getQueue(const vkn::Device& device)
 {
 	assert(queueIndex_ < std::size(queuePriorities_) && "The application requested more queues than reserved");
-	auto queue = std::make_unique<vkn::Queue>(device, familyIndex_, queueIndex_);
+	auto queue = std::make_unique<vkn::Queue>(device, *this, queueIndex_);
 	++queueIndex_;
 	return queue;
+}
+
+uint32_t vkn::QueueFamily::timestampValidBits() const
+{
+	return timestampValidBits_;
 }
 
 const uint32_t& vkn::QueueFamily::familyIndex() const

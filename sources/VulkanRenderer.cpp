@@ -97,13 +97,14 @@ void vkn::Renderer::render(vkn::Framebuffer& fb, const std::string& effectName, 
 	fb.setupRendering(effectName, shaderCamera_, drawables);
 }
 
-void vkn::Renderer::draw(vkn::Framebuffer& fb)
+float vkn::Renderer::draw(vkn::Framebuffer& fb)
 {
 	if (!isWindowMinimized_)
 	{
 		fb.render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
-		fb.submitTo(*graphicsQueue_);
+		return fb.submitTo(*graphicsQueue_);
 	}
+	return 0.0f;
 }
 
 void vkn::Renderer::setViewport(const float x, const float y, const float width, const float height)
@@ -112,14 +113,15 @@ void vkn::Renderer::setViewport(const float x, const float y, const float width,
 	mainFramebuffer_->setViewport(x, y, width, height);
 }
 
-void vkn::Renderer::draw()
+float vkn::Renderer::draw()
 {
 	if (!isWindowMinimized_)
 	{
 		assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
 		mainFramebuffer_->render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
-		mainFramebuffer_->submitTo(*graphicsQueue_);
+		return mainFramebuffer_->submitTo(*graphicsQueue_);
 	}
+	return 0.0f;
 }
 
 void vkn::Renderer::updateCamera(gee::Camera& camera, const float aspectRatio)
@@ -138,6 +140,14 @@ vkn::Framebuffer& vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& 
 {
 	if (!mainFramebuffer_)
 	{
+		for (const auto& effect : effects)
+		{
+			if (effect.isPostProcessEffect())
+			{
+				meshMemoryLocations_->get(std::hash<std::string>{}("custom gee quad"), gee::getQuadMesh());
+				break;
+			}
+		}
 		mainFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, enableGui, guiInitInfo_);
 		if (enableGui)
 		{

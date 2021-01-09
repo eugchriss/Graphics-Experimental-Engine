@@ -11,6 +11,8 @@
 #include "image.h"
 #include "queue.h"
 #include "CommandPool.h"
+#include "QueryPool.h"
+#include "Query.h"
 #include "../headers/imgui_impl_vulkan.h"
 
 #include <vector>
@@ -46,7 +48,7 @@ namespace vkn
 		void setupRendering(const std::string& effectName, const vkn::ShaderCamera& camera, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void setupRendering(const std::string& effectName, const vkn::ShaderCamera& camera, const std::reference_wrapper<gee::Drawable>& drawable);
 		void render(MeshHolder_t& meshHolder, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const VkSampler& sampler);
-		void submitTo(vkn::Queue& graphicsQueue);
+		float submitTo(vkn::Queue& graphicsQueue);
 		void setViewport(const float x, const float y, const float width, const float height);
 		vkn::ShaderEffect& getEffect(const std::string& name);
 		const glm::u32vec2 renderArea() const;
@@ -75,6 +77,12 @@ namespace vkn
 		using CameraConstRef = std::reference_wrapper<const vkn::ShaderCamera>;
 		std::unordered_map<std::string, vkn::ShaderEffect> effects_;
 		std::vector<std::tuple<ShaderEffectRef, DrawablesRef, CameraConstRef>> renderingOrder_;
+		std::unique_ptr<vkn::QueryPool> queryPool_;
+		std::unique_ptr<vkn::Query> beginQuery_;
+		std::unique_ptr<vkn::Query> endQuery_;
+
+
+
 		VkImageAspectFlags getAspectFlag(const vkn::RenderpassAttachment& attachment);
 		void createFramebufer(VkFramebufferCreateInfo& fbInfo, const std::vector<vkn::RenderpassAttachment>& renderpassAttachments, const uint32_t frameCount);
 		void createFramebufer(VkFramebufferCreateInfo& fbInfo, const std::vector<vkn::RenderpassAttachment>& renderpassAttachments, const uint32_t presentAttachmentIndex, const uint32_t frameCount);

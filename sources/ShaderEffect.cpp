@@ -87,7 +87,7 @@ void vkn::ShaderEffect::render(vkn::CommandBuffer& cb, MeshHolder_t& geometryHol
 {
 	recordTweakings(cb);
 	VkDeviceSize offset{ 0 };
-	auto& memoryLocation = geometryHolder.get(std::hash<std::string>{}("custom gee quad"), gee::getQuadMesh());
+	auto& memoryLocation = geometryHolder.get(std::hash<std::string>{}("custom gee quad"));
 
 	vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
 	vkCmdBindIndexBuffer(cb.commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);

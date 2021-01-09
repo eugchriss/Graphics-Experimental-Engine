@@ -15,6 +15,7 @@ namespace vkn
 		const VkPhysicalDeviceMemoryProperties memoryProperties() const;
 		friend std::ostream& operator << (std::ostream& os, const Gpu& gpu);
 		static const std::vector<Gpu> getAvailbleGpus(const vkn::Instance& instance);
+		const float timeStamp()const;
 		VkPhysicalDevice device{ VK_NULL_HANDLE };
 	private:
 		VkPhysicalDeviceFeatures2 features_{};

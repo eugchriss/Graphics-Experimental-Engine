@@ -56,7 +56,9 @@ set(SOURCES	"sources/main.cpp"
 			"sources/AABB.cpp"
 			"sources/utility.cpp"
 			"sources/shaderEffect.cpp"
-			"sources/textureImageFactory.cpp")
+			"sources/textureImageFactory.cpp"
+			"sources/queryPool.cpp"
+			"sources/query.cpp")
 			
 
 set(HEADERS	"headers/gpu.h"
@@ -107,7 +109,9 @@ set(HEADERS	"headers/gpu.h"
 			"headers/boundingBox.h"
 			"headers/AABB.h"
 			"headers/shaderEffect.h"
-			"headers/textureImageFactory.h")
+			"headers/textureImageFactory.h"
+			"headers/queryPool.h"
+			"headers/query.h")
 
 add_executable(gee ${SOURCES} ${HEADERS})
 

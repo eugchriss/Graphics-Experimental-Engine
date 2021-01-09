@@ -1,5 +1,4 @@
 #pragma once
-#include "Queue.h"
 #include "vulkan/vulkan.hpp"
 #include "Gpu.h"
 #include <vector>
@@ -8,6 +7,7 @@
 namespace vkn
 {
 	class Device;
+	class Queue;
 	class QueueFamily
 	{
 	public:
@@ -19,10 +19,12 @@ namespace vkn
 		const uint32_t& familyIndex() const;
 		const VkDeviceQueueCreateInfo info() const;
 		std::unique_ptr<Queue> getQueue(const vkn::Device& device);
+		uint32_t timestampValidBits() const;
 	private:
 		uint32_t familyIndex_{};
 		VkQueueFlags familyType_{};
 		std::vector<float> queuePriorities_;
 		uint32_t queueIndex_{};
+		uint32_t timestampValidBits_{};
 	};
 }

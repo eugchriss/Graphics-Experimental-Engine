@@ -45,6 +45,12 @@ const std::vector<vkn::Gpu> vkn::Gpu::getAvailbleGpus(const vkn::Instance& insta
 	return gpus;
 }
 
+const float vkn::Gpu::timeStamp() const
+{
+	auto props = properties();
+	return props.limits.timestampPeriod;
+}
+
 const std::string vkn::Gpu::typeToString(const VkPhysicalDeviceType type) const
 {
 	switch (type)

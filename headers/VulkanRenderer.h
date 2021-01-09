@@ -38,8 +38,8 @@ namespace vkn
 		void render(const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable);
 		void render(vkn::Framebuffer& fb, const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
-		void draw();
-		void draw(vkn::Framebuffer& fb);
+		float draw();
+		float draw(vkn::Framebuffer& fb);
 		void setViewport(const float x, const float y, const float width, const float height);
 		void updateCamera(gee::Camera& camera, const float aspectRatio);
 		vkn::Framebuffer& getFramebuffer();
