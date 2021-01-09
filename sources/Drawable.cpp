@@ -143,9 +143,15 @@ const glm::mat4& gee::Drawable::getTransform()
 		transform_ = glm::rotate(transform_, rotation_.y, glm::vec3{ 0.0, 1.0f, 0.0f });
 		transform_ = glm::rotate(transform_, rotation_.z, glm::vec3{ 0.0, 0.0f, 1.0f });
 
+		normalMatrix_ = glm::transpose(glm::inverse(transform_));
 		shouldRecomputeTransform_ = false;
 	}
 	return transform_;
+}
+
+const glm::mat4& gee::Drawable::getNormalMatrix() const
+{
+	return normalMatrix_;
 }
 
 const glm::vec4& gee::Drawable::getColor() const

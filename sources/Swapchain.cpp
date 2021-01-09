@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cassert>
 
-vkn::Swapchain::Swapchain(vkn::Gpu& gpu, vkn::Device& device, const VkSurfaceKHR& surface, const uint32_t imageCount): device_{device}
+vkn::Swapchain::Swapchain(vkn::Gpu& gpu, vkn::Device& device, const VkSurfaceKHR& surface): device_{device}
 {
 	VkSurfaceCapabilitiesKHR surfaceCapabilities{};
 	vkn::error_check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu.device, surface, &surfaceCapabilities), "Failed to get surface capabilities");
@@ -14,17 +14,10 @@ vkn::Swapchain::Swapchain(vkn::Gpu& gpu, vkn::Device& device, const VkSurfaceKHR
 	swapchainInfo_.pNext = nullptr;
 	swapchainInfo_.flags = 0;
 	swapchainInfo_.surface = surface;
-	if (imageCount <= 0)
+	swapchainInfo_.minImageCount = surfaceCapabilities.maxImageCount;
+	if (swapchainInfo_.minImageCount > 3)
 	{
-		swapchainInfo_.minImageCount = surfaceCapabilities.minImageCount;
-	}
-	else if (imageCount > surfaceCapabilities.maxImageCount)
-	{
-		swapchainInfo_.minImageCount = surfaceCapabilities.maxImageCount;
-	}
-	else
-	{
-		swapchainInfo_.minImageCount = imageCount;
+		swapchainInfo_.minImageCount = 3;
 	}
 	swapchainInfo_.imageFormat = format.format;
 	swapchainInfo_.imageColorSpace = format.colorSpace;

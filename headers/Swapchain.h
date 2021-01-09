@@ -12,7 +12,7 @@ namespace vkn
 	class Swapchain
 	{
 	public:
-		Swapchain(vkn::Gpu& gpu, vkn::Device& device, const VkSurfaceKHR& surface, const uint32_t imageCount = 0);
+		Swapchain(vkn::Gpu& gpu, vkn::Device& device, const VkSurfaceKHR& surface);
 		~Swapchain();
 		void resize(vkn::CommandBuffer& cb, const VkExtent2D& extent);
 		const VkExtent2D extent() const;

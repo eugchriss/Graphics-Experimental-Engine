@@ -43,7 +43,7 @@ void vkn::Queue::submit(const CommandBuffer& cb, vkn::Signal& submittedSignal, c
 
 void vkn::Queue::submit(const CommandBuffer& cb, vkn::Signal& submittedSignal, Signal& waitOn, const VkPipelineStageFlags waitingStage, const bool persistent)
 {
-	auto cmdBuffer = cb.commandBuffer();
+	const auto& cmdBuffer = cb.commandBuffer();
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;

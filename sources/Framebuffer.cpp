@@ -7,15 +7,13 @@
 #include <cassert>
 #include <iostream>
 
-vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR surface, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const bool enableGui, ImGui_ImplVulkan_InitInfo guiInfo, const uint32_t frameCount) :
+vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR surface, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const bool enableGui, ImGui_ImplVulkan_InitInfo guiInfo) :
 	gpu_{ gpu },
 	device_{ device },
 	cbPool_{ cbPool },
 	guiEnabled_{ enableGui }
 {
-	swapchain_ = std::make_unique<vkn::Swapchain>(gpu_, device_, surface, frameCount);
-	framebuffers_.resize(std::size(swapchain_->images()));
-	createSignals();
+	swapchain_ = std::make_unique<vkn::Swapchain>(gpu_, device_, surface);
 	for (const auto& image : swapchain_->images())
 	{
 		cbs_.emplace_back(cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY));
@@ -55,7 +53,8 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR s
 	fbInfo.height = swapchain_->extent().height;
 	fbInfo.renderPass = renderpass_->renderpass();
 
-	createFramebufer(fbInfo, renderpassAttachments, outputColorBufferAttachmentIndex, frameCount);
+	createFramebufer(fbInfo, renderpassAttachments, outputColorBufferAttachmentIndex, std::size(swapchain_->images()));
+	createSignals();
 	auto subpassIndex = 0u;
 	for (auto& [name, effect] : effects_)
 	{
@@ -77,7 +76,6 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 	cbPool_{ cbPool },
 	renderArea_{ {0,0}, extent }
 {
-	framebuffers_.resize(frameCount);
 	for (auto& effect : shaderEffects)
 	{
 		effect.preload(device);
@@ -85,7 +83,6 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 	}
 	createRenderpass(false);
 	const auto& renderpassAttachments = renderpass_->attachments();
-	createSignals();
 	for (auto i = 0u; i < frameCount; ++i)
 	{
 		cbs_.emplace_back(cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY));
@@ -100,6 +97,7 @@ vkn::Framebuffer::Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPo
 	fbInfo.renderPass = renderpass_->renderpass();
 
 	createFramebufer(fbInfo, renderpassAttachments, frameCount);
+	createSignals();
 	auto subpassIndex = 0u;
 	for (auto& [name, effect] : effects_)
 	{
@@ -247,8 +245,8 @@ void vkn::Framebuffer::render(MeshHolder_t& meshHolder, TextureHolder_t& texture
 		{
 			auto& effect = effectRef.get();
 			effect.bind(cb);
-			const auto& [sortedDrawables, textures, materials, drawableMaterials, modelMatrices, pointLights] = createShaderEffectResource(meshHolder, textureHolder, materialHolder, drawablesRef.get());
-			bindUniforms(effect, cameraRef.get(), sampler, textureHolder, materialHolder, textures, materials, drawableMaterials, modelMatrices, pointLights);
+			const auto& [sortedDrawables, textures, materials, drawableMaterials, modelMatrices, normalMatrices, pointLights] = createShaderEffectResource(meshHolder, textureHolder, materialHolder, drawablesRef.get());
+			bindUniforms(effect, cameraRef.get(), sampler, textureHolder, materialHolder, textures, materials, drawableMaterials, modelMatrices, normalMatrices, pointLights);
 			effect.render(cb, meshHolder, sortedDrawables);
 
 			if (!isLastEffect(effect))
@@ -379,6 +377,7 @@ VkImageAspectFlags vkn::Framebuffer::getAspectFlag(const vkn::RenderpassAttachme
 
 void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const std::vector<vkn::RenderpassAttachment>& renderpassAttachments, const uint32_t frameCount)
 {
+	framebuffers_.resize(frameCount);
 	for (auto i = 0u; i < frameCount; ++i)
 	{
 		std::vector<VkImageView> views;
@@ -399,6 +398,7 @@ void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const s
 void vkn::Framebuffer::createFramebufer(VkFramebufferCreateInfo& fbInfo, const std::vector<vkn::RenderpassAttachment>& renderpassAttachments, const uint32_t presentAttachmentIndex, const uint32_t frameCount)
 {
 	assert(swapchain_ && "This override needs to have the swapchain created first");
+	framebuffers_.resize(std::size(swapchain_->images()));
 	auto& swapchainImages = swapchain_->images();
 	for (auto i = 0u; i < frameCount; ++i)
 	{
@@ -615,14 +615,17 @@ const vkn::Framebuffer::ShaderEffectResource vkn::Framebuffer::createShaderEffec
 	MaterialSet_t materialSet;
 	std::vector<size_t> drawableMaterials;
 	std::vector<glm::mat4> modelMatrices{};
+	std::vector<glm::mat4> normalMatrices{};
 	std::vector<gee::ShaderPointLight> pointLights{};
 
 	modelMatrices.reserve(std::size(drawables));
+	normalMatrices.reserve(std::size(drawables));
 	pointLights.reserve(std::size(drawables));
 	for (const auto& drawableRef : drawables)
 	{
 		auto& drawable = drawableRef.get();
 		modelMatrices.push_back(drawable.getTransform());
+		normalMatrices.push_back(drawable.getNormalMatrix());
 		if (drawable.hasLightComponent())
 		{
 			const auto& light = drawable.light();
@@ -650,7 +653,7 @@ const vkn::Framebuffer::ShaderEffectResource vkn::Framebuffer::createShaderEffec
 			materialSet.emplace_back(materialHash);
 		}
 	}
-	return { meshHolder.occurences(), textureSet, materialSet, drawableMaterials, modelMatrices, pointLights };
+	return { meshHolder.occurences(), textureSet, materialSet, drawableMaterials, modelMatrices, normalMatrices, pointLights };
 }
 
 void vkn::Framebuffer::bindTexture(TextureHolder_t& textureHolder, const TextureSet_t& textures, vkn::ShaderEffect& effect, const VkSampler& sampler) const
@@ -726,7 +729,7 @@ void vkn::Framebuffer::bindDrawableMaterial(MaterialHolder_t& materialHolder, co
 	effect.updateBuffer("DrawableMaterial", drawableMaterials, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
-void vkn::Framebuffer::bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms, const std::vector<gee::ShaderPointLight>& pointLights)
+void vkn::Framebuffer::bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms, const std::vector<glm::mat4>& normalMatrices, const std::vector<gee::ShaderPointLight>& pointLights)
 {
 	bindInputTexture(effect, sampler);
 	auto requirementFlags = effect.getRequirement();
@@ -737,6 +740,7 @@ void vkn::Framebuffer::bindUniforms(vkn::ShaderEffect& effect, const vkn::Shader
 	if ((requirementFlags & vkn::ShaderEffect::Requirement::Transform) == vkn::ShaderEffect::Requirement::Transform)
 	{
 		effect.updateBuffer("Model_Matrix", transforms, VK_SHADER_STAGE_VERTEX_BIT);
+		effect.updateBuffer("Normal_Matrix", normalMatrices, VK_SHADER_STAGE_VERTEX_BIT);
 	}
 	if ((requirementFlags & vkn::ShaderEffect::Requirement::Camera) == vkn::ShaderEffect::Requirement::Camera)
 	{

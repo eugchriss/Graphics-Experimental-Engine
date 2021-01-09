@@ -28,6 +28,7 @@ namespace gee
 		const glm::vec3& getSize() const;
 		const glm::vec3& getRotation() const;
 		const glm::mat4& getTransform();
+		const glm::mat4& getNormalMatrix() const;
 		const glm::vec4& getColor() const;
 		bool hasLightComponent() const;
 		const BoundingBox& boundingBox() const;
@@ -43,6 +44,7 @@ namespace gee
 		glm::vec3 rotation_{};
 		glm::vec4 color{ 1.0f };
 		glm::mat4 transform_{ 1.0f };
+		glm::mat4 normalMatrix_{ 1.0f };
 		bool shouldRecomputeTransform_ = false;
 		std::optional<gee::Optics> light_;
 		static uint32_t count; //solely used for default naming

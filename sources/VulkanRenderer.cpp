@@ -126,9 +126,6 @@ void vkn::Renderer::updateCamera(gee::Camera& camera, const float aspectRatio)
 {
 	shaderCamera_.position = glm::vec4{camera.position_, 1.0f};
 	shaderCamera_.viewProj = camera.viewProjMatrix(aspectRatio);
-	/*shaderCamera_.view = camera.pointOfView();
-	shaderCamera_.projection = camera.perspectiveProjection();
-	shaderCamera_.projection[1][1] *= -1;*/
 }
 
 vkn::Framebuffer& vkn::Renderer::getFramebuffer()
@@ -137,11 +134,11 @@ vkn::Framebuffer& vkn::Renderer::getFramebuffer()
 	return *mainFramebuffer_;
 }
 
-vkn::Framebuffer& vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui, const uint32_t frameCount)
+vkn::Framebuffer& vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui)
 {
 	if (!mainFramebuffer_)
 	{
-		mainFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, enableGui, guiInitInfo_, frameCount);
+		mainFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, enableGui, guiInitInfo_);
 		if (enableGui)
 		{
 			ImGui_ImplVulkan_NewFrame();

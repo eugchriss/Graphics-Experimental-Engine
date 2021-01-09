@@ -14,7 +14,10 @@ fragmentShaderPath_{ fragmentShaderPath }
 	pipelineBuilder_.addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShaderPath);
 	pipelineBuilder_.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
 	pipelineBuilder_.addRaterizationStage(VK_POLYGON_MODE_FILL);
-	pipelineBuilder_.addDepthStage(VK_COMPARE_OP_LESS);
+	if (!isPostProcessEffect_)
+	{
+		pipelineBuilder_.addDepthStage(VK_COMPARE_OP_LESS);
+	}
 	pipelineBuilder_.addColorBlendStage();
 	pipelineBuilder_.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
 	pipelineBuilder_.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);

@@ -31,17 +31,20 @@ layout(binding = 2) uniform Colors
      vec4[100] color;
 }colors;
 
+layout(binding = 7) uniform Normal_Matrix
+{
+    mat4[100] matrices;
+}normals;
+
 void main() {
-    mat4 modelMatrix = models.matrices[gl_InstanceIndex];
-    fragPos = vec3( modelMatrix * vec4(inPosition, 1.0));
+    fragPos = vec3(models.matrices[gl_InstanceIndex] * vec4(inPosition, 1.0));
     gl_Position = camera.viewProj * vec4(fragPos, 1.0);
     fragColor = colors.color[gl_InstanceIndex];
     
     texCoord = inTexCoord;
     viewPos = camera.pos;
-    mat4 normalMatrix = transpose(inverse(models.matrices[gl_InstanceIndex]));
-    vec3 T = vec3(normalize(normalMatrix * vec4(inTangent, 1.0)));
-    vec3 N = vec3(normalize(normalMatrix * vec4(inNormal, 1.0)));
+    vec3 T = vec3(normalize(normals.matrices[gl_InstanceIndex] * vec4(inTangent, 1.0)));
+    vec3 N = vec3(normalize(normals.matrices[gl_InstanceIndex] * vec4(inNormal, 1.0)));
     T = normalize(T - dot(T, N) * N);
     vec3 B = inBitangent;
     TBN = transpose(mat3(T, B, N));

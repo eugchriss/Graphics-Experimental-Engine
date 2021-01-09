@@ -37,6 +37,7 @@ vkn::PipelineBuilder::PipelineBuilder(): lineWidth{ 1.0f }, frontFace{ VK_FRONT_
 		dynamicStateCI_.pNext = nullptr;
 		dynamicStateCI_.flags = 0;
 	}
+	depthStencilCI_.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 }
 
 

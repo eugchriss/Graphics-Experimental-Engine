@@ -32,7 +32,7 @@ namespace vkn
 	{
 	public:
 
-		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR surface, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const bool enableGui = true, ImGui_ImplVulkan_InitInfo guiInfo = {}, const uint32_t frameCount = 2);
+		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, VkSurfaceKHR surface, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const bool enableGui = true, ImGui_ImplVulkan_InitInfo guiInfo = {});
 		Framebuffer(vkn::Gpu& gpu, vkn::Device& device, vkn::CommandPool& cbPool, std::vector<vkn::ShaderEffect>& shaderEffects, const VkExtent2D& extent, const uint32_t frameCount = 2);
 		Framebuffer(Framebuffer&& other) = default;
 		~Framebuffer();
@@ -85,7 +85,7 @@ namespace vkn
 		const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>> createRenderpassSubpasses(vkn::RenderpassBuilder& builder, const std::vector<RenderpassAttachment>& attachments);
 		void createSubpassesDepencies(vkn::RenderpassBuilder& builder, const std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>>& attachmentDependencies);
 		void initGui(vkn::CommandBuffer& cb, ImGui_ImplVulkan_InitInfo& info);
-		using ShaderEffectResource = std::tuple<gee::Occurence<Hash_t>, TextureSet_t, MaterialSet_t, std::vector<MaterialKey_t>, std::vector<glm::mat4>, std::vector<gee::ShaderPointLight>>;
+		using ShaderEffectResource = std::tuple<gee::Occurence<Hash_t>, TextureSet_t, MaterialSet_t, std::vector<MaterialKey_t>, std::vector<glm::mat4>, std::vector<glm::mat4>, std::vector<gee::ShaderPointLight>>;
 		const ShaderEffectResource createShaderEffectResource(MeshHolder_t& meshHolder, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
 		void bindTexture(TextureHolder_t& textureHolder, const TextureSet_t& textures, vkn::ShaderEffect& effect, const VkSampler& sampler) const;
 		void bindInputTexture(vkn::ShaderEffect& effect, const VkSampler& sampler);
@@ -93,7 +93,7 @@ namespace vkn
 		void bindMaterial( MaterialHolder_t& materialHolder, const TextureSet_t textures, const MaterialSet_t& materials, vkn::ShaderEffect& effect) const;
 		void bindLight(vkn::ShaderEffect& effect, const std::vector<gee::ShaderPointLight>& pointLights);
 		void bindDrawableMaterial(MaterialHolder_t& materialHolder, const std::vector<Hash_t>& materials, vkn::ShaderEffect& effect) const;
-		void bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms, const std::vector<gee::ShaderPointLight>& pointLights);
+		void bindUniforms(vkn::ShaderEffect& effect, const vkn::ShaderCamera& camera, VkSampler sampler, TextureHolder_t& textureHolder, MaterialHolder_t& materialHolder, const TextureSet_t& textures, const MaterialSet_t& materials, const std::vector<MaterialKey_t>& drawableMaterials, const std::vector<glm::mat4>& transforms, const std::vector<glm::mat4>& normalMatrices, const std::vector<gee::ShaderPointLight>& pointLights);
 		const bool isLastEffect(const vkn::ShaderEffect& effect) const;
 		void createGuiSubpass(vkn::RenderpassBuilder& builder, const std::vector<RenderpassAttachment>& attachments, std::unordered_map<std::string, std::vector<vkn::SubpassAttachmentUsage>>& attachmentDependencies);
 		template<class T>

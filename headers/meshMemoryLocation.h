@@ -2,6 +2,7 @@
 #include "DeviceMemory.h"
 #include "Buffer.h"
 #include "Mesh.h"
+#include "Queue.h"
 
 namespace vkn
 {
@@ -23,5 +24,6 @@ namespace vkn
 	private:
 		vkn::Gpu& gpu_;
 		vkn::Device& device_;
+		std::unique_ptr<vkn::Queue> transferQueue_;
 	};
 }
