@@ -1,6 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
-#include <initializer_list>
+#include <vector>
 #include "Gpu.h"
 
 namespace vkn
@@ -9,7 +9,7 @@ namespace vkn
 	class Device
 	{
 	public:
-		Device(const vkn::Gpu& gpu, const std::initializer_list<const char*>& requestedExtensions, const vkn::QueueFamily& queueFamily);
+		Device(const vkn::Gpu& gpu, const std::vector<const char*>& requestedExtensions, const vkn::QueueFamily& queueFamily);
 		~Device();
 		void idle();
 #ifndef NDEBUG

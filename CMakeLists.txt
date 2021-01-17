@@ -58,8 +58,9 @@ set(SOURCES	"sources/main.cpp"
 			"sources/shaderEffect.cpp"
 			"sources/textureImageFactory.cpp"
 			"sources/queryPool.cpp"
-			"sources/query.cpp")
-			
+			"sources/query.cpp"
+			"sources/vulkanContext.cpp"
+			"sources/vulkanContextBuilder.cpp")
 
 set(HEADERS	"headers/gpu.h"
 			"headers/imgui.h"
@@ -111,8 +112,9 @@ set(HEADERS	"headers/gpu.h"
 			"headers/shaderEffect.h"
 			"headers/textureImageFactory.h"
 			"headers/queryPool.h"
-			"headers/query.h")
-
+			"headers/query.h"
+			"headers/vulkanContext.h"
+			"headers/vulkanContextBuilder.h")
 add_executable(gee ${SOURCES} ${HEADERS})
 
 target_include_directories(gee PRIVATE ${LIBS_DIR}/assimp)

@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cassert>
 
-vkn::Instance::Instance(const std::initializer_list<const char*>& requestedLayers)
+vkn::Instance::Instance(const std::vector<const char*>& requestedLayers)
 {
 	uint32_t count{};
 	vkEnumerateInstanceLayerProperties(&count, nullptr);

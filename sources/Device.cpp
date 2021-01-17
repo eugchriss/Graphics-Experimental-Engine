@@ -2,7 +2,7 @@
 #include "../headers/vulkan_utils.h"
 #include "../headers/QueueFamily.h"
 
-vkn::Device::Device(const vkn::Gpu& gpu,const std::initializer_list<const char*>& requestedExtensions, const vkn::QueueFamily& queueFamily)
+vkn::Device::Device(const vkn::Gpu& gpu,const std::vector<const char*>& requestedExtensions, const vkn::QueueFamily& queueFamily)
 {
 	VkDeviceCreateInfo deviceCI{};
 	auto queueInfo = queueFamily.info();
