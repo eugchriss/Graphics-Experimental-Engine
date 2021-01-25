@@ -136,7 +136,7 @@ uint32_t vkn::QueueFamily::timestampValidBits() const
 	return timestampValidBits_;
 }
 
-const uint32_t& vkn::QueueFamily::familyIndex() const
+const uint32_t vkn::QueueFamily::familyIndex() const
 {
 	return familyIndex_;
 }

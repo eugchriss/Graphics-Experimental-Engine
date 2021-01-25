@@ -1,78 +1,78 @@
 #pragma once
-#include <ostream>
-#include <unordered_map>
-#include <unordered_set>
-#include <set>
-#include <functional>
-#include <utility>
-#include <array>
+#include <optional>
 #include <string>
-#include <map>
-
+#include <memory>
 #include "vulkan/vulkan.hpp"
 #include "glm/glm.hpp"
-#include "window.h"
-#include "Instance.h"
-#include "gpu.h"
-#include "DebugMessenger.h"
-#include "QueueFamily.h"
-#include "Device.h"
+#include "vulkanContext.h"
+#include "Window.h"
+#include "Swapchain.h"
 #include "Queue.h"
-#include "Framebuffer.h"
-#include "CommandPool.h"
+#include "CommandBuffer.h"
 #include "Drawable.h"
-#include "Texture.h"
+#include "Material.h"
 #include "Camera.h"
-#include "ShaderEffect.h"
+#include "Pipeline.h"
+#include "RenderTarget.h"
 #include "ResourceHolder.h"
+#include "textureImageFactory.h"
+#include "meshMemoryLocation.h"
 
 namespace vkn
 {
 	class Renderer
 	{
 	public:
-		Renderer(gee::Window& window);
+		Renderer(vkn::Context& _context, const gee::Window& window);
 		~Renderer();
-		std::ostream& getGpuInfo(std::ostream& os) const;
-		const std::optional<size_t> objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y);
-		void render(const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
-		void render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable);
-		void render(vkn::Framebuffer& fb, const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables);
-		float draw();
-		float draw(vkn::Framebuffer& fb);
-		void setViewport(const float x, const float y, const float width, const float height);
-		void updateCamera(gee::Camera& camera, const float aspectRatio);
-		vkn::Framebuffer& getFramebuffer();
-		vkn::Framebuffer& getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui = true);
-		vkn::Framebuffer createFramebuffer(const glm::u32vec2& extent, std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount = 2u);
-		void resize(const glm::u32vec2& size);
-	private:
-		std::unique_ptr<vkn::Instance> instance_;
-		std::unique_ptr<vkn::DebugMessenger> debugMessenger_;
-		std::unique_ptr<vkn::Gpu> gpu_;
-		VkSurfaceKHR surface_{ VK_NULL_HANDLE };
-		std::unique_ptr<vkn::QueueFamily> queueFamily_;
-		std::unique_ptr<vkn::Device> device_;
-		std::unique_ptr<vkn::Queue> graphicsQueue_;
-		std::unique_ptr<vkn::Queue> transferQueue_;
-		VkSampler sampler_{ VK_NULL_HANDLE };
-		std::unique_ptr<vkn::CommandPool> cbPool_;
-		bool isWindowMinimized_{};
-		//imgui variables
-		VkDescriptorPool imguiDescriptorPool_{ VK_NULL_HANDLE };
-		ImGui_ImplVulkan_InitInfo guiInitInfo_{};
-		void checkGpuCompability(const vkn::Gpu& gpu);
-		void createSampler();
-		void buildImguiContext(const gee::Window& window);
-		
-		std::vector<glm::mat4> boundingBoxModels_;
+		void draw(const gee::Drawable& drawable, const size_t count = 1);
+		void draw();
+		void begin(RenderTarget& target, const VkRect2D& renderArea);
+		void end(RenderTarget& target);
+		void usePipeline(Pipeline& pipeline);
+		void setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D);
+		void setTextures(const std::string& name, const std::vector<gee::Texture>& textures, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D);
+		template <class T>
+		void updateBuffer(const std::string& name, const T& datas);
+		template <class T>
+		void updateSmallBuffer(const std::string& name, const T& datas);
+		Swapchain& swapchain();
 
-		std::unique_ptr<MeshHolder_t> meshMemoryLocations_;
-		std::unique_ptr<TextureHolder_t> textureHolder_;
-		std::unique_ptr<MaterialHolder_t> materialHolder_;
-		std::unique_ptr<vkn::Framebuffer> mainFramebuffer_;
-		std::unique_ptr<vkn::Framebuffer> pixelPerfectFramebuffer_;
-		
-		ShaderCamera shaderCamera_{};
+	private:
+		vkn::Context& context_;
+		std::unique_ptr<Swapchain> swapchain_;
+		VkSampler sampler_{ VK_NULL_HANDLE };
+		bool isWindowMinimized_{};
+		bool shouldRender_{ false };
+		template <class T>
+		using OptionalRef = std::optional<std::reference_wrapper<T>>;
+
+		OptionalRef<CommandBuffer> currentCb_;
+		OptionalRef<Pipeline> boundPipeline_;
+		std::vector<OptionalRef<Pipeline>> boundPipelines_;
+
+		template <class Factory, class Resource, class Key>
+		using CachePtr = std::unique_ptr<gee::ResourceHolder<Factory, Resource, Key>>;
+
+		CachePtr<vkn::TextureImageFactory, vkn::Image, std::string> texturesCache_;
+		CachePtr<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, std::string> geometriesCache_;
+		std::vector<VkImageView> pipelineTextureViews_;
+		//imgui variables
+		void createSampler();
+		//void buildImguiContext(const gee::Window& window);
 	};
+	template<class T>
+	inline void Renderer::updateBuffer(const std::string& name, const T& datas)
+	{
+		assert(currentCb_.has_value() && "The render target need to be bind first");
+		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
+		boundPipeline_->updateBuffer(*currentCb_, name, datas);
+	}
+	template<class T>
+	inline void Renderer::updateSmallBuffer(const std::string& name, const T& datas)
+	{
+		assert(currentCb_.has_value() && "The render target need to be bind first");
+		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
+		boundPipeline_->pushConstant(*currentCb_, name, datas);
+	}
 }

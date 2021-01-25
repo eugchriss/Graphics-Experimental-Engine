@@ -9,6 +9,9 @@
 #include "Timer.h"
 #include "Camera.h"
 #include "EventDispatcher.h"
+#include "vulkanContext.h"
+#include "RenderTarget.h"
+#include "Pipeline.h"
 
 namespace gee
 {
@@ -23,6 +26,9 @@ namespace gee
 		void addCamera(const Camera& camera);
 	private:
 		gee::Window window_;
+		std::unique_ptr<vkn::Context> context_;
+		std::unique_ptr<vkn::RenderTarget> renderTarget_;
+		std::unique_ptr<vkn::Pipeline> colorPipeline_;
 		gee::EventDispatcher eventDispatcher_;
 		std::unique_ptr<vkn::Renderer> renderer_;
 		std::vector<std::reference_wrapper<gee::Drawable>> drawables_;
@@ -35,7 +41,6 @@ namespace gee
 		void onMouseMoveEvent(double x, double y);
 		void onMouseScrollEvent(double x, double y);
 		void onMouseButtonEvent(uint32_t button, uint32_t action, uint32_t mods);
-		void displayShaderTweakings(std::vector<std::reference_wrapper<vkn::Shader::Tweaking>>& tweakings);
 		//Mouse buttons
 		bool leftButtonPressed_{ false };
 		bool rightButtonPressed_{ false };
@@ -49,5 +54,8 @@ namespace gee
 		float gpuTime_{};
 		float cpuTime_{};
 		
+		void createContext();
+		void createPipeline();
+
 	};
 }

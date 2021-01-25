@@ -3,18 +3,19 @@
 #include "Instance.h"
 #include <queue>
 #include <string>
+#include <memory>
 
 namespace vkn
 {
 	class DebugMessenger
 	{
 	public:
-		DebugMessenger(const vkn::Instance& instance, const VkDebugUtilsMessageSeverityFlagsEXT severity, const VkDebugUtilsMessageTypeFlagsEXT type);
+		DebugMessenger(std::shared_ptr<vkn::Instance>& instance, const VkDebugUtilsMessageSeverityFlagsEXT severity, const VkDebugUtilsMessageTypeFlagsEXT type);
+		DebugMessenger(DebugMessenger&& other);
 		~DebugMessenger();
 	private:
-		const VkInstance instance_;
+		std::shared_ptr<vkn::Instance> instance_;
 		VkDebugUtilsMessengerEXT messenger_{ VK_NULL_HANDLE };
-		static std::queue<std::string> messages_;
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severityFlags, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
 		static std::string severityToString(const VkDebugUtilsMessageSeverityFlagBitsEXT severity);

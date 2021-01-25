@@ -1,14 +1,14 @@
 #include "../headers/Pipeline.h"
 #include <cassert>
 
-vkn::Pipeline::Pipeline(vkn::Gpu& gpu, vkn::Device& device, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders) : gpu_{ gpu }, device_{ device }, pipeline_{ pipeline }, shaders_{ std::move(shaders) }
+vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders) : context_{ context }, pipeline_{ pipeline }, shaders_{ std::move(shaders) }
 {
-	layout_ = std::make_unique<vkn::PipelineLayout>(device_, shaders_);
+	layout_ = std::make_unique<vkn::PipelineLayout>(*context.device, shaders_);
 	createPool();
 	createSets();
 
 	VkPhysicalDeviceProperties props;
-	vkGetPhysicalDeviceProperties(gpu_.device, &props);
+	vkGetPhysicalDeviceProperties(context.gpu->device, &props);
 	auto alignment = props.limits.minUniformBufferOffsetAlignment;
 	auto align = [&alignment](VkDeviceSize offset) {
 		if (offset % alignment != 0)
@@ -48,17 +48,17 @@ vkn::Pipeline::Pipeline(vkn::Gpu& gpu, vkn::Device& device, const VkPipeline pip
 	{
 		size = 1;
 	}
-	buffer_ = std::make_unique<vkn::Buffer>(device_, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, size);
+	buffer_ = std::make_unique<vkn::Buffer>(context_, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, size);
 
 	VkMemoryRequirements requirements;
-	vkGetBufferMemoryRequirements(device_.device, buffer_->buffer, &requirements);
-	memory_ = std::make_unique<vkn::DeviceMemory>(gpu_, device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits, requirements.size);
+	vkGetBufferMemoryRequirements(context_.device->device, buffer_->buffer, &requirements);
+	memory_ = std::make_unique<vkn::DeviceMemory>(*context_.gpu, *context_.device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits, requirements.size);
 
 	buffer_->bind(*memory_);
 
 }
 
-vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : gpu_{ other.gpu_ }, device_{ other.device_ }
+vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{other.context_}
 {
 	pipeline_ = other.pipeline_;
 	layout_ = std::move(other.layout_);
@@ -79,15 +79,15 @@ vkn::Pipeline::~Pipeline()
 {
 	if (pipeline_ != VK_NULL_HANDLE)
 	{
-		vkDestroyPipeline(device_.device, pipeline_, nullptr);
+		vkDestroyPipeline(context_.device->device, pipeline_, nullptr);
 	}
 	if (!std::empty(sets_))
 	{
-		vkFreeDescriptorSets(device_.device, descriptorPool_, std::size(sets_), std::data(sets_));
+		vkFreeDescriptorSets(context_.device->device, descriptorPool_, std::size(sets_), std::data(sets_));
 	}
 	if (descriptorPool_ != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorPool(device_.device, descriptorPool_, nullptr);
+		vkDestroyDescriptorPool(context_.device->device, descriptorPool_, nullptr);
 	}
 }
 
@@ -114,7 +114,8 @@ void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampl
 	write.descriptorType = uniform->type;
 	write.pImageInfo = &imageInfo;
 	write.descriptorCount = uniform->size;
-	vkUpdateDescriptorSets(device_.device, 1, &write, 0, nullptr);
+
+	uniformsWrites_.emplace_back(write);
 }
 
 void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSampler sampler, const std::vector<VkImageView> views, const VkShaderStageFlagBits stage)
@@ -139,7 +140,8 @@ void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSamp
 	write.descriptorType = uniform->type;
 	write.pImageInfo = std::data(imagesInfos);
 	write.descriptorCount = std::size(views);
-	vkUpdateDescriptorSets(device_.device, 1, &write, 0, nullptr);
+
+	uniformsWrites_.emplace_back(write);
 }
 
 const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const
@@ -169,6 +171,12 @@ const std::vector<vkn::Shader::Attachment>& vkn::Pipeline::subpassInputAttachmen
 	return fragmentShader->subpassInputAttachments();
 }
 
+void vkn::Pipeline::updateUniforms()
+{
+	vkUpdateDescriptorSets(context_.device->device, std::size(uniformsWrites_), std::data(uniformsWrites_), 0, nullptr);
+	uniformsWrites_.clear();
+}
+
 void vkn::Pipeline::createSets()
 {
 	auto layouts = layout_->layouts();
@@ -180,7 +188,7 @@ void vkn::Pipeline::createSets()
 	setInfo.descriptorSetCount = std::size(layouts);
 
 	sets_.resize(std::size(layouts));
-	vkn::error_check(vkAllocateDescriptorSets(device_.device, &setInfo, std::data(sets_)), "Failed to allocate the pipeline sets");
+	vkn::error_check(vkAllocateDescriptorSets(context_.device->device, &setInfo, std::data(sets_)), "Failed to allocate the pipeline sets");
 }
 
 const std::vector<VkDescriptorPoolSize> vkn::Pipeline::getPoolSizes() const
@@ -216,5 +224,5 @@ void vkn::Pipeline::createPool()
 	poolInfo.poolSizeCount = std::size(poolSizes);
 	poolInfo.pPoolSizes = std::data(poolSizes);
 
-	vkn::error_check(vkCreateDescriptorPool(device_.device, &poolInfo, nullptr, &descriptorPool_), "Failed to create the descriptor pool");
+	vkn::error_check(vkCreateDescriptorPool(context_.device->device, &poolInfo, nullptr, &descriptorPool_), "Failed to create the descriptor pool");
 }

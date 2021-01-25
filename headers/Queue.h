@@ -2,12 +2,12 @@
 #include "vulkan/vulkan.hpp"
 #include "QueueFamily.h"
 #include "Device.h"
-#include "Signal.h"
-#include "Commandbuffer.h" 
-#include "Swapchain.h"
 
 namespace vkn
 {
+	class CommandBuffer;
+	class Swapchain;
+	class Signal;
 	class Queue
 	{
 	public:

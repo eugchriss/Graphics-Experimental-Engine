@@ -1,13 +1,13 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
-#include "Device.h"
+#include "vulkanContext.h"
 
 namespace vkn
 {
 	class Signal
 	{
 	public:
-		Signal(const vkn::Device& device, bool signaled = false);
+		Signal(Context& context, bool signaled = false);
 		Signal(const Signal&) = delete;
 		Signal(Signal&& other);
 		~Signal();
@@ -19,7 +19,7 @@ namespace vkn
 		bool signaled();
 		void waitForSignal(const uint64_t timeout = UINT64_MAX) const;
 	private:
-		const vkn::Device& device_;
+		Context& context_;
 
 #ifndef NDEBUG
 		bool signaled_;

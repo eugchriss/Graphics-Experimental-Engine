@@ -4,7 +4,7 @@
 #include "Device.h"
 #include "Shader.h"
 #include "Pipeline.h"
-#include "RenderpassBuilder.h"
+#include "vulkanContext.h"
 
 #include <vector>
 #include <string>
@@ -20,12 +20,10 @@ namespace vkn
 			VkRect2D scissor;
 		};
 
-		PipelineBuilder();
+		PipelineBuilder(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 		PipelineBuilder(PipelineBuilder&&) = default;
 		~PipelineBuilder() = default;
-		void preBuild(vkn::Device& device);
-		vkn::Pipeline get(vkn::Gpu& gpu, vkn::Device& device);
-		void addShaderStage(const VkShaderStageFlagBits stage, const std::string& path);
+		vkn::Pipeline get(Context& context);
 		void setInputBindingRate(const uint32_t binding, const VkVertexInputRate rate);
 		void addAssemblyStage(const VkPrimitiveTopology primitive, const VkBool32 restart = VK_FALSE);
 		void addTesselationStage(const uint32_t controlPoints);
@@ -60,6 +58,7 @@ namespace vkn
 		VkPipelineColorBlendStateCreateInfo colorBlendCI_{};
 		VkPipelineDynamicStateCreateInfo dynamicStateCI_{};
 
+		void addShaderStage(const VkShaderStageFlagBits stage, const std::string& path);
 
 		std::vector<RenderArea> renderAreas_{};
 		std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments_{};

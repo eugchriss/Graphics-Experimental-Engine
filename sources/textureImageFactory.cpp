@@ -3,19 +3,17 @@
 #include "../headers/Signal.h"
 #include "../headers/QueueFamily.h"
 
-vkn::TextureImageFactory::TextureImageFactory(vkn::Gpu& gpu, vkn::Device& device): gpu_{gpu}, device_{device}
+vkn::TextureImageFactory::TextureImageFactory(Context& context): context_{context}
 {
-	vkn::QueueFamily queueFamily{ gpu_, VK_QUEUE_GRAPHICS_BIT & VK_QUEUE_TRANSFER_BIT, 2 };
-	cbPool_ = std::make_unique<vkn::CommandPool>(device_, queueFamily.familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );
-	transferQueue_ = queueFamily.getQueue(device_);
+	cbPool_ = std::make_unique<vkn::CommandPool>(context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );
 }
 
 vkn::Image vkn::TextureImageFactory::create(const gee::Texture& texture) const
 {
 	const auto& datas = texture.pixels();
 	const auto textureSize = std::size(datas);
-	vkn::Buffer temp{ device_, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, textureSize };
-	vkn::DeviceMemory memory{ gpu_, device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, temp.getMemorySize() };
+	vkn::Buffer temp{ context_, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, textureSize };
+	vkn::DeviceMemory memory{ *context_.gpu, *context_.device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, temp.getMemorySize() };
 	temp.bind(memory);
 	temp.add(datas);
 
@@ -26,7 +24,7 @@ vkn::Image vkn::TextureImageFactory::create(const gee::Texture& texture) const
 	}
 
 	const uint32_t layerCount = std::size(texture.offsets());
-	vkn::Image image{ gpu_, device_, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageFormat, VkExtent3D{texture.width(), texture.height(), 1}, layerCount };
+	vkn::Image image{ context_, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageFormat, VkExtent3D{texture.width(), texture.height(), 1}, layerCount };
 
 	auto cb = cbPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	cb.begin();
@@ -34,8 +32,8 @@ vkn::Image vkn::TextureImageFactory::create(const gee::Texture& texture) const
 	image.transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	cb.end();
 
-	vkn::Signal imageReady{ device_ };
-	transferQueue_->submit(cb, imageReady);
+	vkn::Signal imageReady{ context_ };
+	context_.transferQueue->submit(cb, imageReady);
 	imageReady.waitForSignal();
 	return std::move(image);
 }

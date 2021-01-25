@@ -1,7 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
-#include "Gpu.h"
-#include "Device.h"
+#include "vulkanContext.h"
 #include "Shader.h"
 #include "DeviceMemory.h"
 #include "Buffer.h"
@@ -27,7 +26,7 @@ namespace vkn
 			VkDeviceSize size;
 			VkDeviceSize range;
 		};
-		Pipeline(vkn::Gpu& gpu, vkn::Device& device, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders);
+		Pipeline(Context& context, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders);
 		Pipeline(Pipeline&& other);
 		~Pipeline();
 		void bind(vkn::CommandBuffer& cb);
@@ -42,10 +41,10 @@ namespace vkn
 		void updateBuffer(const std::string& resourceName, const T& datas, const VkShaderStageFlagBits stage);
 		const std::vector<Shader::Attachment>& outputAttachments() const;
 		const std::vector<Shader::Attachment>& subpassInputAttachments() const;
+		void updateUniforms();
 	private:
 
-		vkn::Gpu& gpu_;
-		vkn::Device& device_;
+		Context& context_;
 		VkPipeline pipeline_{ VK_NULL_HANDLE };
 		std::unique_ptr<vkn::PipelineLayout> layout_;
 		std::vector<vkn::Shader> shaders_;
@@ -55,7 +54,7 @@ namespace vkn
 		std::vector<vkn::Shader::PushConstant> pushConstants_;
 		std::unique_ptr<vkn::DeviceMemory> memory_;
 		std::unique_ptr<vkn::Buffer> buffer_;
-
+		std::vector<VkWriteDescriptorSet> uniformsWrites_;
 		void createPool();
 		void createSets();
 		const std::vector<VkDescriptorPoolSize> getPoolSizes() const;
@@ -82,7 +81,8 @@ namespace vkn
 		write.descriptorType = uniform->type;
 		write.descriptorCount = uniform->size;
 		write.pBufferInfo = &bufferInfo;
-		vkUpdateDescriptorSets(device_.device, 1, &write, 0, nullptr);
+
+		uniformsWrites_.emplace_back(write);
 	}
 
 	template<class T>

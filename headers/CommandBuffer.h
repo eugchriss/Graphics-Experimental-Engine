@@ -1,6 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
-#include "Device.h"
+#include "vulkanContext.h"
 #include <string>
 namespace vkn
 {
@@ -13,10 +13,11 @@ namespace vkn
 		void begin(const VkCommandBufferUsageFlags usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 		void end();
 		VkCommandBuffer commandBuffer() const;
+		CommandBuffer(CommandBuffer&&) = default;
 	private:
 		friend class CommandPool;
-		CommandBuffer(vkn::Device& device, const VkCommandBuffer cb);
-		vkn::Device& device_;
+		CommandBuffer(Context& context, const VkCommandBuffer cb);
+		Context& context_;
 		VkCommandBuffer cb_{ VK_NULL_HANDLE };
 	};
 }

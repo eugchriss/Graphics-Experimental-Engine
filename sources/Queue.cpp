@@ -1,5 +1,8 @@
 #include "../headers/Queue.h"
 #include "../headers/vulkan_utils.h"
+#include "../headers/Commandbuffer.h" 
+#include "../headers/Swapchain.h"
+#include "../headers/Signal.h"
 #include <vector>
 
 const uint32_t& vkn::Queue::familyIndex() const

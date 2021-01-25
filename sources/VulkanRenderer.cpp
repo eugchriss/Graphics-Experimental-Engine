@@ -1,197 +1,126 @@
 #include <string>
 #include "../headers/VulkanRenderer.h"
-#include "../headers/imgui_impl_glfw.h"
-#include "../headers/TextureImageFactory.h"
+#include "../headers/vulkan_utils.h"
 
 #define ENABLE_VALIDATION_LAYERS
-vkn::Renderer::Renderer(gee::Window& window)
+vkn::Renderer::Renderer(vkn::Context& _context, const gee::Window& window) : context_{_context}
 {
+	swapchain_ = std::make_unique<vkn::Swapchain>(context_);
 
-#ifdef ENABLE_VALIDATION_LAYERS
-	instance_ = std::make_unique<vkn::Instance>(std::initializer_list<const char*>{ "VK_LAYER_KHRONOS_validation" });
-#else
-	instance_ = std::make_unique<vkn::Instance>(std::initializer_list<const char*>{});
-#endif // ENABLE_VALIDATION_LAYERS
-
-	VkDebugUtilsMessageSeverityFlagsEXT severityFlags = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-	VkDebugUtilsMessageTypeFlagsEXT messageTypeFlags = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	debugMessenger_ = std::make_unique<vkn::DebugMessenger>(*instance_, severityFlags, messageTypeFlags);
-
-	auto gpus = vkn::Gpu::getAvailbleGpus(*instance_);
-	if (std::size(gpus) < 1)
-	{
-		throw std::runtime_error{ "There is no avaible gpu on this system" };
-	}
-	gpu_ = std::make_unique<vkn::Gpu>(gpus[0]);
-	checkGpuCompability(*gpu_);
-
-	vkn::error_check(glfwCreateWindowSurface(instance_->instance, window.window(), nullptr, &surface_), "unable to create a presentable surface for the window");
-	queueFamily_ = std::make_unique<vkn::QueueFamily>(*gpu_, VK_QUEUE_GRAPHICS_BIT & VK_QUEUE_TRANSFER_BIT, surface_, 2);
-	device_ = std::make_unique<vkn::Device>(*gpu_, std::initializer_list<const char*>{"VK_KHR_swapchain", "VK_EXT_descriptor_indexing", "VK_KHR_maintenance3"}, * queueFamily_);
-	graphicsQueue_ = queueFamily_->getQueue(*device_);
-	transferQueue_ = queueFamily_->getQueue(*device_);
-	cbPool_ = std::make_unique<vkn::CommandPool>(*device_, queueFamily_->familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	createSampler();
+	
 
-	buildImguiContext(window);
-	meshMemoryLocations_ = std::make_unique<MeshHolder_t>(vkn::MeshMemoryLocationFactory{*gpu_, *device_});
-	textureHolder_ = std::make_unique<TextureHolder_t>(vkn::TextureImageFactory{ *gpu_, *device_ });
-	materialHolder_ = std::make_unique<MaterialHolder_t>(gee::MaterialHelperFactory<TextureKey_t>{});
-
-	std::vector<vkn::ShaderEffect> pixelPerfectEffect;
-	pixelPerfectEffect.emplace_back("pixel perfect", "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
-	pixelPerfectFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, *cbPool_, pixelPerfectEffect, VkExtent2D{ window.size().x, window.size().y }, 1);
+	texturesCache_ = std::make_unique<gee::ResourceHolder<vkn::TextureImageFactory, vkn::Image, std::string>>(vkn::TextureImageFactory{ context_ });
+	geometriesCache_ = std::make_unique<gee::ResourceHolder<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, std::string>>(vkn::MeshMemoryLocationFactory{ context_ });
+	//buildImguiContext(window);
 }
-
+	
 vkn::Renderer::~Renderer()
 {
-	device_->idle();
-	pixelPerfectFramebuffer_.reset();
-	mainFramebuffer_.reset();
-	vkDestroySurfaceKHR(instance_->instance, surface_, nullptr);
-	vkDestroySampler(device_->device, sampler_, nullptr);
-	vkDestroyDescriptorPool(device_->device, imguiDescriptorPool_, nullptr);
-	ImGui_ImplVulkan_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-	ImGui::DestroyContext();
+	vkDestroySampler(context_.device->device, sampler_, nullptr);
 }
 
-std::ostream& vkn::Renderer::getGpuInfo(std::ostream& os) const
+void vkn::Renderer::draw(const gee::Drawable& drawable, const size_t count)
 {
-	os << *gpu_;
-	return os;
-}
+	if (shouldRender_)
+	{
+		assert(currentCb_.has_value() && "The render target need to be bind first");
+		VkDeviceSize offset{ 0 };
+		auto& memoryLocation = geometriesCache_->get(drawable.name, drawable.mesh);
 
-const std::optional<size_t> vkn::Renderer::objectAt(std::vector<std::reference_wrapper<gee::Drawable>>& drawables, const uint32_t x, const uint32_t y)
-{
-	pixelPerfectFramebuffer_->setupRendering("pixel perfect", shaderCamera_, drawables);
-	pixelPerfectFramebuffer_->render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
-	pixelPerfectFramebuffer_->submitTo(*graphicsQueue_);
-	auto pixel = pixelPerfectFramebuffer_->rawContentAt((x + y * pixelPerfectFramebuffer_->renderArea().x ) * 4);
-	if (pixel == 0.0f)
-	{
-		return std::nullopt;
-	}
-	else
-	{
-		return std::make_optional(pixel * 255 - 1);
+		vkCmdBindVertexBuffers(currentCb_->get().commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
+		vkCmdBindIndexBuffer(currentCb_->get().commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(currentCb_->get().commandBuffer(), memoryLocation.indicesCount, count, 0, 0, 0);
 	}
 }
 
-void vkn::Renderer::render(const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
+void vkn::Renderer::draw()
 {
-	if (!isWindowMinimized_)
+	if (shouldRender_)
 	{
-		assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
-		mainFramebuffer_->setupRendering(effectName, shaderCamera_, drawables);
+		vkCmdDraw(currentCb_->get().commandBuffer(), 3, 1, 0, 0);
 	}
 }
 
-void vkn::Renderer::render(vkn::Framebuffer& fb, const std::string& effectName, std::reference_wrapper<gee::Drawable>& drawable)
+void vkn::Renderer::begin(RenderTarget& target, const VkRect2D& renderArea)
 {
-	fb.setupRendering(effectName, shaderCamera_, drawable);
-}
-
-void vkn::Renderer::render(vkn::Framebuffer& fb, const std::string& effectName, const std::vector<std::reference_wrapper<gee::Drawable>>& drawables)
-{
-	fb.setupRendering(effectName, shaderCamera_, drawables);
-}
-
-float vkn::Renderer::draw(vkn::Framebuffer& fb)
-{
-	if (!isWindowMinimized_)
+	shouldRender_ = target.isReady();
+	if (shouldRender_)
 	{
-		fb.render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
-		return fb.submitTo(*graphicsQueue_);
+		currentCb_ = std::make_optional<std::reference_wrapper<vkn::CommandBuffer>>(target.bind(renderArea));
+		VkViewport viewport{};
+		viewport.x = renderArea.offset.x;
+		viewport.y = renderArea.offset.y;
+		viewport.width = renderArea.extent.width;
+		viewport.height = renderArea.extent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vkCmdSetViewport(currentCb_->get().commandBuffer(), 0, 1, &viewport);
+		vkCmdSetScissor(currentCb_->get().commandBuffer(), 0, 1, &renderArea);
 	}
-	return 0.0f;
 }
 
-void vkn::Renderer::setViewport(const float x, const float y, const float width, const float height)
+void vkn::Renderer::end(RenderTarget& target)
 {
-	assert(mainFramebuffer_ && "The main framebuffer has not been created yet");
-	mainFramebuffer_->setViewport(x, y, width, height);
-}
-
-float vkn::Renderer::draw()
-{
-	if (!isWindowMinimized_)
+	if (shouldRender_)
 	{
-		assert(mainFramebuffer_ && "the main framebuffer has not been created yet");
-		mainFramebuffer_->render(*meshMemoryLocations_, *textureHolder_, *materialHolder_, sampler_);
-		return mainFramebuffer_->submitTo(*graphicsQueue_);
-	}
-	return 0.0f;
-}
-
-void vkn::Renderer::updateCamera(gee::Camera& camera, const float aspectRatio)
-{
-	shaderCamera_.position = glm::vec4{camera.position_, 1.0f};
-	shaderCamera_.viewProj = camera.viewProjMatrix(aspectRatio);
-}
-
-vkn::Framebuffer& vkn::Renderer::getFramebuffer()
-{
-	assert(mainFramebuffer_ && "The main framebuffer has not been created yet");
-	return *mainFramebuffer_;
-}
-
-vkn::Framebuffer& vkn::Renderer::getFramebuffer(std::vector<vkn::ShaderEffect>& effects, const bool enableGui)
-{
-	if (!mainFramebuffer_)
-	{
-		for (const auto& effect : effects)
+		target.unBind();
+		for (auto& pipeline : boundPipelines_)
 		{
-			if (effect.isPostProcessEffect())
-			{
-				meshMemoryLocations_->get(std::hash<std::string>{}("custom gee quad"), gee::getQuadMesh());
-				break;
-			}
+			pipeline->get().updateUniforms();
 		}
-		mainFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, surface_, *cbPool_, effects, enableGui, guiInitInfo_);
-		if (enableGui)
+		boundPipelines_.clear();
+		currentCb_.reset();
+		boundPipeline_.reset();
+		swapchain_->setImageAvailableSignal(target.imageAvailableSignal());
+		context_.graphicsQueue->submit(currentCb_->get(), target.renderingFinishedSignal(), target.imageAvailableSignal(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
+		context_.graphicsQueue->present(*swapchain_, target.renderingFinishedSignal());
+	}
+}
+
+void vkn::Renderer::usePipeline(Pipeline& pipeline)
+{
+	if (shouldRender_)
+	{
+		assert(currentCb_.has_value() && "The render target need to be bind first");
+		pipeline.bind(currentCb_.value());
+		boundPipeline_ = std::make_optional<std::reference_wrapper<vkn::Pipeline>>(pipeline);
+		boundPipelines_.emplace_back(boundPipeline_);
+	}
+}
+
+void vkn::Renderer::setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType)
+{
+	if (shouldRender_)
+	{
+		assert(currentCb_.has_value() && "The render target need to be bind first");
+		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
+		auto& image = texturesCache_->get(texture.paths_[0], texture);
+		boundPipeline_->get().updateTexture(name, sampler_, image.getView(viewType), VK_SHADER_STAGE_FRAGMENT_BIT);
+	}
+}
+
+void vkn::Renderer::setTextures(const std::string& name, const std::vector<gee::Texture>& textures, const VkImageViewType& viewType)
+{
+	if (shouldRender_)
+	{
+		assert(currentCb_.has_value() && "The render target need to be bind first");
+		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
+		std::vector<VkImageView> views;
+		views.reserve(std::size(textures));
+
+		for (const auto& texture : textures)
 		{
-			ImGui_ImplVulkan_NewFrame();
-			ImGui_ImplGlfw_NewFrame();
-			ImGui::NewFrame();
+			views.emplace_back(texturesCache_->get(texture.paths_[0], texture).getView(viewType));
 		}
-	}
-	return *mainFramebuffer_;
-}
-
-vkn::Framebuffer vkn::Renderer::createFramebuffer(const glm::u32vec2& extent, std::vector<vkn::ShaderEffect>& effects, const uint32_t frameCount)
-{
-	return vkn::Framebuffer{ *gpu_, *device_, *cbPool_, effects, VkExtent2D{extent.x, extent.y}, frameCount};
-}
-
-void vkn::Renderer::resize(const glm::u32vec2& size)
-{
-	if (size.x != 0 || size.y != 0)
-	{
-		isWindowMinimized_ = false;
-		std::vector<vkn::ShaderEffect> pixelPerfectEffect;
-		pixelPerfectEffect.emplace_back("pixel perfect", "../assets/Shaders/pixelPerfect/vert.spv", "../assets/Shaders/pixelPerfect/frag.spv");
-		pixelPerfectFramebuffer_ = std::make_unique<vkn::Framebuffer>(*gpu_, *device_, *cbPool_, pixelPerfectEffect, VkExtent2D{ size.x, size.y }, 1);
-		if (mainFramebuffer_)
-		{
-			mainFramebuffer_->resize(size);
-		}
-	}
-	else
-	{
-		isWindowMinimized_ = true;
+		boundPipeline_->get().updateTextures(name, sampler_, views, VK_SHADER_STAGE_FRAGMENT_BIT);
 	}
 }
 
-void vkn::Renderer::checkGpuCompability(const vkn::Gpu& gpu)
+vkn::Swapchain& vkn::Renderer::swapchain()
 {
-	auto& features = gpu.enabledFeatures();
-	auto descriptorIndexingFeatures = reinterpret_cast<VkPhysicalDeviceDescriptorIndexingFeatures*>(features.pNext);
-	if (!descriptorIndexingFeatures->descriptorBindingUniformBufferUpdateAfterBind || !descriptorIndexingFeatures->descriptorBindingSampledImageUpdateAfterBind
-		|| !descriptorIndexingFeatures->runtimeDescriptorArray || !descriptorIndexingFeatures->descriptorBindingPartiallyBound)
-	{
-		throw std::runtime_error{ "There is no compatible gpu available." };
-	}
+	return *swapchain_;
 }
 
 void vkn::Renderer::createSampler()
@@ -212,11 +141,12 @@ void vkn::Renderer::createSampler()
 	samplerInfo.compareEnable = VK_FALSE;
 	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	vkn::error_check(vkCreateSampler(device_->device, &samplerInfo, nullptr, &sampler_), "Failed to create the sampler");
+	vkn::error_check(vkCreateSampler(context_.device->device, &samplerInfo, nullptr, &sampler_), "Failed to create the sampler");
 }
 
-void vkn::Renderer::buildImguiContext(const gee::Window& window)
+/*void vkn::Renderer::buildImguiContext(const gee::Window& window)
 {
+	
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -263,4 +193,4 @@ void vkn::Renderer::buildImguiContext(const gee::Window& window)
 	guiInitInfo_.MinImageCount = imageCount;
 	guiInitInfo_.ImageCount = imageCount;
 	guiInitInfo_.CheckVkResultFn = nullptr;
-}
+}*/

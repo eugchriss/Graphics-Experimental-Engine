@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cassert>
 
-vkn::Instance::Instance(const std::vector<const char*>& requestedLayers)
+vkn::Instance::Instance(const std::vector<std::string>& requestedLayers)
 {
 	uint32_t count{};
 	vkEnumerateInstanceLayerProperties(&count, nullptr);
@@ -22,21 +22,36 @@ vkn::Instance::Instance(const std::vector<const char*>& requestedLayers)
 	for (auto i = 0u; i < count; ++i)
 		extensions.push_back(extensionsProps[i].extensionName);
 
-	//checkLayerPresence(requestedLayers);
+	std::vector<const char*> layers;
+	for (const auto& layer : requestedLayers)
+	{
+		layers.emplace_back(layer.c_str());
+	}
+	//checkLayerPresence(layers);
 
 	VkInstanceCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	info.pApplicationInfo = nullptr;
 	info.enabledExtensionCount = std::size(extensions);
 	info.ppEnabledExtensionNames = std::data(extensions);
-	info.enabledLayerCount = std::size(requestedLayers);
-	info.ppEnabledLayerNames = std::data(requestedLayers);
+	info.enabledLayerCount = std::size(layers);
+	info.ppEnabledLayerNames = std::data(layers);
 	vkn::error_check(vkCreateInstance(&info, nullptr, &instance), "Unabled to create an instance");
+}
+
+vkn::Instance::Instance(Instance&& other)
+{
+	instance = other.instance;
+	other.instance = VK_NULL_HANDLE;
+	availableLayers = std::move(other.availableLayers);
 }
 
 vkn::Instance::~Instance()
 {
-	vkDestroyInstance(instance, nullptr);
+	if (instance != VK_NULL_HANDLE)
+	{
+		vkDestroyInstance(instance, nullptr);
+	}
 }
 
 void vkn::Instance::checkLayerPresence(const std::vector<const char*>& requested) const 

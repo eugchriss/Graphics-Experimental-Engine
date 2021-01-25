@@ -6,7 +6,7 @@
 #include "../headers/CommandBuffer.h"
 #include "../headers/Signal.h"
 
-vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags usage, VkFormat format, VkExtent3D extent, const uint32_t layerCount) : device_{ device }, extent_{ extent }, format_{ format }, layerCount_{ layerCount }
+vkn::Image::Image(Context& context, VkImageUsageFlags usage, VkFormat format, VkExtent3D extent, const uint32_t layerCount) : context_{ context }, extent_{ extent }, format_{ format }, layerCount_{ layerCount }
 {
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -30,11 +30,11 @@ vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags us
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	vkn::error_check(vkCreateImage(device_.device, &imageInfo, nullptr, &image), "Failed to create the image");
+	vkn::error_check(vkCreateImage(context_.device->device, &imageInfo, nullptr, &image), "Failed to create the image");
 
 	VkMemoryRequirements memRequirements{};
-	vkGetImageMemoryRequirements(device_.device, image, &memRequirements);
-	memory_ = std::make_unique<vkn::DeviceMemory>(gpu.device, device_, memRequirements.memoryTypeBits, memRequirements.size);
+	vkGetImageMemoryRequirements(context_.device->device, image, &memRequirements);
+	memory_ = std::make_unique<vkn::DeviceMemory>(context_.gpu->device, *context_.device, memRequirements.memoryTypeBits, memRequirements.size);
 	memory_->bind(image);
 
 #ifndef NDEBUG
@@ -43,7 +43,14 @@ vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, VkImageUsageFlags us
 #endif
 }
 
-vkn::Image::Image(vkn::Device& device, const VkImage image, const VkFormat format, const uint32_t layerCount, bool owned) : device_{ device }, owned_{ owned }, format_{ format }, layerCount_{ layerCount }
+vkn::Image::Image(Context& context, const VkAttachmentDescription& attachment, const VkExtent3D extent, const uint32_t layerCount):
+	Image(context, getUsageFlag(attachment), attachment.format, extent, layerCount)
+{
+	isRenderpassAttachment_ = true;
+	afterRenderpassLayout_ = attachment.finalLayout;
+}
+
+vkn::Image::Image(Context& context, const VkImage image, const VkFormat format, const uint32_t layerCount, bool owned) : context_{ context }, owned_{ owned }, format_{ format }, layerCount_{ layerCount }
 {
 	this->image = image;
 #ifndef NDEBUG
@@ -52,14 +59,7 @@ vkn::Image::Image(vkn::Device& device, const VkImage image, const VkFormat forma
 #endif
 }
 
-vkn::Image::Image(const vkn::Gpu& gpu, vkn::Device& device, const vkn::RenderpassAttachment& attachment, const VkExtent3D extent, const uint32_t layerCount) :
-Image(gpu, device, getUsageFlag(attachment), attachment.format, extent, layerCount)
-{
-	isRenderpassAttachment_ = true ;
-	afterRenderpassLayout_ = attachment.finalLayout;
-}
-
-vkn::Image::Image(Image&& other) : device_{ other.device_ }
+vkn::Image::Image(Image&& other) : context_{ other.context_ }
 {
 	memory_ = std::move(other.memory_);
 	views_ = std::move(other.views_);
@@ -79,14 +79,28 @@ vkn::Image::~Image()
 {
 	for (auto& [viewType, view] : views_)
 	{
-		vkDestroyImageView(device_.device, view, nullptr);
+		vkDestroyImageView(context_.device->device, view, nullptr);
 	}
 	if (owned_)
 	{
 		if (image != VK_NULL_HANDLE)
 		{
-			vkDestroyImage(device_.device, image, nullptr);
+			vkDestroyImage(context_.device->device, image, nullptr);
 		}
+	}
+}
+
+VkImageUsageFlags vkn::Image::getUsageFlag(const VkAttachmentDescription& attachment)
+{
+	if (attachment.format == VK_FORMAT_D16_UNORM || attachment.format == VK_FORMAT_D32_SFLOAT ||
+		attachment.format == VK_FORMAT_S8_UINT || attachment.format == VK_FORMAT_D16_UNORM_S8_UINT ||
+		attachment.format == VK_FORMAT_D24_UNORM_S8_UINT || attachment.format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+	{
+		return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	}
+	else
+	{
+		return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	}
 }
 
@@ -103,7 +117,7 @@ VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 	viewInfo.subresourceRange = { viewType.aspect, 0, 1, 0, viewType.layerCount };
 
 	VkImageView view{};
-	vkn::error_check(vkCreateImageView(device_.device, &viewInfo, nullptr, &view), "Failed to create the view");
+	vkn::error_check(vkCreateImageView(context_.device->device, &viewInfo, nullptr, &view), "Failed to create the view");
 
 #ifndef NDEBUG
 	VkDebugUtilsObjectNameInfoEXT nameInfo{};
@@ -112,7 +126,7 @@ VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 	nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
 	nameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
 	nameInfo.pObjectName = std::string{ name_ + getStringViewType(viewType.type) }.c_str();
-	device_.setDebugOjectName(nameInfo);
+	context_.device->setDebugOjectName(nameInfo);
 #endif
 	return view;
 }
@@ -120,7 +134,7 @@ VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 const VkMemoryRequirements vkn::Image::getMemoryRequirement() const
 {
 	VkMemoryRequirements requirements{};
-	vkGetImageMemoryRequirements(device_.device, image, &requirements);
+	vkGetImageMemoryRequirements(context_.device->device, image, &requirements);
 	return requirements;
 }
 #ifndef NDEBUG
@@ -133,7 +147,7 @@ void vkn::Image::setDebugName(const std::string& name)
 	nameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
 	nameInfo.pObjectName = name.c_str();
 
-	device_.setDebugOjectName(nameInfo);
+	context_.device->setDebugOjectName(nameInfo);
 }
 #endif
 const std::vector<vkn::Pixel> vkn::Image::content(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
@@ -156,12 +170,11 @@ const std::vector<vkn::Pixel> vkn::Image::content(const vkn::Gpu& gpu, const VkI
 const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize offset, const VkImageAspectFlags& aspect)
 {
 	auto requirements = getMemoryRequirement();
-	vkn::Buffer buffer{ device_, VK_BUFFER_USAGE_TRANSFER_DST_BIT, requirements.size };
-	vkn::DeviceMemory memory{ gpu, device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, buffer.getMemorySize() };
+	vkn::Buffer buffer{ context_, VK_BUFFER_USAGE_TRANSFER_DST_BIT, requirements.size };
+	vkn::DeviceMemory memory{ gpu, *context_.device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, buffer.getMemorySize() };
 	buffer.bind(memory);
 
-	vkn::QueueFamily transferQueueFamily{ gpu, VK_QUEUE_TRANSFER_BIT, 1 };
-	vkn:CommandPool cbPool{ device_, transferQueueFamily.familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
+	vkn:CommandPool cbPool{ context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
 	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	const auto previousLayout = layout_;
@@ -171,9 +184,8 @@ const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize off
 	transitionLayout(cb, aspect, previousLayout);
 	cb.end();
 
-	auto transferQueue = transferQueueFamily.getQueue(device_);
-	vkn::Signal copyDone{ device_ };
-	transferQueue->submit(cb, copyDone);
+	vkn::Signal copyDone{ context_ };
+	context_.transferQueue->submit(cb, copyDone);
 	copyDone.waitForSignal();
 
 	// x4 because the image uses 4 component per pixel (RGBA)
@@ -183,21 +195,19 @@ const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize off
 const std::vector<float> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
 {
 	auto requirements = getMemoryRequirement();
-	vkn::Buffer buffer{ device_, VK_BUFFER_USAGE_TRANSFER_DST_BIT, requirements.size };
-	vkn::DeviceMemory memory{ gpu, device_, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, buffer.getMemorySize() };
+	vkn::Buffer buffer{ context_, VK_BUFFER_USAGE_TRANSFER_DST_BIT, requirements.size };
+	vkn::DeviceMemory memory{ gpu, *context_.device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, buffer.getMemorySize() };
 	buffer.bind(memory);
 
-	vkn::QueueFamily transferQueueFamily{ gpu, VK_QUEUE_TRANSFER_BIT, 1 };
-	vkn:CommandPool cbPool{ device_, transferQueueFamily.familyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
+	vkn:CommandPool cbPool{ context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
 	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	cb.begin();
 	copyToBuffer(cb, buffer, VK_IMAGE_ASPECT_COLOR_BIT);
 	cb.end();
 
-	auto transferQueue = transferQueueFamily.getQueue(device_);
-	vkn::Signal copyDone{ device_ };
-	transferQueue->submit(cb, copyDone);
+	vkn::Signal copyDone{ context_ };
+	context_.transferQueue->submit(cb, copyDone);
 	copyDone.waitForSignal();
 
 	return buffer.rawContent();
@@ -481,18 +491,4 @@ const std::string vkn::Image::getStringViewType(const VkImageViewType type) cons
 		break;
 	}
 	return str;
-}
-
-VkImageUsageFlags vkn::Image::getUsageFlag(const vkn::RenderpassAttachment& attachment)
-{
-	if (attachment.format == VK_FORMAT_D16_UNORM || attachment.format == VK_FORMAT_D32_SFLOAT ||
-		attachment.format == VK_FORMAT_S8_UINT || attachment.format == VK_FORMAT_D16_UNORM_S8_UINT ||
-		attachment.format == VK_FORMAT_D24_UNORM_S8_UINT || attachment.format == VK_FORMAT_D32_SFLOAT_S8_UINT)
-	{
-		return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	}
-	else
-	{
-		return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	}
 }

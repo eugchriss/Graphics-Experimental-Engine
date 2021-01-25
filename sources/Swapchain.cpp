@@ -4,20 +4,20 @@
 #include <algorithm>
 #include <cassert>
 
-vkn::Swapchain::Swapchain(vkn::Gpu& gpu, vkn::Device& device, const VkSurfaceKHR& surface): device_{device}
+vkn::Swapchain::Swapchain(Context& context): context_{context}
 {
 	VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-	vkn::error_check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu.device, surface, &surfaceCapabilities), "Failed to get surface capabilities");
+	vkn::error_check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context_.gpu->device, context_.surface, &surfaceCapabilities), "Failed to get surface capabilities");
 
-	auto format = getSurfaceFormat(gpu, surface);
+	auto format = getSurfaceFormat(*context_.gpu, context_.surface);
 	swapchainInfo_.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapchainInfo_.pNext = nullptr;
 	swapchainInfo_.flags = 0;
-	swapchainInfo_.surface = surface;
+	swapchainInfo_.surface = context_.surface;
 	swapchainInfo_.minImageCount = surfaceCapabilities.maxImageCount;
-	if (swapchainInfo_.minImageCount > 3)
+	if (swapchainInfo_.minImageCount > 2)
 	{
-		swapchainInfo_.minImageCount = 3;
+		swapchainInfo_.minImageCount = 2;
 	}
 	swapchainInfo_.imageFormat = format.format;
 	swapchainInfo_.imageColorSpace = format.colorSpace;
@@ -30,26 +30,22 @@ vkn::Swapchain::Swapchain(vkn::Gpu& gpu, vkn::Device& device, const VkSurfaceKHR
 	swapchainInfo_.presentMode = VK_PRESENT_MODE_FIFO_KHR;
 	swapchainInfo_.clipped = VK_TRUE;
 	swapchainInfo_.oldSwapchain = VK_NULL_HANDLE;
-	vkn::error_check(vkCreateSwapchainKHR(device_.device, &swapchainInfo_, nullptr, &swapchain_), "Unable to create the swapchain");
+	vkn::error_check(vkCreateSwapchainKHR(context_.device->device, &swapchainInfo_, nullptr, &swapchain_), "Unable to create the swapchain");
 
 	retrieveImages();
 }
 
 vkn::Swapchain::~Swapchain()
 {
-	vkDestroySwapchainKHR(device_.device, swapchain_, nullptr);
+	vkDestroySwapchainKHR(context_.device->device, swapchain_, nullptr);
 }
 
-void vkn::Swapchain::resize(vkn::CommandBuffer& cb, const VkExtent2D& extent)
+void vkn::Swapchain::resize(const VkExtent2D& extent)
 {
 	swapchainInfo_.imageExtent = extent;
 	swapchainInfo_.oldSwapchain = swapchain_;
-	vkn::error_check(vkCreateSwapchainKHR(device_.device, &swapchainInfo_, nullptr, &swapchain_), "Unable to REcreate the swapchain");
+	vkn::error_check(vkCreateSwapchainKHR(context_.device->device, &swapchainInfo_, nullptr, &swapchain_), "Unable to REcreate the swapchain");
 	retrieveImages();
-	for (auto& image : images_)
-	{
-		image.transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-	}
 }
 
 const VkExtent2D vkn::Swapchain::extent() const
@@ -60,7 +56,7 @@ const VkExtent2D vkn::Swapchain::extent() const
 void vkn::Swapchain::setImageAvailableSignal(vkn::Signal& signal, const uint64_t timeout)
 {
 	signal.reset();
-	vkn::error_check(vkAcquireNextImageKHR(device_.device, swapchain_, timeout, signal.semaphore, signal.fence, &availableImageIndex_), "Failed to present images");
+	vkn::error_check(vkAcquireNextImageKHR(context_.device->device, swapchain_, timeout, signal.semaphore, signal.fence, &availableImageIndex_), "Failed to present images");
 }
 
 const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(vkn::Signal& waitOn) const
@@ -109,13 +105,13 @@ const VkSurfaceFormatKHR vkn::Swapchain::getSurfaceFormat(vkn::Gpu& gpu, const V
 void vkn::Swapchain::retrieveImages()
 {
 	uint32_t count;
-	vkn::error_check(vkGetSwapchainImagesKHR(device_.device, swapchain_, &count, nullptr), "Unabled to get the swapchain images count");
+	vkn::error_check(vkGetSwapchainImagesKHR(context_.device->device, swapchain_, &count, nullptr), "Unabled to get the swapchain images count");
 	std::vector<VkImage> images(count);
-	vkn::error_check(vkGetSwapchainImagesKHR(device_.device, swapchain_, &count, std::data(images)), "Unabled to get the swapchain images");
+	vkn::error_check(vkGetSwapchainImagesKHR(context_.device->device, swapchain_, &count, std::data(images)), "Unabled to get the swapchain images");
 
 	images_.clear();
 	for (auto image : images)
 	{
-		images_.emplace_back(device_, image, swapchainInfo_.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		images_.emplace_back(context_, image, swapchainInfo_.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 }

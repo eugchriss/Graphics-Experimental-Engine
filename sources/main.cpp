@@ -10,7 +10,7 @@ int main()
 {
 
 	glfwInit();
-	gee::ModelLoader loader{};
+	/*gee::ModelLoader loader{};
 	gee::ResourceHolder<gee::ModelLoader, gee::Mesh> meshHolder{ gee::ModelLoader{} };
 	auto& cubeMesh = meshHolder.get("box", "../assets/Meshs/box/box.obj");
 
@@ -23,8 +23,9 @@ int main()
 											"../assets/skybox/space/front.png",
 											"../assets/skybox/space/back.png" };
 	auto& skyboxMesh = meshHolder.get("skybox", gee::getCubeMesh, gee::Material{ skyboxPaths });
+	*/
 	gee::Application app{ "Graphics's Experimental Engine", 800, 800 };
-	
+	/*
 	gee::Optics pointLight{ gee::Light::PointLight };
 	pointLight.diffuse = glm::vec3{ 1.0f, 0.0f, 0.0f };
 	gee::Drawable cube{ "cube 0", cubeMesh, pointLight };
@@ -52,7 +53,7 @@ int main()
 	app.addDrawable(floor);
 
 	app.setSkybox(skybox);
-	app.setCameraPosition(glm::vec3{ 0.0f, 1.0f, 5.0f });
+	app.setCameraPosition(glm::vec3{ 0.0f, 1.0f, 5.0f });*/
 	while (app.isRunning())
 	{
 

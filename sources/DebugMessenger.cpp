@@ -2,7 +2,8 @@
 #include "../headers/vulkan_utils.h"
 #include <iostream>
 
-vkn::DebugMessenger::DebugMessenger(const vkn::Instance& instance, const VkDebugUtilsMessageSeverityFlagsEXT severity, const VkDebugUtilsMessageTypeFlagsEXT type): instance_{instance.instance}
+vkn::DebugMessenger::DebugMessenger(std::shared_ptr<vkn::Instance>& instance, const VkDebugUtilsMessageSeverityFlagsEXT severity, const VkDebugUtilsMessageTypeFlagsEXT type):
+	instance_{instance}
 {
 	VkDebugUtilsMessengerCreateInfoEXT debugCI{};
 	debugCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -13,14 +14,23 @@ vkn::DebugMessenger::DebugMessenger(const vkn::Instance& instance, const VkDebug
 	debugCI.pfnUserCallback = debugCallback;
 	debugCI.pUserData = nullptr;
 
-	auto createDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT"));
-	vkn::error_check(createDebugUtilsMessengerEXT(instance_, &debugCI, nullptr, &messenger_), "Unable to create the debug report");
+	auto createDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_->instance, "vkCreateDebugUtilsMessengerEXT"));
+	vkn::error_check(createDebugUtilsMessengerEXT(instance_->instance, &debugCI, nullptr, &messenger_), "Unable to create the debug report");
+}
+
+vkn::DebugMessenger::DebugMessenger(DebugMessenger&& other): instance_{other.instance_}
+{
+	messenger_ = other.messenger_;
+	other.messenger_ = VK_NULL_HANDLE;
 }
 
 vkn::DebugMessenger::~DebugMessenger()
 {
-	auto destroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
-	destroyDebugUtilsMessengerEXT(instance_, messenger_, nullptr);
+	if (messenger_ != VK_NULL_HANDLE)
+	{
+		auto destroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance_->instance, "vkDestroyDebugUtilsMessengerEXT"));
+		destroyDebugUtilsMessengerEXT(instance_->instance, messenger_, nullptr);
+	}
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL vkn::DebugMessenger::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)

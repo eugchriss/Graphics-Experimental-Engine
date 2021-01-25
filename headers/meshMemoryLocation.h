@@ -1,4 +1,5 @@
 #pragma once
+#include "vulkanContext.h"
 #include "DeviceMemory.h"
 #include "Buffer.h"
 #include "Mesh.h"
@@ -19,11 +20,10 @@ namespace vkn
 	class MeshMemoryLocationFactory
 	{
 	public:
-		MeshMemoryLocationFactory(vkn::Gpu& gpu, vkn::Device& device);
+		MeshMemoryLocationFactory(Context& context);
 		MeshMemoryLocation create(const gee::Mesh& mesh);
 	private:
-		vkn::Gpu& gpu_;
-		vkn::Device& device_;
+		Context& context_;
 		std::unique_ptr<vkn::Queue> transferQueue_;
 	};
 }

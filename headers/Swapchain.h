@@ -1,8 +1,7 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
 #include "glm/glm.hpp"
-#include "Gpu.h"
-#include "Device.h"
+#include "vulkanContext.h"
 #include "Signal.h"
 #include "Image.h"
 #include <vector>
@@ -12,16 +11,16 @@ namespace vkn
 	class Swapchain
 	{
 	public:
-		Swapchain(vkn::Gpu& gpu, vkn::Device& device, const VkSurfaceKHR& surface);
+		Swapchain(Context& context);
 		~Swapchain();
-		void resize(vkn::CommandBuffer& cb, const VkExtent2D& extent);
+		void resize(const VkExtent2D& extent);
 		const VkExtent2D extent() const;
 		void setImageAvailableSignal(vkn::Signal& signal, const uint64_t timeout = UINT64_MAX);
 		const VkPresentInfoKHR imagePresentInfo(vkn::Signal& waitOn) const;
 		std::vector<vkn::Image>& images();
 		const VkFormat imageFormat() const;
 	private:
-		vkn::Device& device_;
+		Context& context_;
 		VkSwapchainCreateInfoKHR swapchainInfo_{};
 		VkSwapchainKHR swapchain_{ VK_NULL_HANDLE };
 		std::vector<vkn::Image> images_;

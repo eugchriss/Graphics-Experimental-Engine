@@ -9,7 +9,8 @@ namespace vkn
 	class Device
 	{
 	public:
-		Device(const vkn::Gpu& gpu, const std::vector<const char*>& requestedExtensions, const vkn::QueueFamily& queueFamily);
+		Device(const vkn::Gpu& gpu, const std::vector<std::string>& requestedExtensions, const vkn::QueueFamily& queueFamily);
+		Device(Device&& other);
 		~Device();
 		void idle();
 #ifndef NDEBUG

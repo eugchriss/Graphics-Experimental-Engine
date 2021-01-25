@@ -1,6 +1,5 @@
 #pragma once
-#include "Gpu.h"
-#include "Device.h"
+#include "vulkanContext.h"
 #include "Image.h"
 #include "Texture.h"
 #include "CommandBuffer.h"
@@ -12,12 +11,10 @@ namespace vkn
 	class TextureImageFactory
 	{
 	public:
-		TextureImageFactory(vkn::Gpu& gpu, vkn::Device& device);
+		TextureImageFactory(Context& _context);
 		vkn::Image create(const gee::Texture& texture) const; 
 	private:
-		vkn::Gpu& gpu_;
-		vkn::Device& device_;
+		Context& context_;
 		std::unique_ptr<vkn::CommandPool> cbPool_;
-		std::unique_ptr<vkn::Queue> transferQueue_;
 	};
 }

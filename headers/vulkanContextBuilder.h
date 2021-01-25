@@ -22,10 +22,10 @@ namespace vkn
 	private:
 		VkDebugUtilsMessageSeverityFlagsEXT severity_;
 		VkDebugUtilsMessageTypeFlagsEXT messageType_;
-		std::vector<const char*> instanceLayers_;
-		std::vector<const char*> deviceLayers_;
-		std::vector<const char*> instanceExtensions_;
-		std::vector<const char*> deviceExtensions_;
+		std::vector<std::string> instanceLayers_;
+		std::vector<std::string> deviceLayers_;
+		std::vector<std::string> instanceExtensions_;
+		std::vector<std::string> deviceExtensions_;
 		VkQueueFlags queueType_{};
 		uint32_t queueCount_{};
 	};

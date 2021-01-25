@@ -1,6 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
-#include "Device.h"
+#include "vulkanContext.h"
 #include "DeviceMemory.h"
 #include "../headers/vulkan_utils.h"
 namespace vkn
@@ -10,7 +10,7 @@ namespace vkn
 	class Buffer
 	{
 	public:
-		Buffer(vkn::Device& device, const VkBufferUsageFlags usage, const VkDeviceSize size);
+		Buffer(Context& context, const VkBufferUsageFlags usage, const VkDeviceSize size);
 		Buffer(Buffer&&);
 		~Buffer();
 		const VkDeviceSize getMemorySize() const;
@@ -27,10 +27,10 @@ namespace vkn
 		VkBuffer buffer{ VK_NULL_HANDLE };
 
 	private:
+		Context& context_;
 		Observer_ptr<vkn::DeviceMemory> memory_{};
 		VkDeviceSize memoryOffset_{};
 		VkDeviceSize offset_{};
-		vkn::Device& device_;
 		VkDeviceSize size_{};
 		VkBufferUsageFlags usage_;
 	};

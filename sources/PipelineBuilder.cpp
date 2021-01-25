@@ -6,8 +6,10 @@
 #include <fstream>
 
 
-vkn::PipelineBuilder::PipelineBuilder(): lineWidth{ 1.0f }, frontFace{ VK_FRONT_FACE_CLOCKWISE }, cullMode{ VK_CULL_MODE_NONE }
+vkn::PipelineBuilder::PipelineBuilder(const std::string& vertexShaderPath, const std::string& fragmentShaderPath): lineWidth{ 1.0f }, frontFace{ VK_FRONT_FACE_CLOCKWISE }, cullMode{ VK_CULL_MODE_NONE }
 {
+	addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, vertexShaderPath);
+	addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShaderPath);
 	//initialize input state info
 	{
 		vertexInput_.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -40,25 +42,17 @@ vkn::PipelineBuilder::PipelineBuilder(): lineWidth{ 1.0f }, frontFace{ VK_FRONT_
 	depthStencilCI_.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 }
 
-
-void vkn::PipelineBuilder::preBuild(vkn::Device& device)
-{
-	for (const auto& [stage, path] : shaderStages_)
-	{
-		shaders_.emplace_back(device, stage, path);
-	}
-}
-
-vkn::Pipeline vkn::PipelineBuilder::get(vkn::Gpu& gpu, vkn::Device& device)
+vkn::Pipeline vkn::PipelineBuilder::get(Context& context)
 {
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages{};
-	for (const auto& shader : shaders_)
+	for (const auto& [stage, path] : shaderStages_)
 	{
+		auto& shader = shaders_.emplace_back(*context.device, stage, path);
 		VkPipelineShaderStageCreateInfo stageInfo{};
 		stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		stageInfo.pNext = nullptr;
 		stageInfo.flags = 0;
-		stageInfo.stage = shader.stage();
+		stageInfo.stage = stage;
 		stageInfo.module = shader.module();
 		stageInfo.pName = "main";
 		stageInfo.pSpecializationInfo = nullptr;
@@ -139,7 +133,7 @@ vkn::Pipeline vkn::PipelineBuilder::get(vkn::Gpu& gpu, vkn::Device& device)
 	}
 	//create the pipeline
 	VkPhysicalDeviceProperties props{};
-	vkGetPhysicalDeviceProperties(gpu.device, &props);
+	vkGetPhysicalDeviceProperties(context.gpu->device, &props);
 	for (auto& shader : shaders_)
 	{
 		const auto& tweakings = shader.tweakings();
@@ -148,7 +142,7 @@ vkn::Pipeline vkn::PipelineBuilder::get(vkn::Gpu& gpu, vkn::Device& device)
 			assert(tweakings.back().offset < props.limits.maxPushConstantsSize && "The tweakings have too much parameters");
 		}
 	}
-	vkn::PipelineLayout pipelineLayout{ device, shaders_ };
+	vkn::PipelineLayout pipelineLayout{ *context.device, shaders_ };
 	VkPipeline pipeline{ VK_NULL_HANDLE };
 	{
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -173,10 +167,10 @@ vkn::Pipeline vkn::PipelineBuilder::get(vkn::Gpu& gpu, vkn::Device& device)
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 			pipelineInfo.basePipelineIndex = -1;
 		}
-		vkn::error_check(vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "Failed to create the pipeline");
+		vkn::error_check(vkCreateGraphicsPipelines(context.device->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "Failed to create the pipeline");
 	}
 	shaderStages_.clear();
-	return vkn::Pipeline{ gpu, device, pipeline, std::move(shaders_) };
+	return vkn::Pipeline{ context, pipeline, std::move(shaders_) };
 }
 
 void vkn::PipelineBuilder::addShaderStage(const VkShaderStageFlagBits stage, const std::string& path)
