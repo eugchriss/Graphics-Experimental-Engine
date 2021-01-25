@@ -157,6 +157,7 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	auto frameIndex = 0u;
 	for (auto& framebuffer : framebuffers_)
 	{
+		vkDestroyFramebuffer(context_.device->device, framebuffer, nullptr);
 		std::vector<VkImageView> views;
 		views.reserve(std::size(renderpassAttachments));
 		for (auto i = 0u; i < std::size(renderpassAttachments); ++i)

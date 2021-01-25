@@ -2,7 +2,7 @@
 #include "../headers/vulkan_utils.h"
 #include "../headers/QueueFamily.h"
 
-vkn::Device::Device(const vkn::Gpu& gpu,const std::vector<std::string>& requestedExtensions, const vkn::QueueFamily& queueFamily)
+vkn::Device::Device(vkn::Gpu& gpu,const std::vector<std::string>& requestedExtensions, const vkn::QueueFamily& queueFamily)
 {
 	std::vector<const char*> extensions;
 	for (const auto& extension : requestedExtensions)
@@ -13,7 +13,7 @@ vkn::Device::Device(const vkn::Gpu& gpu,const std::vector<std::string>& requeste
 	VkDeviceCreateInfo deviceCI{};
 	auto queueInfo = queueFamily.info();
 	deviceCI.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	//deviceCI.pNext = &features;
+	deviceCI.pNext = &features;
 	deviceCI.flags = 0;
 	deviceCI.queueCreateInfoCount = 1;
 	deviceCI.pQueueCreateInfos = &queueInfo;
@@ -37,8 +37,10 @@ vkn::Device::Device(Device&& other)
 
 vkn::Device::~Device()
 {
+	
 	if (device != VK_NULL_HANDLE)
 	{
+		idle();
 		vkDestroyDevice(device, nullptr);
 	}
 }

@@ -4,16 +4,15 @@ vkn::Gpu::Gpu(const VkPhysicalDevice device_) : device{ device_ }
 {
 	descriptorIndexingFeatures_.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
 	descriptorIndexingFeatures_.pNext = nullptr;
-
-	features_.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	features_.pNext = &descriptorIndexingFeatures_;
-
-	vkGetPhysicalDeviceFeatures2(device_, &features_);
 }
 
-const VkPhysicalDeviceFeatures2& vkn::Gpu::enabledFeatures() const
+const VkPhysicalDeviceFeatures2& vkn::Gpu::enabledFeatures()
 {
-	return features_;
+	VkPhysicalDeviceFeatures2 features{};
+	features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	features.pNext = &descriptorIndexingFeatures_;
+	vkGetPhysicalDeviceFeatures2(device, &features);
+	return features;
 }
 
 const VkPhysicalDeviceProperties vkn::Gpu::properties() const

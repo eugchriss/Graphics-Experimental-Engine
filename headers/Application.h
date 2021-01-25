@@ -18,8 +18,9 @@ namespace gee
 	class Application
 	{
 	public:
-		Application::Application(const std::string& name, const uint32_t width, const uint32_t height);
-		bool gee::Application::isRunning();
+		Application(const std::string& name, const uint32_t width, const uint32_t height);
+		~Application();
+		bool isRunning();
 		void setCameraPosition(const glm::vec3& position);
 		void setSkybox(Drawable& skybox);
 		void addDrawable(Drawable& drawable);

@@ -68,6 +68,11 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 
 }
 
+gee::Application::~Application()
+{
+	context_->device->idle();
+}
+
 void gee::Application::setCameraPosition(const glm::vec3& position)
 {
 	camera_.position_ = position;
