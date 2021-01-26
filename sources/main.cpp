@@ -10,7 +10,7 @@ int main()
 {
 
 	glfwInit();
-	/*gee::ModelLoader loader{};
+	gee::ModelLoader loader{};
 	gee::ResourceHolder<gee::ModelLoader, gee::Mesh> meshHolder{ gee::ModelLoader{} };
 	auto& cubeMesh = meshHolder.get("box", "../assets/Meshs/box/box.obj");
 
@@ -23,9 +23,9 @@ int main()
 											"../assets/skybox/space/front.png",
 											"../assets/skybox/space/back.png" };
 	auto& skyboxMesh = meshHolder.get("skybox", gee::getCubeMesh, gee::Material{ skyboxPaths });
-	*/
+	
 	gee::Application app{ "Graphics's Experimental Engine", 800, 800 };
-	/*
+	
 	gee::Optics pointLight{ gee::Light::PointLight };
 	pointLight.diffuse = glm::vec3{ 1.0f, 0.0f, 0.0f };
 	gee::Drawable cube{ "cube 0", cubeMesh, pointLight };
@@ -42,18 +42,18 @@ int main()
 	backpack2.setSize(glm::vec3{ 1.0f });
 	app.addDrawable(cube);
 	app.addDrawable(cube2);
-	app.addDrawable(backpack);
+	/*app.addDrawable(backpack);
 	app.addDrawable(backpack2);
-	app.addDrawable(light);
+	app.addDrawable(light);*/
 
 	gee::Drawable skybox{ "skybox", skyboxMesh };
 	auto& floorMesh = gee::getFloorMesh(gee::Material{ "../assets/textures/floor/diffuse.jpg", "../assets/textures/floor/normal.png" });
 	gee::Drawable floor{ "floor", floorMesh };
 	floor.setSize(glm::vec3{ 10.0f });
-	app.addDrawable(floor);
+	//app.addDrawable(floor);
 
 	app.setSkybox(skybox);
-	app.setCameraPosition(glm::vec3{ 0.0f, 1.0f, 5.0f });*/
+	app.setCameraPosition(glm::vec3{ 0.0f, 1.0f, 5.0f });
 	while (app.isRunning())
 	{
 

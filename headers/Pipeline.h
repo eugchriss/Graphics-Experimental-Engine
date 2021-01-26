@@ -38,7 +38,7 @@ namespace vkn
 		template<class T>
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const VkDeviceSize offset, const VkDeviceSize size, const T& datas);
 		template<class T>
-		void updateBuffer(const std::string& resourceName, const T& datas, const VkShaderStageFlagBits stage);
+		void updateBuffer(const std::string& resourceName, const T& datas);
 		const std::vector<Shader::Attachment>& outputAttachments() const;
 		const std::vector<Shader::Attachment>& subpassInputAttachments() const;
 		void updateUniforms();
@@ -55,13 +55,16 @@ namespace vkn
 		std::unique_ptr<vkn::DeviceMemory> memory_;
 		std::unique_ptr<vkn::Buffer> buffer_;
 		std::vector<VkWriteDescriptorSet> uniformsWrites_;
+		std::vector<std::shared_ptr<VkDescriptorImageInfo>> imageInfos_;
+		std::vector<std::shared_ptr<std::vector<VkDescriptorImageInfo>>> imagesInfos_;
+		std::vector<std::shared_ptr<VkDescriptorBufferInfo>> bufferInfos_;
 		void createPool();
 		void createSets();
 		const std::vector<VkDescriptorPoolSize> getPoolSizes() const;
 	};
 
 	template<class T>
-	inline void Pipeline::updateBuffer(const std::string& resourceName, const T& datas, const VkShaderStageFlagBits stage)
+	inline void Pipeline::updateBuffer(const std::string& resourceName, const T& datas)
 	{
 		auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == resourceName; });
 		if (uniform == std::end(uniforms_))
@@ -72,7 +75,12 @@ namespace vkn
 		buffer_->update(uniform->offset, datas);
 
 		//update the descriptor
-		VkDescriptorBufferInfo bufferInfo{ buffer_->buffer, uniform->offset, uniform->range };
+		auto bufferInfo = std::make_shared<VkDescriptorBufferInfo>();
+		bufferInfo->buffer = buffer_->buffer;
+		bufferInfo->offset = uniform->offset;
+		bufferInfo->range = uniform->range;
+		bufferInfos_.emplace_back(bufferInfo);
+
 		VkWriteDescriptorSet write{};
 		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write.pNext = nullptr;
@@ -80,7 +88,7 @@ namespace vkn
 		write.dstBinding = uniform->binding;
 		write.descriptorType = uniform->type;
 		write.descriptorCount = uniform->size;
-		write.pBufferInfo = &bufferInfo;
+		write.pBufferInfo = bufferInfo.get();
 
 		uniformsWrites_.emplace_back(write);
 	}

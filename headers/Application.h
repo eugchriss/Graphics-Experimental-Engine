@@ -13,6 +13,24 @@
 #include "RenderTarget.h"
 #include "Pipeline.h"
 
+namespace std
+{
+	template<> struct hash<std::reference_wrapper<const gee::Mesh>>
+	{
+		std::size_t operator()(const std::reference_wrapper<const gee::Mesh>& mesh) const noexcept
+		{
+			return mesh.get().hash();
+		}
+	};
+
+	template<> struct equal_to<std::reference_wrapper<gee::Mesh>>
+	{
+		bool operator()(const std::reference_wrapper<const gee::Mesh>& lhs, const std::reference_wrapper<const gee::Mesh>& rhs) const
+		{
+			return lhs.get().hash() == rhs.get().hash();
+		}
+	};
+}
 namespace gee
 {
 	class Application
@@ -26,18 +44,21 @@ namespace gee
 		void addDrawable(Drawable& drawable);
 		void addCamera(const Camera& camera);
 	private:
+
 		gee::Window window_;
 		std::unique_ptr<vkn::Context> context_;
 		std::unique_ptr<vkn::RenderTarget> renderTarget_;
 		std::unique_ptr<vkn::Pipeline> colorPipeline_;
 		gee::EventDispatcher eventDispatcher_;
 		std::unique_ptr<vkn::Renderer> renderer_;
+		using Mesh_t = std::reference_wrapper<const gee::Mesh>;
+		std::vector<std::pair<Mesh_t, size_t>> geometryCount_;
 		std::vector<std::reference_wrapper<gee::Drawable>> drawables_;
 		std::vector<std::reference_wrapper<const Mesh>> meshes_;
-		std::vector<std::reference_wrapper<gee::Texture>> textures_;
+		std::vector<std::reference_wrapper<const gee::Texture>> textures_;
 		Timer renderingtimer_;
 		Camera camera_;
-
+		std::vector<glm::mat4> modelMatrices_;
 		void updateGui();
 		void onMouseMoveEvent(double x, double y);
 		void onMouseScrollEvent(double x, double y);
@@ -57,6 +78,12 @@ namespace gee
 		
 		void createContext();
 		void createPipeline();
+		void getGeometriesCountAndTransforms();
+		struct ShaderCamera
+		{
+			glm::vec4 position;
+			glm::mat4 viewProj;
+		};
 
 	};
 }

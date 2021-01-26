@@ -105,14 +105,19 @@ void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampl
 	{
 		throw std::runtime_error{ "There is no such uniform name within this pipeline" };
 	}
-	VkDescriptorImageInfo imageInfo{ sampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	auto imageInfo = std::make_shared<VkDescriptorImageInfo>();
+	imageInfo->sampler = sampler;
+	imageInfo->imageView = view;
+	imageInfo->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfos_.emplace_back(imageInfo);
+
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.pNext = nullptr;
 	write.dstSet = uniform->set;
 	write.dstBinding = uniform->binding;
 	write.descriptorType = uniform->type;
-	write.pImageInfo = &imageInfo;
+	write.pImageInfo = imageInfo.get();
 	write.descriptorCount = uniform->size;
 
 	uniformsWrites_.emplace_back(write);
@@ -125,20 +130,21 @@ void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSamp
 	{
 		throw std::runtime_error{ "There is no such uniform name within this pipeline" };
 	}
-	std::vector<VkDescriptorImageInfo> imagesInfos;
-	imagesInfos.reserve(std::size(views));
 
+	auto imagesInfos = std::make_shared<std::vector<VkDescriptorImageInfo>>();
+	imagesInfos->reserve(std::size(views));
 	for (const auto view : views)
 	{
-		imagesInfos.emplace_back(VkDescriptorImageInfo{ sampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+		imagesInfos->emplace_back(VkDescriptorImageInfo{ sampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 	}
+	imagesInfos_.emplace_back(imagesInfos);
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.pNext = nullptr;
 	write.dstSet = uniform->set;
 	write.dstBinding = uniform->binding;
 	write.descriptorType = uniform->type;
-	write.pImageInfo = std::data(imagesInfos);
+	write.pImageInfo = std::data(*imagesInfos);
 	write.descriptorCount = std::size(views);
 
 	uniformsWrites_.emplace_back(write);
@@ -175,6 +181,9 @@ void vkn::Pipeline::updateUniforms()
 {
 	vkUpdateDescriptorSets(context_.device->device, std::size(uniformsWrites_), std::data(uniformsWrites_), 0, nullptr);
 	uniformsWrites_.clear();
+	imageInfos_.clear();
+	imagesInfos_.clear();
+	bufferInfos_.clear();
 }
 
 void vkn::Pipeline::createSets()

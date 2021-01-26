@@ -11,7 +11,7 @@ vkn::Renderer::Renderer(vkn::Context& _context, const gee::Window& window) : con
 	
 
 	texturesCache_ = std::make_unique<gee::ResourceHolder<vkn::TextureImageFactory, vkn::Image, std::string>>(vkn::TextureImageFactory{ context_ });
-	geometriesCache_ = std::make_unique<gee::ResourceHolder<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, std::string>>(vkn::MeshMemoryLocationFactory{ context_ });
+	geometriesCache_ = std::make_unique<gee::ResourceHolder<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, size_t>>(vkn::MeshMemoryLocationFactory{ context_ });
 	//buildImguiContext(window);
 }
 	
@@ -20,25 +20,17 @@ vkn::Renderer::~Renderer()
 	vkDestroySampler(context_.device->device, sampler_, nullptr);
 }
 
-void vkn::Renderer::draw(const gee::Drawable& drawable, const size_t count)
+void vkn::Renderer::draw(const gee::Mesh& mesh, const size_t count)
 {
 	if (shouldRender_)
 	{
 		assert(currentCb_.has_value() && "The render target need to be bind first");
 		VkDeviceSize offset{ 0 };
-		auto& memoryLocation = geometriesCache_->get(drawable.name, drawable.mesh);
+		auto& memoryLocation = geometriesCache_->get(mesh.hash(), mesh);
 
 		vkCmdBindVertexBuffers(currentCb_->get().commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
 		vkCmdBindIndexBuffer(currentCb_->get().commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed(currentCb_->get().commandBuffer(), memoryLocation.indicesCount, count, 0, 0, 0);
-	}
-}
-
-void vkn::Renderer::draw()
-{
-	if (shouldRender_)
-	{
-		vkCmdDraw(currentCb_->get().commandBuffer(), 3, 1, 0, 0);
 	}
 }
 
@@ -101,18 +93,16 @@ void vkn::Renderer::setTexture(const std::string& name, const gee::Texture& text
 	}
 }
 
-void vkn::Renderer::setTextures(const std::string& name, const std::vector<gee::Texture>& textures, const VkImageViewType& viewType)
+void vkn::Renderer::setTextures(const std::string& name, const std::vector<std::reference_wrapper<const gee::Texture>>& textures, const VkImageViewType& viewType)
 {
 	if (shouldRender_)
 	{
 		assert(currentCb_.has_value() && "The render target need to be bind first");
 		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
 		std::vector<VkImageView> views;
-		views.reserve(std::size(textures));
-
 		for (const auto& texture : textures)
 		{
-			views.emplace_back(texturesCache_->get(texture.paths_[0], texture).getView(viewType));
+			views.emplace_back(texturesCache_->get(texture.get().paths_[0], texture).getView(viewType));
 		}
 		boundPipeline_->get().updateTextures(name, sampler_, views, VK_SHADER_STAGE_FRAGMENT_BIT);
 	}

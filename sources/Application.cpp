@@ -43,23 +43,12 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 		{
-			ImGuiIO& io = ImGui::GetIO();
-			if (!io.WantCaptureMouse)
-			{
-				onMouseScrollEvent(x, y);
-			}
+			onMouseScrollEvent(x, y);
 		});
 	eventDispatcher_.addMouseButtonCallback([&](uint32_t button, uint32_t action, uint32_t mods)
 		{
-			ImGuiIO& io = ImGui::GetIO();
-			if (!io.WantCaptureMouse)
-			{
-				onMouseButtonEvent(button, action, mods);
-			}
-			else
-			{
-				firstMouseUse_ = true;
-			}
+			onMouseButtonEvent(button, action, mods);
+			firstMouseUse_ = true;
 		});
 	eventDispatcher_.addMouseMoveCallback([&](double x, double y)
 		{
@@ -85,9 +74,8 @@ void gee::Application::setSkybox(Drawable& skybox)
 
 void gee::Application::addDrawable(Drawable& drawable)
 {
-	drawblesShouldBeSorted_ = true;
-	auto drawbleResult = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& d) { return d.get().hash() == drawable.hash(); });
-	if (drawbleResult == std::end(drawables_))
+	auto exist = std::find_if(std::begin(drawables_), std::end(drawables_), [&](auto& drawableRef) { return drawableRef.get().name == drawable.name; });
+	if (exist == std::end(drawables_))
 	{
 		drawables_.emplace_back(std::ref(drawable));
 	}
@@ -260,11 +248,45 @@ void gee::Application::createPipeline()
 	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
 }
 
+void gee::Application::getGeometriesCountAndTransforms()
+{
+	for (const auto& drawableRef : drawables_)
+	{
+		auto& drawable = drawableRef.get();
+		auto exist = std::find_if(std::begin(geometryCount_), std::end(geometryCount_), [&](const auto& pair) {return pair.first.get().hash() == drawable.mesh.hash(); });
+		if (exist != std::end(geometryCount_))
+		{
+			++exist->second;
+		}
+		else
+		{
+			geometryCount_.emplace_back(std::make_pair(std::ref(drawable.mesh), 1));
+		}
+		modelMatrices_.emplace_back(drawable.getTransform());
+		textures_.emplace_back(std::ref(drawable.mesh.material().diffuseTex));
+	}
+}
+
 bool gee::Application::isRunning()
 {
-	renderer_->begin(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y } });
+	ShaderCamera camera{};
+	camera.position = glm::vec4{ camera_.position_, 1.0f };
+	camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
+
+	glm::mat4 model{ 1.0f };
+
+	renderer_->begin(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
 	renderer_->usePipeline(*colorPipeline_);
-	renderer_->draw();
+	renderer_->updateBuffer("Camera", camera);
+	getGeometriesCountAndTransforms();
+	renderer_->setTextures("textures", textures_);
+	renderer_->updateBuffer("Model_Matrix", modelMatrices_);
+	for (const auto& [geometry, count] : geometryCount_)
+	{
+		renderer_->draw(geometry, count);
+	}
+	textures_.clear();
+	modelMatrices_.clear();
 	renderer_->end(*renderTarget_);
 	return window_.isOpen();
 }

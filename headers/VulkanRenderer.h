@@ -25,13 +25,12 @@ namespace vkn
 	public:
 		Renderer(vkn::Context& _context, const gee::Window& window);
 		~Renderer();
-		void draw(const gee::Drawable& drawable, const size_t count = 1);
-		void draw();
+		void draw(const gee::Mesh& mesh, const size_t count = 1);
 		void begin(RenderTarget& target, const VkRect2D& renderArea);
 		void end(RenderTarget& target);
 		void usePipeline(Pipeline& pipeline);
 		void setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D);
-		void setTextures(const std::string& name, const std::vector<gee::Texture>& textures, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D);
+		void setTextures(const std::string& name, const std::vector<std::reference_wrapper<const gee::Texture>>& textures, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D);
 		template <class T>
 		void updateBuffer(const std::string& name, const T& datas);
 		template <class T>
@@ -55,7 +54,7 @@ namespace vkn
 		using CachePtr = std::unique_ptr<gee::ResourceHolder<Factory, Resource, Key>>;
 
 		CachePtr<vkn::TextureImageFactory, vkn::Image, std::string> texturesCache_;
-		CachePtr<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, std::string> geometriesCache_;
+		CachePtr<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, size_t> geometriesCache_;
 		std::vector<VkImageView> pipelineTextureViews_;
 		//imgui variables
 		void createSampler();
@@ -64,15 +63,19 @@ namespace vkn
 	template<class T>
 	inline void Renderer::updateBuffer(const std::string& name, const T& datas)
 	{
-		assert(currentCb_.has_value() && "The render target need to be bind first");
-		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
-		boundPipeline_->updateBuffer(*currentCb_, name, datas);
+		if (shouldRender_)
+		{
+			assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
+			boundPipeline_->get().updateBuffer(name, datas);
+		}
 	}
 	template<class T>
 	inline void Renderer::updateSmallBuffer(const std::string& name, const T& datas)
 	{
-		assert(currentCb_.has_value() && "The render target need to be bind first");
-		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
-		boundPipeline_->pushConstant(*currentCb_, name, datas);
+		if (shouldRender_)
+		{
+			assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
+			boundPipeline_->get().pushConstant(name, datas);
+		}
 	}
 }
