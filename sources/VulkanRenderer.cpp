@@ -30,7 +30,8 @@ void vkn::Renderer::draw(const gee::Mesh& mesh, const size_t count)
 
 		vkCmdBindVertexBuffers(currentCb_->get().commandBuffer(), 0, 1, &memoryLocation.vertexBuffer.buffer, &offset);
 		vkCmdBindIndexBuffer(currentCb_->get().commandBuffer(), memoryLocation.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(currentCb_->get().commandBuffer(), memoryLocation.indicesCount, count, 0, 0, 0);
+		vkCmdDrawIndexed(currentCb_->get().commandBuffer(), memoryLocation.indicesCount, count, 0, 0, firstInstance_);
+		firstInstance_ += count;
 	}
 }
 
@@ -79,6 +80,7 @@ void vkn::Renderer::usePipeline(Pipeline& pipeline)
 		pipeline.bind(currentCb_.value());
 		boundPipeline_ = std::make_optional<std::reference_wrapper<vkn::Pipeline>>(pipeline);
 		boundPipelines_.emplace_back(boundPipeline_);
+		firstInstance_ = 0;
 	}
 }
 

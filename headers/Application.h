@@ -13,19 +13,33 @@
 #include "RenderTarget.h"
 #include "Pipeline.h"
 
+struct ShaderCamera
+{
+	glm::vec4 position;
+	glm::mat4 viewProj;
+};
+struct ShaderMaterial
+{
+	uint32_t diffuseTex;
+	uint32_t normalTex;
+	uint32_t specularTex;
+	uint32_t unused;
+};
+
+using Mesh_t = std::reference_wrapper<const gee::Mesh>;
 namespace std
 {
-	template<> struct hash<std::reference_wrapper<const gee::Mesh>>
+	template<> struct hash<Mesh_t>
 	{
-		std::size_t operator()(const std::reference_wrapper<const gee::Mesh>& mesh) const noexcept
+		std::size_t operator()(const Mesh_t& mesh) const noexcept
 		{
 			return mesh.get().hash();
 		}
 	};
 
-	template<> struct equal_to<std::reference_wrapper<gee::Mesh>>
+	template<> struct equal_to<Mesh_t>
 	{
-		bool operator()(const std::reference_wrapper<const gee::Mesh>& lhs, const std::reference_wrapper<const gee::Mesh>& rhs) const
+		bool operator()(const Mesh_t& lhs, const Mesh_t& rhs) const
 		{
 			return lhs.get().hash() == rhs.get().hash();
 		}
@@ -51,12 +65,10 @@ namespace gee
 		std::unique_ptr<vkn::Pipeline> colorPipeline_;
 		gee::EventDispatcher eventDispatcher_;
 		std::unique_ptr<vkn::Renderer> renderer_;
-		using Mesh_t = std::reference_wrapper<const gee::Mesh>;
 		std::vector<std::pair<Mesh_t, size_t>> geometryCount_;
 		std::vector<std::reference_wrapper<gee::Drawable>> drawables_;
-		std::vector<std::reference_wrapper<const Mesh>> meshes_;
 		std::vector<std::reference_wrapper<const gee::Texture>> textures_;
-		Timer renderingtimer_;
+		std::unordered_map<Mesh_t, ShaderMaterial, std::hash<Mesh_t>, std::equal_to<Mesh_t>> materials_;
 		Camera camera_;
 		std::vector<glm::mat4> modelMatrices_;
 		void updateGui();
@@ -69,21 +81,10 @@ namespace gee
 		bool firstMouseUse_{ true };
 		bool drawblesShouldBeSorted_{ false };
 		glm::vec2 lastPos_{};
-		size_t lastDrawableIndex_{-1u};
-		std::optional<std::reference_wrapper<gee::Drawable>> activeDrawable_;
-		std::optional<std::reference_wrapper<gee::Drawable>> skybox_{};
-		gee::Timer cpuTimer_{ "Draw time" };
-		float gpuTime_{};
-		float cpuTime_{};
-		
 		void createContext();
 		void createPipeline();
 		void getGeometriesCountAndTransforms();
-		struct ShaderCamera
-		{
-			glm::vec4 position;
-			glm::mat4 viewProj;
-		};
+
 
 	};
 }

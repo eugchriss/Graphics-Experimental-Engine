@@ -42,15 +42,15 @@ int main()
 	backpack2.setSize(glm::vec3{ 1.0f });
 	app.addDrawable(cube);
 	app.addDrawable(cube2);
-	/*app.addDrawable(backpack);
+	app.addDrawable(backpack);
 	app.addDrawable(backpack2);
-	app.addDrawable(light);*/
+	//app.addDrawable(light);
 
 	gee::Drawable skybox{ "skybox", skyboxMesh };
 	auto& floorMesh = gee::getFloorMesh(gee::Material{ "../assets/textures/floor/diffuse.jpg", "../assets/textures/floor/normal.png" });
 	gee::Drawable floor{ "floor", floorMesh };
 	floor.setSize(glm::vec3{ 10.0f });
-	//app.addDrawable(floor);
+	app.addDrawable(floor);
 
 	app.setSkybox(skybox);
 	app.setCameraPosition(glm::vec3{ 0.0f, 1.0f, 5.0f });

@@ -10,7 +10,7 @@
 #include "../headers/vulkanContextBuilder.h"
 #include "../headers/PipelineBuilder.h"
 
-gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : window_{ name, width, height }, eventDispatcher_{ window_.window() }, renderingtimer_{ "main Timer" }
+gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : window_{ name, width, height }, eventDispatcher_{ window_.window() }
 {
 	std::cout << "The application has been launched.\n";
 	createContext();
@@ -69,7 +69,6 @@ void gee::Application::setCameraPosition(const glm::vec3& position)
 
 void gee::Application::setSkybox(Drawable& skybox)
 {
-	skybox_ = std::make_optional(std::ref(skybox));
 }
 
 void gee::Application::addDrawable(Drawable& drawable)
@@ -78,6 +77,16 @@ void gee::Application::addDrawable(Drawable& drawable)
 	if (exist == std::end(drawables_))
 	{
 		drawables_.emplace_back(std::ref(drawable));
+
+		auto geometryExist = std::find_if(std::begin(geometryCount_), std::end(geometryCount_), [&](const auto& pair) {return pair.first.get().hash() == drawable.mesh.hash(); });
+		if (geometryExist != std::end(geometryCount_))
+		{
+			++geometryExist->second;
+		}
+		else
+		{
+			geometryCount_.emplace_back(std::make_pair(std::ref(drawable.mesh), 1));
+		}
 	}
 }
 
@@ -87,55 +96,7 @@ void gee::Application::addCamera(const Camera& camera)
 
 void gee::Application::updateGui()
 {
-	if (activeDrawable_)
-	{
-		auto& drawable = activeDrawable_.value().get();
-		ImGui::Begin(drawable.name.c_str());
-		auto position = drawable.getPosition();
-		ImGui::SliderFloat3("position", &position.x, -500.0_m, 500.0_m, "%.1f");
 
-		auto color = drawable.getColor();
-		ImGui::ColorEdit4("color", &color.x);
-
-		//the engine uses radians units in internal but degrees for display
-		auto rotation = drawable.getRotation();
-		glm::vec3 rotationDeg = glm::degrees(rotation);
-		ImGui::SliderFloat3("rotation", &rotationDeg.x, 0.0f, 360.0f, "%.1f");
-		rotation = glm::radians(rotationDeg);
-
-		auto lastScaleFactor = drawable.scaleFactor;
-		ImGui::SliderFloat("scale factor", &drawable.scaleFactor, 0.0f, 10.0f, "%.1f");
-
-		auto size = drawable.getSize();
-		auto sizeStr = std::string{ "x = " } + std::to_string(size.x) + std::string{ " y = " } + std::to_string(size.y) + std::string{ " z = " } + std::to_string(size.z);
-		ImGui::LabelText("size", sizeStr.c_str());
-		if (drawable.hasLightComponent())
-		{
-			auto& light = drawable.light();
-			ImGui::ColorEdit3("ambient", &light.ambient.x);
-			ImGui::ColorEdit3("diffuse", &light.diffuse.x);
-			ImGui::SliderFloat("specular", &light.specular.x, 0.0f, 256.0f, "%f");
-			light.specular.y = light.specular.x;
-			light.specular.z = light.specular.x;
-			ImGui::SliderFloat("linear", &light.linear, 0.0014f, 0.7, "%.4f");
-			ImGui::SliderFloat("quadratic", &light.quadratic, 0.0000007f, 1.8, "%.7f");
-		}
-		ImGui::End();
-
-		drawable.setPosition(position);
-		drawable.setRotation(rotation);
-		drawable.setColor(color);
-		if (drawable.scaleFactor == 0.0f)
-		{
-			drawable.scaleFactor = lastScaleFactor;
-		}
-		drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
-	}
-	camera_.imguiDisplay();
-	ImGui::Begin("Loop time");
-	ImGui::LabelText("cpu time", std::to_string(cpuTime_).c_str(), "0.3f");
-	ImGui::LabelText("gpu time", std::to_string(gpuTime_).c_str(), "0.3f");
-	ImGui::End();
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -185,7 +146,6 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		double x, y;
 		glfwGetCursorPos(window_.window(), &x, &y);
 		//auto drawableIndex = renderer_->objectAt(drawables_, x, y);
-		activeDrawable_ = std::nullopt;
 		/*if (drawableIndex.has_value())
 		{
 			if (drawableIndex.value() != lastDrawableIndex_)
@@ -253,17 +213,50 @@ void gee::Application::getGeometriesCountAndTransforms()
 	for (const auto& drawableRef : drawables_)
 	{
 		auto& drawable = drawableRef.get();
-		auto exist = std::find_if(std::begin(geometryCount_), std::end(geometryCount_), [&](const auto& pair) {return pair.first.get().hash() == drawable.mesh.hash(); });
-		if (exist != std::end(geometryCount_))
+		bool diffuseTexExist{ false };
+		bool normalTexExist{ false };
+		bool specularTexExist{ false };
+
+		ShaderMaterial material{};
+		for (auto i = 0u; i < std::size(textures_); ++i)
 		{
-			++exist->second;
+			const auto& texture = textures_[i].get();
+			if (texture.paths_[0] == drawable.mesh.material().diffuseTex.paths_[0])
+			{
+				diffuseTexExist = true;
+				material.diffuseTex = i;
+			}
+			else if (texture.paths_[0] == drawable.mesh.material().normalTex.paths_[0])
+			{
+				normalTexExist = true;
+				material.normalTex = i;
+			}
+			else if (texture.paths_[0] == drawable.mesh.material().specularTex.paths_[0])
+			{
+				specularTexExist = true;
+				material.specularTex = i;
+			}
+
+			if (diffuseTexExist && normalTexExist && specularTexExist)
+				break;
 		}
-		else
+		if (!diffuseTexExist)
 		{
-			geometryCount_.emplace_back(std::make_pair(std::ref(drawable.mesh), 1));
+			material.diffuseTex = std::size(textures_);
+			textures_.emplace_back(std::ref(drawable.mesh.material().diffuseTex));
 		}
+		if (!normalTexExist)
+		{
+			material.normalTex = std::size(textures_);
+			textures_.emplace_back(std::ref(drawable.mesh.material().normalTex));
+		}
+		if (!specularTexExist)
+		{
+			material.specularTex = std::size(textures_);
+			textures_.emplace_back(std::ref(drawable.mesh.material().specularTex));
+		}
+		materials_.emplace(std::ref(drawable.mesh), material);
 		modelMatrices_.emplace_back(drawable.getTransform());
-		textures_.emplace_back(std::ref(drawable.mesh.material().diffuseTex));
 	}
 }
 
@@ -281,11 +274,12 @@ bool gee::Application::isRunning()
 	getGeometriesCountAndTransforms();
 	renderer_->setTextures("textures", textures_);
 	renderer_->updateBuffer("Model_Matrix", modelMatrices_);
-	for (const auto& [geometry, count] : geometryCount_)
+	for (const auto& [mesh, count] : geometryCount_)
 	{
-		renderer_->draw(geometry, count);
+		renderer_->updateSmallBuffer("material", materials_[mesh]);
+		renderer_->draw(mesh, count);
 	}
-	textures_.clear();
+
 	modelMatrices_.clear();
 	renderer_->end(*renderTarget_);
 	return window_.isOpen();

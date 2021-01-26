@@ -43,6 +43,7 @@ namespace vkn
 		VkSampler sampler_{ VK_NULL_HANDLE };
 		bool isWindowMinimized_{};
 		bool shouldRender_{ false };
+		uint32_t firstInstance_{};
 		template <class T>
 		using OptionalRef = std::optional<std::reference_wrapper<T>>;
 
@@ -74,8 +75,9 @@ namespace vkn
 	{
 		if (shouldRender_)
 		{
+			assert(currentCb_.has_value() && "The render target need to be bind first");
 			assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
-			boundPipeline_->get().pushConstant(name, datas);
+			boundPipeline_->get().pushConstant(currentCb_->get(), name, datas);
 		}
 	}
 }
