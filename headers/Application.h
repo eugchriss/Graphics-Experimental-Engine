@@ -83,7 +83,7 @@ namespace gee
 		glm::vec2 lastPos_{};
 		void createContext();
 		void createPipeline();
-		void getGeometriesCountAndTransforms();
+		void getTransforms();
 
 
 	};

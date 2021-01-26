@@ -86,6 +86,49 @@ void gee::Application::addDrawable(Drawable& drawable)
 		else
 		{
 			geometryCount_.emplace_back(std::make_pair(std::ref(drawable.mesh), 1));
+				bool diffuseTexExist{ false };
+				bool normalTexExist{ false };
+				bool specularTexExist{ false };
+
+				ShaderMaterial material{};
+				for (auto i = 0u; i < std::size(textures_); ++i)
+				{
+					const auto& texture = textures_[i].get();
+					if (texture.paths_[0] == drawable.mesh.material().diffuseTex.paths_[0])
+					{
+						diffuseTexExist = true;
+						material.diffuseTex = i;
+					}
+					else if (texture.paths_[0] == drawable.mesh.material().normalTex.paths_[0])
+					{
+						normalTexExist = true;
+						material.normalTex = i;
+					}
+					else if (texture.paths_[0] == drawable.mesh.material().specularTex.paths_[0])
+					{
+						specularTexExist = true;
+						material.specularTex = i;
+					}
+
+					if (diffuseTexExist && normalTexExist && specularTexExist)
+						break;
+				}
+				if (!diffuseTexExist)
+				{
+					material.diffuseTex = std::size(textures_);
+					textures_.emplace_back(std::ref(drawable.mesh.material().diffuseTex));
+				}
+				if (!normalTexExist)
+				{
+					material.normalTex = std::size(textures_);
+					textures_.emplace_back(std::ref(drawable.mesh.material().normalTex));
+				}
+				if (!specularTexExist)
+				{
+					material.specularTex = std::size(textures_);
+					textures_.emplace_back(std::ref(drawable.mesh.material().specularTex));
+				}
+				materials_.emplace(std::ref(drawable.mesh), material);
 		}
 	}
 }
@@ -208,55 +251,11 @@ void gee::Application::createPipeline()
 	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
 }
 
-void gee::Application::getGeometriesCountAndTransforms()
+void gee::Application::getTransforms()
 {
-	for (const auto& drawableRef : drawables_)
+	for (auto& drawableRef : drawables_)
 	{
-		auto& drawable = drawableRef.get();
-		bool diffuseTexExist{ false };
-		bool normalTexExist{ false };
-		bool specularTexExist{ false };
-
-		ShaderMaterial material{};
-		for (auto i = 0u; i < std::size(textures_); ++i)
-		{
-			const auto& texture = textures_[i].get();
-			if (texture.paths_[0] == drawable.mesh.material().diffuseTex.paths_[0])
-			{
-				diffuseTexExist = true;
-				material.diffuseTex = i;
-			}
-			else if (texture.paths_[0] == drawable.mesh.material().normalTex.paths_[0])
-			{
-				normalTexExist = true;
-				material.normalTex = i;
-			}
-			else if (texture.paths_[0] == drawable.mesh.material().specularTex.paths_[0])
-			{
-				specularTexExist = true;
-				material.specularTex = i;
-			}
-
-			if (diffuseTexExist && normalTexExist && specularTexExist)
-				break;
-		}
-		if (!diffuseTexExist)
-		{
-			material.diffuseTex = std::size(textures_);
-			textures_.emplace_back(std::ref(drawable.mesh.material().diffuseTex));
-		}
-		if (!normalTexExist)
-		{
-			material.normalTex = std::size(textures_);
-			textures_.emplace_back(std::ref(drawable.mesh.material().normalTex));
-		}
-		if (!specularTexExist)
-		{
-			material.specularTex = std::size(textures_);
-			textures_.emplace_back(std::ref(drawable.mesh.material().specularTex));
-		}
-		materials_.emplace(std::ref(drawable.mesh), material);
-		modelMatrices_.emplace_back(drawable.getTransform());
+		modelMatrices_.emplace_back(drawableRef.get().getTransform());
 	}
 }
 
@@ -271,7 +270,7 @@ bool gee::Application::isRunning()
 	renderer_->begin(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
 	renderer_->usePipeline(*colorPipeline_);
 	renderer_->updateBuffer("Camera", camera);
-	getGeometriesCountAndTransforms();
+	getTransforms();
 	renderer_->setTextures("textures", textures_);
 	renderer_->updateBuffer("Model_Matrix", modelMatrices_);
 	for (const auto& [mesh, count] : geometryCount_)
