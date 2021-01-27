@@ -227,16 +227,15 @@ const vkn::Shader::Binding vkn::Shader::parseBinding(const spirv_cross::Resource
 const vkn::Shader::PushConstant vkn::Shader::parsePushConstant(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage)
 {
 	auto resourceType = spirv_->get_type(resource.base_type_id);
-	auto pushConstantRanges = spirv_->get_active_buffer_ranges(resource.id);
 
 	PushConstant pc{};
 	pc.name = resource.name;
 	pc.stageFlag = stage_;
-	for (auto i = 0u; i < std::size(pushConstantRanges); ++i)
+	for (unsigned i = 0; i < resourceType.member_types.size(); i++)
 	{
-		pc.offsets.push_back(pushConstantRanges[i].offset);
-		pc.ranges.push_back(pushConstantRanges[i].range);
-		pc.size += pushConstantRanges[i].range;
+		pc.offsets.push_back(spirv_->type_struct_member_offset(resourceType, i));
+		pc.ranges.push_back(spirv_->get_declared_struct_member_size(resourceType, i));
+		pc.size += spirv_->get_declared_struct_member_size(resourceType, i);
 	}
 	std::sort(std::begin(pc.offsets), std::end(pc.offsets)); // assuming for now that all pushconstant ranges have the same size
 	assert(std::size(pc.offsets) && "The push constant is not ACTIVELY used by the shader");

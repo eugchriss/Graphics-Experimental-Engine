@@ -23,7 +23,6 @@ struct ShaderMaterial
 	uint32_t diffuseTex;
 	uint32_t normalTex;
 	uint32_t specularTex;
-	uint32_t unused;
 };
 
 using Mesh_t = std::reference_wrapper<const gee::Mesh>;
@@ -71,6 +70,8 @@ namespace gee
 		std::unordered_map<Mesh_t, ShaderMaterial, std::hash<Mesh_t>, std::equal_to<Mesh_t>> materials_;
 		Camera camera_;
 		std::vector<glm::mat4> modelMatrices_;
+		std::vector<glm::mat4> normalMatrices_;
+		std::vector<gee::ShaderPointLight> pointLights_;
 		void updateGui();
 		void onMouseMoveEvent(double x, double y);
 		void onMouseScrollEvent(double x, double y);

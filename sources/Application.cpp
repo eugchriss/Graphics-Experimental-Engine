@@ -255,7 +255,21 @@ void gee::Application::getTransforms()
 {
 	for (auto& drawableRef : drawables_)
 	{
-		modelMatrices_.emplace_back(drawableRef.get().getTransform());
+		auto& drawable = drawableRef.get();
+		modelMatrices_.emplace_back(drawable.getTransform());
+		normalMatrices_.emplace_back(drawable.getNormalMatrix());
+		if (drawable.hasLightComponent())
+		{
+			auto& light = drawable.light();
+
+			auto& shaderLight = pointLights_.emplace_back(gee::ShaderPointLight{});
+			shaderLight.ambient = glm::vec4{ light.ambient, 1.0f };
+			shaderLight.diffuse = glm::vec4{ light.diffuse, 1.0 };
+			shaderLight.specular = glm::vec4{light.specular, 1.0f};
+			shaderLight.position = glm::vec4{light.position, 1.0f};
+			shaderLight.linear = light.linear;
+			shaderLight.quadratic = light.quadratic;
+		}
 	}
 }
 
@@ -273,6 +287,8 @@ bool gee::Application::isRunning()
 	getTransforms();
 	renderer_->setTextures("textures", textures_);
 	renderer_->updateBuffer("Model_Matrix", modelMatrices_);
+	renderer_->updateBuffer("Normal_Matrix", normalMatrices_);
+	renderer_->updateBuffer("PointLights", pointLights_);
 	for (const auto& [mesh, count] : geometryCount_)
 	{
 		renderer_->updateSmallBuffer("material", materials_[mesh]);
@@ -280,6 +296,8 @@ bool gee::Application::isRunning()
 	}
 
 	modelMatrices_.clear();
+	normalMatrices_.clear();
+	pointLights_.clear();
 	renderer_->end(*renderTarget_);
 	return window_.isOpen();
 }

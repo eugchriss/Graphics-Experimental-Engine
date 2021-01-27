@@ -8,6 +8,9 @@ layout(location = 4) in vec3 inTangent;
 layout(location = 5) in vec3 inBitangent;
  
 layout(location = 0) out vec2 texCoord;
+layout(location = 1) out vec3 fragPos;
+layout(location = 2) out vec4 viewPos;
+layout(location = 3) out mat3 TBN;
 
 layout(binding = 0) uniform Camera
 {
@@ -20,8 +23,20 @@ layout(binding = 1) uniform Model_Matrix
     mat4[100] matrices;
 }models;
 
+layout(binding = 2) uniform Normal_Matrix
+{
+    mat4[100] matrices;
+}normals;
+
 void main() 
 {
-    gl_Position = camera.viewProj * models.matrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
+    fragPos = vec3(models.matrices[gl_InstanceIndex] * vec4(inPosition, 1.0));
+    gl_Position = camera.viewProj * vec4(fragPos, 1.0);
     texCoord = inTexCoord;
+    viewPos = camera.pos;
+    vec3 T = vec3(normalize(normals.matrices[gl_InstanceIndex] * vec4(inTangent, 1.0)));
+    vec3 N = vec3(normalize(normals.matrices[gl_InstanceIndex] * vec4(inNormal, 1.0)));
+    T = normalize(T - dot(T, N) * N);
+    vec3 B = inBitangent;
+    TBN = transpose(mat3(T, B, N));
 }

@@ -90,6 +90,7 @@ namespace vkn
 		void getShaderResources(const std::string& path);
 		void introspect(const VkShaderStageFlagBits stage);
 		const Binding parseBinding(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage, const VkDescriptorType type);
+		//Doesnt handle pushconstant with array yet
 		const PushConstant parsePushConstant(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage);
 		void getTweakingDataType(vkn::Shader::Tweaking& tweaking, const spirv_cross::SPIRType::BaseType& type);
 	};
