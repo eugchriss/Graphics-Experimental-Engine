@@ -6,6 +6,13 @@
 #include <vector>
 namespace vkn
 {
+	struct SubpassAttachmentUsage
+	{
+		uint32_t subpassIndex{};
+		VkPipelineStageFlags stageFlag{};
+		VkAccessFlagBits accessFlag{};
+	};
+
 	class Renderpass
 	{
 	public:

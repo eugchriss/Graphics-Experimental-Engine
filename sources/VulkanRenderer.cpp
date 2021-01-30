@@ -77,6 +77,10 @@ void vkn::Renderer::usePipeline(Pipeline& pipeline)
 	if (shouldRender_)
 	{
 		assert(currentCb_.has_value() && "The render target need to be bind first");
+		if (!std::empty(boundPipelines_))
+		{
+			vkCmdNextSubpass(currentCb_->get().commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
+		}
 		pipeline.bind(currentCb_.value());
 		boundPipeline_ = std::make_optional<std::reference_wrapper<vkn::Pipeline>>(pipeline);
 		boundPipelines_.emplace_back(boundPipeline_);
@@ -84,14 +88,14 @@ void vkn::Renderer::usePipeline(Pipeline& pipeline)
 	}
 }
 
-void vkn::Renderer::setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType)
+void vkn::Renderer::setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType, const uint32_t layerCount)
 {
 	if (shouldRender_)
 	{
 		assert(currentCb_.has_value() && "The render target need to be bind first");
 		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
 		auto& image = texturesCache_->get(texture.paths_[0], texture);
-		boundPipeline_->get().updateTexture(name, sampler_, image.getView(viewType), VK_SHADER_STAGE_FRAGMENT_BIT);
+		boundPipeline_->get().updateTexture(name, sampler_, image.getView(VK_IMAGE_ASPECT_COLOR_BIT, viewType, layerCount), VK_SHADER_STAGE_FRAGMENT_BIT);
 	}
 }
 
@@ -104,7 +108,7 @@ void vkn::Renderer::setTextures(const std::string& name, const std::vector<std::
 		std::vector<VkImageView> views;
 		for (const auto& texture : textures)
 		{
-			views.emplace_back(texturesCache_->get(texture.get().paths_[0], texture).getView(viewType));
+			views.emplace_back(texturesCache_->get(texture.get().paths_[0], texture).getView(VK_IMAGE_ASPECT_COLOR_BIT, viewType));
 		}
 		boundPipeline_->get().updateTextures(name, sampler_, views, VK_SHADER_STAGE_FRAGMENT_BIT);
 	}

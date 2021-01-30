@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <optional>
-#include <unordered_set>
 #include "vulkan/vulkan.hpp"
 #include "vulkanContext.h"
 #include "Swapchain.h"
@@ -9,7 +8,6 @@
 
 namespace vkn
 {
-	class RenderTarget;
 	using Attachment = uint32_t;
 
 	class Pass
@@ -48,5 +46,6 @@ namespace vkn
 		uint32_t framebufferCount_{ 2 };
 		VkRect2D renderArea_{};
 		Renderpass createRenderpass(Context& context);
+		void findDependencies();
 	};
 }

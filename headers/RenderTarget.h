@@ -16,6 +16,7 @@ namespace vkn
 
 		RenderTarget(Context& _context, std::shared_ptr<Renderpass>& _renderpass, Framebuffer&& _framebuffer);
 		RenderTarget(RenderTarget&&) = default;
+		void clearDepthAttachment(const float clearColor = 1.0f);
 		CommandBuffer& bind(const VkRect2D& renderArea);
 		Signal& imageAvailableSignal();
 		Signal& renderingFinishedSignal();
@@ -32,6 +33,7 @@ namespace vkn
 		uint32_t currentFrame_{};
 		std::vector<Signal> imageAvailableSignals_;
 		std::vector<Signal> renderingFinishedSignals_;
+		VkRect2D renderArea_;
 	};
 
 }

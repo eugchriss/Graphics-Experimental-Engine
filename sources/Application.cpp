@@ -13,6 +13,14 @@
 gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : window_{ name, width, height }, eventDispatcher_{ window_.window() }
 {
 	std::cout << "The application has been launched.\n";
+	cubeMesh_ = std::make_unique<gee::Mesh>(gee::getCubeMesh());
+	std::array<std::string, 6> skyboxPaths{ "../assets/skybox/space/right.png",
+											"../assets/skybox/space/left.png",
+											"../assets/skybox/space/top.png",
+											"../assets/skybox/space/bottom.png",
+											"../assets/skybox/space/front.png",
+											"../assets/skybox/space/back.png" };
+	skyboxTexture_ = std::make_unique<gee::Texture>(skyboxPaths, gee::Texture::ColorSpace::LINEAR);
 	createContext();
 	renderer_ = std::make_unique<vkn::Renderer>(*context_, window_);
 
@@ -21,10 +29,15 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	auto depthAtt = frameGraph.addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT);
 	frameGraph.setAttachmentColorDepthContent(colorAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
 	frameGraph.setAttachmentColorDepthContent(depthAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+	frameGraph.setPresentAttachment(colorAtt);
+	
+	auto& skyboxPass = frameGraph.addPass();
+	skyboxPass.addColorAttachment(colorAtt);
+	skyboxPass.addDepthStencilAttachment(depthAtt);
+	
 	auto& colorPass = frameGraph.addPass();
 	colorPass.addColorAttachment(colorAtt);
 	colorPass.addDepthStencilAttachment(depthAtt);
-	frameGraph.setPresentAttachment(colorAtt);
 
 	renderTarget_ = std::make_unique<vkn::RenderTarget>(frameGraph.createRenderTarget(*context_, renderer_->swapchain()));
 	createPipeline();
@@ -238,7 +251,7 @@ void gee::Application::createContext()
 
 void gee::Application::createPipeline()
 {
-	vkn::PipelineBuilder builder{ "../assets/shaders/vert.spv", "../assets/shaders/frag.spv" };
+	vkn::PipelineBuilder builder{ "../assets/shaders/skybox/vert.spv", "../assets/shaders/skybox/frag.spv" };
 	builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
 	builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
 	builder.addDepthStage(VK_COMPARE_OP_LESS);
@@ -248,7 +261,20 @@ void gee::Application::createPipeline()
 	builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 	builder.renderpass = renderTarget_->renderpass->renderpass();
 	builder.subpass = 0;
-	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
+	skyboxPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
+
+	
+	vkn::PipelineBuilder builder2{ "../assets/shaders/vert.spv", "../assets/shaders/frag.spv" };
+	builder2.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
+	builder2.addRaterizationStage(VK_POLYGON_MODE_FILL);
+	builder2.addDepthStage(VK_COMPARE_OP_LESS);
+	builder2.addColorBlendStage();
+	builder2.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
+	builder2.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+	builder2.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
+	builder2.renderpass = renderTarget_->renderpass->renderpass();
+	builder2.subpass = 1;
+	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder2.get(*context_));
 }
 
 void gee::Application::getTransforms()
@@ -275,15 +301,21 @@ void gee::Application::getTransforms()
 
 bool gee::Application::isRunning()
 {
+	renderer_->begin(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
+	renderer_->usePipeline(*skyboxPipeline_);
+	auto proj = camera_.perspectiveProjection(window_.aspectRatio());
+	proj[1][1] *= -1;
+	auto view = glm::mat4{ glm::mat3{camera_.pointOfView()} };
+	renderer_->updateSmallBuffer("camera", proj * view);
+	renderer_->setTexture("skybox", *skyboxTexture_, VK_IMAGE_VIEW_TYPE_CUBE, 6);
+	renderer_->draw(*cubeMesh_);
+	renderTarget_->clearDepthAttachment();
+
+	renderer_->usePipeline(*colorPipeline_);
 	ShaderCamera camera{};
 	camera.position = glm::vec4{ camera_.position_, 1.0f };
 	camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
-
-	glm::mat4 model{ 1.0f };
-
-	renderer_->begin(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
-	renderer_->usePipeline(*colorPipeline_);
-	renderer_->updateBuffer("Camera", camera);
+	renderer_->updateSmallBuffer("camera", camera);
 	getTransforms();
 	renderer_->setTextures("textures", textures_);
 	renderer_->updateBuffer("Model_Matrix", modelMatrices_);

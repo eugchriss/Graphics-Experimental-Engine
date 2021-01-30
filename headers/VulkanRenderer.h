@@ -29,7 +29,7 @@ namespace vkn
 		void begin(RenderTarget& target, const VkRect2D& renderArea);
 		void end(RenderTarget& target);
 		void usePipeline(Pipeline& pipeline);
-		void setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D);
+		void setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D, const uint32_t layerCount = 1);
 		void setTextures(const std::string& name, const std::vector<std::reference_wrapper<const gee::Texture>>& textures, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D);
 		template <class T>
 		void updateBuffer(const std::string& name, const T& datas);

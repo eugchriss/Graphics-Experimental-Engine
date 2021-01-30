@@ -10,14 +10,13 @@ layout(location = 5) in vec3 inBitangent;
 
 layout(location = 0) out vec3 texCoord;
 
-layout(binding = 0) uniform Camera
+layout(push_constant) uniform Camera
 {
-    vec4 pos;
     mat4 viewProj;
 }camera;	
 
 void main() 
 {
-    gl_Position = vec4(mat3(camera.viewProj) * inPosition, 1.0);
+    gl_Position = camera.viewProj * vec4(inPosition, 1.0);
     texCoord = inPosition;
 }

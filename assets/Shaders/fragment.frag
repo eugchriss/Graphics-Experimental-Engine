@@ -8,7 +8,7 @@ layout(location = 3) in mat3 TBN;
 
 layout(location = 0) out vec4 outColor;
 
-layout(binding = 3) uniform sampler2D textures[10];
+layout(binding = 2) uniform sampler2D textures[10];
 
 struct PointLight
 {
@@ -22,13 +22,13 @@ struct PointLight
     float padding2;
 };
 
-layout(binding = 4) uniform PointLights
+layout(binding = 3) uniform PointLights
 {
     PointLight[100] values;
 }pointLights;
 
 layout(push_constant) uniform PerMaterial {
-	uint diffuse;
+	layout(offset = 80) uint diffuse;
 	uint normal;
 	uint specular;
         uint lightCount;

@@ -2,6 +2,7 @@
 #include "..\headers\Renderpass.h"
 #include "..\headers\Framebuffer.h"
 #include <numeric>
+#include <unordered_map>
 
 void vkn::FrameGraph::setFrameCount(const uint32_t count)
 {
@@ -100,6 +101,7 @@ vkn::Renderpass vkn::FrameGraph::createRenderpass(vkn::Context& context)
 		subpass.pPreserveAttachments = std::data(pass.preservedAttachments);
 		subpasses.push_back(subpass);
 	}
+	findDependencies();
 	VkRenderPassCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	info.pNext = nullptr;
@@ -114,6 +116,57 @@ vkn::Renderpass vkn::FrameGraph::createRenderpass(vkn::Context& context)
 	VkRenderPass renderpass{ VK_NULL_HANDLE };
 	vkn::error_check(vkCreateRenderPass(context.device->device, &info, nullptr, &renderpass), "Failed to create the render pass");
 	return Renderpass{context, renderpass, attachments_ };
+}
+
+void vkn::FrameGraph::findDependencies()
+{
+	std::unordered_map<Attachment, std::vector<SubpassAttachmentUsage>> attachmentUsages;
+	for (auto i = 0u; i < std::size(passes_); ++i)
+	{
+		const auto& pass = passes_[i];
+		vkn::SubpassAttachmentUsage usage{}; 
+		usage.subpassIndex = i;
+		for (const auto& attachment : pass.inputAttachments)
+		{
+			usage.stageFlag = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; //Assuming that for now all input attachments are consumed in the frag shader
+			usage.accessFlag = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+			attachmentUsages[attachment.attachment].push_back(usage);
+		}
+		for (const auto& attachment : pass.colorAttachments)
+		{
+			usage.stageFlag = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			usage.accessFlag = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			attachmentUsages[attachment.attachment].push_back(usage);
+		}
+		for (const auto& attachment : pass.depthStencilAttachments)
+		{
+			usage.stageFlag = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			usage.accessFlag = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			attachmentUsages[attachment.attachment].push_back(usage);
+		}
+	}
+
+	for (const auto& [attachment, usages] : attachmentUsages)
+	{
+		if (std::size(usages) > 1)
+		{
+			for (auto i = 0u; i < std::size(usages) - 1; ++i)
+			{
+				auto& src = usages[i];
+				auto& dst = usages[i+1];
+
+				VkSubpassDependency dependency{};
+				dependency.srcSubpass = src.subpassIndex;
+				dependency.srcStageMask = src.stageFlag;
+				dependency.srcAccessMask = src.accessFlag;
+				dependency.dstSubpass = dst.subpassIndex;
+				dependency.dstStageMask = dst.stageFlag;
+				dependency.dstAccessMask = dst.accessFlag;
+				dependency.dependencyFlags = 0;
+				dependencies_.push_back(dependency);
+			}
+		}
+	}
 }
 
 void vkn::Pass::addColorAttachment(const Attachment attachment)

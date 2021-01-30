@@ -12,18 +12,18 @@ layout(location = 1) out vec3 fragPos;
 layout(location = 2) out vec4 viewPos;
 layout(location = 3) out mat3 TBN;
 
-layout(binding = 0) uniform Camera
+layout(push_constant) uniform Camera
 {
     vec4 pos;
     mat4 viewProj;
 }camera;
 
-layout(binding = 1) uniform Model_Matrix
+layout(binding = 0) uniform Model_Matrix
 {
     mat4[100] matrices;
 }models;
 
-layout(binding = 2) uniform Normal_Matrix
+layout(binding = 1) uniform Normal_Matrix
 {
     mat4[100] matrices;
 }normals;

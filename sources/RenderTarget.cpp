@@ -14,11 +14,19 @@ vkn::RenderTarget::RenderTarget(vkn::Context& _context, std::shared_ptr<Renderpa
 	}
 }
 
+void vkn::RenderTarget::clearDepthAttachment(const float clearColor)
+{
+	VkClearValue clear{};
+	clear.depthStencil.depth = clearColor;
+	renderpass->clearDepthAttachment(cbs_[currentFrame_], renderArea_, clear);
+}
+
 vkn::CommandBuffer& vkn::RenderTarget::bind(const VkRect2D& renderArea)
 {
+	renderArea_ = renderArea;
 	auto& cb = cbs_[currentFrame_];
 	cb.begin();
-	renderpass->begin(cb, framebuffer.frame(currentFrame_), renderArea, VK_SUBPASS_CONTENTS_INLINE);
+	renderpass->begin(cb, framebuffer.frame(currentFrame_), renderArea_, VK_SUBPASS_CONTENTS_INLINE);
 	return cb;
 }
 

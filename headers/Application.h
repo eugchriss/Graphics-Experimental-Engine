@@ -61,6 +61,7 @@ namespace gee
 		gee::Window window_;
 		std::unique_ptr<vkn::Context> context_;
 		std::unique_ptr<vkn::RenderTarget> renderTarget_;
+		std::unique_ptr<vkn::Pipeline> skyboxPipeline_;
 		std::unique_ptr<vkn::Pipeline> colorPipeline_;
 		gee::EventDispatcher eventDispatcher_;
 		std::unique_ptr<vkn::Renderer> renderer_;
@@ -85,7 +86,8 @@ namespace gee
 		void createContext();
 		void createPipeline();
 		void getTransforms();
-
+		std::unique_ptr<gee::Mesh> cubeMesh_;
+		std::shared_ptr<gee::Texture> skyboxTexture_;
 
 	};
 }
