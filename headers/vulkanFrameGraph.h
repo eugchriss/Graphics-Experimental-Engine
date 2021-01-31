@@ -15,14 +15,17 @@ namespace vkn
 	public:
 		void addColorAttachment(const Attachment attachment);
 		void addDepthStencilAttachment(const Attachment attachment);
-	private:
+		const uint32_t index() const;
 		friend class FrameGraph;
+	private:
+		Pass(const uint32_t index);
 		void setPreservedAttachments(const std::vector<VkAttachmentDescription>& frameGraphAttachments);
 		std::vector<VkAttachmentReference> inputAttachments{};
 		std::vector<VkAttachmentReference> colorAttachments{};
 		std::vector<VkAttachmentReference> depthStencilAttachments;
 		std::vector<uint32_t> preservedAttachments;
 		std::unordered_set<Attachment> usedAttachments;
+		uint32_t index_;
 		
 	};
 	class FrameGraph

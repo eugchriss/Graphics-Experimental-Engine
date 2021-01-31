@@ -25,6 +25,7 @@ namespace vkn
 		void resize(const glm::u32vec2& size);
 		std::shared_ptr<Renderpass> renderpass;
 		Framebuffer framebuffer;
+		friend class ImGuiContext;
 
 	private:
 		Context& context_;

@@ -60,7 +60,8 @@ set(SOURCES	"sources/main.cpp"
 			"sources/vulkanContext.cpp"
 			"sources/vulkanContextBuilder.cpp"
 			"sources/vulkanFrameGraph.cpp"
-			"sources/renderTarget.cpp")
+			"sources/renderTarget.cpp"
+			"sources/vulkanImGuiContext.cpp")
 
 set(HEADERS	"headers/gpu.h"
 			"headers/imgui.h"
@@ -114,7 +115,8 @@ set(HEADERS	"headers/gpu.h"
 			"headers/vulkanContext.h"
 			"headers/vulkanContextBuilder.h"
 			"headers/vulkanFrameGraph.h"
-			"headers/renderTarget.h")
+			"headers/renderTarget.h"
+			"headers/vulkanImGuiContext.h")
 add_executable(gee ${SOURCES} ${HEADERS})
 
 target_include_directories(gee PRIVATE ${LIBS_DIR}/assimp)

@@ -10,6 +10,7 @@
 #include "Camera.h"
 #include "EventDispatcher.h"
 #include "vulkanContext.h"
+#include "VulkanImGuiContext.h"
 #include "RenderTarget.h"
 #include "Pipeline.h"
 
@@ -88,6 +89,7 @@ namespace gee
 		void getTransforms();
 		std::unique_ptr<gee::Mesh> cubeMesh_;
 		std::shared_ptr<gee::Texture> skyboxTexture_;
+		std::unique_ptr<vkn::ImGuiContext> imguiContext_;
 
 	};
 }

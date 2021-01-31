@@ -8,7 +8,6 @@ vkn::Renderer::Renderer(vkn::Context& _context, const gee::Window& window) : con
 	swapchain_ = std::make_unique<vkn::Swapchain>(context_);
 
 	createSampler();
-	
 
 	texturesCache_ = std::make_unique<gee::ResourceHolder<vkn::TextureImageFactory, vkn::Image, std::string>>(vkn::TextureImageFactory{ context_ });
 	geometriesCache_ = std::make_unique<gee::ResourceHolder<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, size_t>>(vkn::MeshMemoryLocationFactory{ context_ });

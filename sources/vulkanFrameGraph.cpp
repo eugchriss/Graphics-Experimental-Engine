@@ -60,7 +60,7 @@ void vkn::FrameGraph::setPresentAttachment(const Attachment attachment)
 
 vkn::Pass& vkn::FrameGraph::addPass()
 {
-	return passes_.emplace_back();
+	return passes_.emplace_back(Pass{ static_cast<uint32_t>(std::size(passes_)) });
 }
 
 vkn::RenderTarget vkn::FrameGraph::createRenderTarget(Context& context)
@@ -185,6 +185,15 @@ void vkn::Pass::addDepthStencilAttachment(const Attachment attachment)
 	reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	depthStencilAttachments.emplace_back(reference);
 	usedAttachments.insert(attachment);
+}
+
+const uint32_t vkn::Pass::index() const
+{
+	return index_;
+}
+
+vkn::Pass::Pass(const uint32_t index): index_{index}
+{
 }
 
 void vkn::Pass::setPreservedAttachments(const std::vector<VkAttachmentDescription>& frameGraphAttachments)

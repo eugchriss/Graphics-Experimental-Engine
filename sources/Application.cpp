@@ -39,10 +39,13 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	colorPass.addColorAttachment(colorAtt);
 	colorPass.addDepthStencilAttachment(depthAtt);
 
+	auto& guiPass = frameGraph.addPass();
+	guiPass.addColorAttachment(colorAtt);
+
 	renderTarget_ = std::make_unique<vkn::RenderTarget>(frameGraph.createRenderTarget(*context_, renderer_->swapchain()));
 	createPipeline();
 
-
+	imguiContext_ = std::make_unique<vkn::ImGuiContext>(window_, *context_, *renderTarget_, guiPass);
 
 	window_.setTitle(name);
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
@@ -56,12 +59,23 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 		{
-			onMouseScrollEvent(x, y);
+			ImGuiIO& io = ImGui::GetIO();
+			if (!io.WantCaptureMouse)
+			{
+				onMouseScrollEvent(x, y);
+			}
 		});
 	eventDispatcher_.addMouseButtonCallback([&](uint32_t button, uint32_t action, uint32_t mods)
 		{
-			onMouseButtonEvent(button, action, mods);
-			firstMouseUse_ = true;
+			ImGuiIO& io = ImGui::GetIO();
+			if (!io.WantCaptureMouse)
+			{
+				onMouseButtonEvent(button, action, mods);
+			}
+			else
+			{
+				firstMouseUse_ = true;
+			}
 		});
 	eventDispatcher_.addMouseMoveCallback([&](double x, double y)
 		{
@@ -152,7 +166,14 @@ void gee::Application::addCamera(const Camera& camera)
 
 void gee::Application::updateGui()
 {
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
 
+	ImGui::Begin("Loop time");
+	ImGui::LabelText("cpu time", "10", "0.3f");
+	ImGui::LabelText("gpu time", "20", "0.3f");
+	ImGui::End();
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -301,6 +322,8 @@ void gee::Application::getTransforms()
 
 bool gee::Application::isRunning()
 {
+	updateGui();
+
 	renderer_->begin(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
 	renderer_->usePipeline(*skyboxPipeline_);
 	auto proj = camera_.perspectiveProjection(window_.aspectRatio());
@@ -326,6 +349,8 @@ bool gee::Application::isRunning()
 		renderer_->updateSmallBuffer("material", materials_[mesh]);
 		renderer_->draw(mesh, count);
 	}
+
+	imguiContext_->render();
 
 	modelMatrices_.clear();
 	normalMatrices_.clear();
