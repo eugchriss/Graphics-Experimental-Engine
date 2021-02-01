@@ -82,6 +82,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 			onMouseMoveEvent(x, y);
 		});
 
+	initPixelPerfect();
 }
 
 gee::Application::~Application()
@@ -170,10 +171,50 @@ void gee::Application::updateGui()
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::Begin("Loop time");
-	ImGui::LabelText("cpu time", "10", "0.3f");
-	ImGui::LabelText("gpu time", "20", "0.3f");
-	ImGui::End();
+	if (activeDrawable_)
+	{
+		auto& drawable = activeDrawable_.value().get();
+		ImGui::Begin(drawable.name.c_str());
+		auto position = drawable.getPosition();
+		ImGui::SliderFloat3("position", &position.x, -500.0_m, 500.0_m, "%.1f");
+
+		auto color = drawable.getColor();
+		ImGui::ColorEdit4("color", &color.x);
+
+		//the engine uses radians units in internal but degrees for display
+		auto rotation = drawable.getRotation();
+		glm::vec3 rotationDeg = glm::degrees(rotation);
+		ImGui::SliderFloat3("rotation", &rotationDeg.x, 0.0f, 360.0f, "%.1f");
+		rotation = glm::radians(rotationDeg);
+
+		auto lastScaleFactor = drawable.scaleFactor;
+		ImGui::SliderFloat("scale factor", &drawable.scaleFactor, 0.0f, 10.0f, "%.1f");
+
+		auto size = drawable.getSize();
+		auto sizeStr = std::string{ "x = " } + std::to_string(size.x) + std::string{ " y = " } + std::to_string(size.y) + std::string{ " z = " } + std::to_string(size.z);
+		ImGui::LabelText("size", sizeStr.c_str());
+		if (drawable.hasLightComponent())
+		{
+			auto& light = drawable.light();
+			ImGui::ColorEdit3("ambient", &light.ambient.x);
+			ImGui::ColorEdit3("diffuse", &light.diffuse.x);
+			ImGui::SliderFloat("specular", &light.specular.x, 0.0f, 256.0f, "%f");
+			light.specular.y = light.specular.x;
+			light.specular.z = light.specular.x;
+			ImGui::SliderFloat("linear", &light.linear, 0.0014f, 0.7, "%.4f");
+			ImGui::SliderFloat("quadratic", &light.quadratic, 0.0000007f, 1.8, "%.7f");
+		}
+		ImGui::End();
+
+		drawable.setPosition(position);
+		drawable.setRotation(rotation);
+		drawable.setColor(color);
+		if (drawable.scaleFactor == 0.0f)
+		{
+			drawable.scaleFactor = lastScaleFactor;
+		}
+		drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
+	}
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -222,23 +263,38 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		rightButtonPressed_ = true;
 		double x, y;
 		glfwGetCursorPos(window_.window(), &x, &y);
-		//auto drawableIndex = renderer_->objectAt(drawables_, x, y);
-		/*if (drawableIndex.has_value())
+		
+		renderer_->begin(*pixelPerfectRenderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
+		renderer_->usePipeline(*pixelPerfectPipeline_);
+		ShaderCamera camera{};
+		camera.position = glm::vec4{ camera_.position_, 1.0f };
+		camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
+		renderer_->updateSmallBuffer("camera", camera);
+		renderer_->updateBuffer("Model_Matrix", modelMatrices_);
+		for (const auto& [mesh, count] : geometryCount_)
 		{
-			if (drawableIndex.value() != lastDrawableIndex_)
+			renderer_->draw(mesh, count);
+		}
+		renderer_->end(*pixelPerfectRenderTarget_);
+		auto value = pixelPerfectRenderTarget_->rawContextAt(x, y);
+		auto index = static_cast<size_t>(value * 255);
+		activeDrawable_ = std::nullopt;
+		if (index > 0)
+		{
+			if (index != lastDrawableIndex_)
 			{
-				activeDrawable_.emplace(std::ref(drawables_[drawableIndex.value()].get()));
-				lastDrawableIndex_ = drawableIndex.value();
+				activeDrawable_.emplace(std::ref(drawables_[index - 1].get()));
+				lastDrawableIndex_ = index;
 			}
 			else
 			{
-				lastDrawableIndex_ = -1;
+				lastDrawableIndex_ = 0;
 			}
 		}
 		else
 		{
-			lastDrawableIndex_ = -1;
-		}*/
+			lastDrawableIndex_ = 0;
+		}
 	}
 
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
@@ -298,8 +354,39 @@ void gee::Application::createPipeline()
 	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder2.get(*context_));
 }
 
+void gee::Application::initPixelPerfect()
+{
+	vkn::FrameGraph frameGraph{};
+	auto colorAtt = frameGraph.addColorAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	auto depthAtt = frameGraph.addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT);
+	frameGraph.setAttachmentColorDepthContent(colorAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
+	frameGraph.setAttachmentColorDepthContent(depthAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+	frameGraph.setRenderArea(window_.size().x, window_.size().y);
+	frameGraph.setPresentAttachment(colorAtt);
+	auto& pixelPerfectPass = frameGraph.addPass();
+	pixelPerfectPass.addColorAttachment(colorAtt);
+	pixelPerfectPass.addDepthStencilAttachment(depthAtt);
+
+	pixelPerfectRenderTarget_ = std::make_unique<vkn::RenderTarget>(frameGraph.createRenderTarget(*context_));
+
+	vkn::PipelineBuilder builder{ "../assets/shaders/pixelPerfect/vert.spv", "../assets/shaders/pixelPerfect/frag.spv" };
+	builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
+	builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
+	builder.addDepthStage(VK_COMPARE_OP_LESS);
+	builder.addColorBlendStage();
+	builder.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
+	builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+	builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
+	builder.renderpass = pixelPerfectRenderTarget_->renderpass->renderpass();
+	builder.subpass = 0;
+	pixelPerfectPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
+}
+
 void gee::Application::getTransforms()
 {
+	modelMatrices_.clear();
+	normalMatrices_.clear();
+	pointLights_.clear();
 	for (auto& drawableRef : drawables_)
 	{
 		auto& drawable = drawableRef.get();
@@ -324,6 +411,7 @@ bool gee::Application::isRunning()
 {
 	updateGui();
 
+	getTransforms();
 	renderer_->begin(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
 	renderer_->usePipeline(*skyboxPipeline_);
 	auto proj = camera_.perspectiveProjection(window_.aspectRatio());
@@ -339,7 +427,6 @@ bool gee::Application::isRunning()
 	camera.position = glm::vec4{ camera_.position_, 1.0f };
 	camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
 	renderer_->updateSmallBuffer("camera", camera);
-	getTransforms();
 	renderer_->setTextures("textures", textures_);
 	renderer_->updateBuffer("Model_Matrix", modelMatrices_);
 	renderer_->updateBuffer("Normal_Matrix", normalMatrices_);
@@ -349,12 +436,7 @@ bool gee::Application::isRunning()
 		renderer_->updateSmallBuffer("material", materials_[mesh]);
 		renderer_->draw(mesh, count);
 	}
-
 	imguiContext_->render();
-
-	modelMatrices_.clear();
-	normalMatrices_.clear();
-	pointLights_.clear();
 	renderer_->end(*renderTarget_);
 	return window_.isOpen();
 }

@@ -14,7 +14,7 @@ namespace vkn
 	class Framebuffer
 	{
 	public:
-		Framebuffer(Context& context, const std::shared_ptr<Renderpass>& renderpass, const VkRect2D size, const uint32_t frameCount = 2);
+		Framebuffer(Context& context, const std::shared_ptr<Renderpass>& renderpass, const VkExtent2D& dimensions, const uint32_t frameCount = 2);
 		Framebuffer(Context& context, const std::shared_ptr<Renderpass>& renderpass, Swapchain& swapchain, const uint32_t presentAttachment);
 		Framebuffer(Framebuffer&&) = default;
 		~Framebuffer();
@@ -27,8 +27,11 @@ namespace vkn
 		const size_t frameCount() const;
 		VkFramebuffer frame(const uint32_t index) const;
 		void resize(const glm::u32vec2& size);
+		const VkExtent2D& dimensions() const;
+		const bool isOffscreen() const;
 	private:
 		vkn::Context& context_;
+		VkExtent2D dimensions_;
 		std::vector<VkFramebuffer> framebuffers_;
 		std::vector<vkn::Image> images_;
 		std::shared_ptr<Renderpass> renderpass_;

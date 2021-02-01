@@ -2,15 +2,15 @@
 #include "../headers/vulkan_utils.h"
 #include <cassert>
 
-vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass>& renderpass, const VkRect2D size, const uint32_t frameCount): context_{context}, renderpass_{renderpass}
+vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass>& renderpass, const VkExtent2D& dimensions, const uint32_t frameCount): context_{context}, renderpass_{renderpass}, dimensions_{dimensions}
 {
 	VkFramebufferCreateInfo fbInfo{};
 	fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	fbInfo.pNext = nullptr;
 	fbInfo.flags = 0;
 	fbInfo.layers = 1;
-	fbInfo.width = size.extent.width;
-	fbInfo.height = size.extent.height;
+	fbInfo.width = dimensions_.width;
+	fbInfo.height = dimensions_.height;
 	fbInfo.renderPass = renderpass->renderpass();
 	const auto& renderpassAttachments = renderpass->attachments();
 	framebuffers_.resize(frameCount);
@@ -21,7 +21,7 @@ vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass
 		views.reserve(std::size(renderpassAttachments));
 		for (const auto& attachment : renderpassAttachments)
 		{
-			images_.emplace_back(context_, attachment, VkExtent3D{ size.extent.width, size.extent.height, 1 });
+			images_.emplace_back(context_, attachment, VkExtent3D{ dimensions_.width, dimensions_.height, 1 });
 			views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
 		}
 		fbInfo.attachmentCount = std::size(views);
@@ -33,7 +33,8 @@ vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass
 
 vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass>& renderpass, Swapchain& swapchain, const uint32_t presentAttachment) :
 	context_{ context },
-	renderpass_{ renderpass }
+	renderpass_{ renderpass },
+	dimensions_{swapchain.extent()}
 {
 	swapchain_ = std::make_optional<std::reference_wrapper<vkn::Swapchain>>(swapchain);
 	presentAttachment_ = std::make_optional(presentAttachment);
@@ -43,8 +44,8 @@ vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass
 	fbInfo.pNext = nullptr;
 	fbInfo.flags = 0;
 	fbInfo.layers = 1;
-	fbInfo.width = swapchain.extent().width;
-	fbInfo.height = swapchain.extent().height;
+	fbInfo.width = dimensions_.width;
+	fbInfo.height = dimensions_.height;
 	fbInfo.renderPass = renderpass->renderpass();
 	const auto& renderpassAttachments = renderpass->attachments();
 	framebuffers_.resize(std::size(swapchain.images()));
@@ -63,7 +64,7 @@ vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass
 			else
 			{
 				auto& attachment = renderpassAttachments[i];
-				images_.emplace_back(context_, attachment, VkExtent3D{ swapchain.extent().width, swapchain.extent().height, 1 });
+				images_.emplace_back(context_, attachment, VkExtent3D{ dimensions_.width, dimensions_.height, 1 });
 				views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
 			}
 		}
@@ -109,7 +110,7 @@ const std::vector<float> vkn::Framebuffer::frameRawContent(const uint32_t imageI
 
 const size_t vkn::Framebuffer::frameCount() const
 {
-	return std::size(images_);
+	return std::size(framebuffers_);
 }
 
 VkFramebuffer vkn::Framebuffer::frame(const uint32_t index) const
@@ -189,4 +190,14 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 		vkn::error_check(vkCreateFramebuffer(context_.device->device, &fbInfo, nullptr, &framebuffer), "Failed to create the framebuffer");
 		++frameIndex;
 	}
+}
+
+const VkExtent2D& vkn::Framebuffer::dimensions() const
+{
+	return dimensions_;
+}
+
+const bool vkn::Framebuffer::isOffscreen() const
+{
+	return !swapchain_.has_value();
 }

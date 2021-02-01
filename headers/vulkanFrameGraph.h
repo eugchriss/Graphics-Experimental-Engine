@@ -32,22 +32,20 @@ namespace vkn
 	{
 	public:
 		FrameGraph() = default;
-		void setFrameCount(const uint32_t count);
 		void setRenderArea(const uint32_t width, const uint32_t height);
-		const Attachment addColorAttachment(const VkFormat format);
-		const Attachment addDepthAttachment(const VkFormat format);
+		const Attachment addColorAttachment(const VkFormat format, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		const Attachment addDepthAttachment(const VkFormat format, const VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		void setAttachmentColorDepthContent(const Attachment attchment, const VkAttachmentLoadOp load, const VkAttachmentStoreOp store);
 		void setPresentAttachment(const Attachment attachment);
 		Pass& addPass();
-		RenderTarget createRenderTarget(Context& context);
+		RenderTarget createRenderTarget(Context& context, const uint32_t frameCount = 1);
 		RenderTarget createRenderTarget(Context& context, Swapchain& swapchain);
 	private:
 		std::vector<VkAttachmentDescription> attachments_;
 		std::vector<Pass> passes_;
 		std::vector<VkSubpassDependency> dependencies_;
 		std::optional<Attachment> presentAttchment_;
-		uint32_t framebufferCount_{ 2 };
-		VkRect2D renderArea_{};
+		VkExtent2D renderArea_{};
 		Renderpass createRenderpass(Context& context);
 		void findDependencies();
 	};

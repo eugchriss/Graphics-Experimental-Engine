@@ -74,3 +74,15 @@ void vkn::RenderTarget::resize(const glm::u32vec2& size)
 		renderingFinishedSignals_.emplace_back(context_, true);
 	}
 }
+
+float vkn::RenderTarget::rawContextAt(const uint32_t x, const uint32_t y)
+{	
+	renderingFinishedSignals_[currentFrame_].waitForSignal();
+	auto offset = (x + y * framebuffer.dimensions().width) * 4;
+	return framebuffer.rawContentAt(offset);
+}
+
+const bool vkn::RenderTarget::isOffscreen() const
+{
+	return framebuffer.isOffscreen();
+}

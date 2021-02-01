@@ -23,6 +23,8 @@ namespace vkn
 		bool isReady();
 		void unBind();
 		void resize(const glm::u32vec2& size);
+		float rawContextAt(const uint32_t x, const uint32_t y);
+		const bool isOffscreen() const;
 		std::shared_ptr<Renderpass> renderpass;
 		Framebuffer framebuffer;
 		friend class ImGuiContext;

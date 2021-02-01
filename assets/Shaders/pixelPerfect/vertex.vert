@@ -10,21 +10,16 @@ layout(location = 5) in vec3 inBitangent;
 
 layout(location = 0) out flat uint index;
 
-layout(binding = 0) uniform Camera
+layout(push_constant) uniform Camera
 {
     vec4 pos;
     mat4 viewProj;
 }camera;	
 
-layout(binding = 1) uniform Model_Matrix
+layout(binding = 0) uniform Model_Matrix
 {
     mat4[100] matrices;
 }models;
-
-layout(binding = 2) uniform Normal_Matrix
-{
-    mat4[100] matrices;
-}normals;
 
 void main() {
     mat4 modelMatrix = models.matrices[gl_InstanceIndex];

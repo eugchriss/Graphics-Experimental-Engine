@@ -4,42 +4,34 @@
 #include <numeric>
 #include <unordered_map>
 
-void vkn::FrameGraph::setFrameCount(const uint32_t count)
-{
-	framebufferCount_ = count;
-}
-
 void vkn::FrameGraph::setRenderArea(const uint32_t width, const uint32_t height)
 {
-	renderArea_.offset.x = 0;
-	renderArea_.offset.y = 0;
-
-	renderArea_.extent.width = width;
-	renderArea_.extent.height = height;
+	renderArea_.width = width;
+	renderArea_.height = height;
 }
 
-const vkn::Attachment vkn::FrameGraph::addColorAttachment(const VkFormat format)
+const vkn::Attachment vkn::FrameGraph::addColorAttachment(const VkFormat format, const VkImageLayout layout)
 {
 	VkAttachmentDescription attachment{};
 	attachment.flags = 0;
 	attachment.format = format;
 	attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachment.finalLayout = layout;
 	attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments_.emplace_back(attachment);
     return std::size(attachments_) - 1;
 }
 
-const vkn::Attachment vkn::FrameGraph::addDepthAttachment(const VkFormat format)
+const vkn::Attachment vkn::FrameGraph::addDepthAttachment(const VkFormat format, const VkImageLayout layout)
 {
 	VkAttachmentDescription attachment{};
 	attachment.flags = 0;
 	attachment.format = format;
 	attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachment.finalLayout = layout;
 	attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	attachments_.emplace_back(attachment);
@@ -63,10 +55,10 @@ vkn::Pass& vkn::FrameGraph::addPass()
 	return passes_.emplace_back(Pass{ static_cast<uint32_t>(std::size(passes_)) });
 }
 
-vkn::RenderTarget vkn::FrameGraph::createRenderTarget(Context& context)
+vkn::RenderTarget vkn::FrameGraph::createRenderTarget(Context& context, const uint32_t frameCount)
 {
 	auto renderpass = std::make_shared<vkn::Renderpass>(createRenderpass(context));
-	vkn::Framebuffer framebuffer{ context, renderpass, renderArea_, framebufferCount_};
+	vkn::Framebuffer framebuffer{ context, renderpass, renderArea_, frameCount};
 
 	return RenderTarget{context, std::move(renderpass), std::move(framebuffer) };
 }

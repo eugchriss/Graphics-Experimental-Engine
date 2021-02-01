@@ -64,6 +64,8 @@ namespace gee
 		std::unique_ptr<vkn::RenderTarget> renderTarget_;
 		std::unique_ptr<vkn::Pipeline> skyboxPipeline_;
 		std::unique_ptr<vkn::Pipeline> colorPipeline_;
+		std::unique_ptr<vkn::RenderTarget> pixelPerfectRenderTarget_;
+		std::unique_ptr<vkn::Pipeline> pixelPerfectPipeline_;
 		gee::EventDispatcher eventDispatcher_;
 		std::unique_ptr<vkn::Renderer> renderer_;
 		std::vector<std::pair<Mesh_t, size_t>> geometryCount_;
@@ -87,9 +89,12 @@ namespace gee
 		void createContext();
 		void createPipeline();
 		void getTransforms();
+		void initPixelPerfect();
 		std::unique_ptr<gee::Mesh> cubeMesh_;
 		std::shared_ptr<gee::Texture> skyboxTexture_;
 		std::unique_ptr<vkn::ImGuiContext> imguiContext_;
+		size_t lastDrawableIndex_{ 0u };
+		std::optional<std::reference_wrapper<gee::Drawable>> activeDrawable_;
 
 	};
 }

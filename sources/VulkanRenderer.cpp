@@ -3,7 +3,7 @@
 #include "../headers/vulkan_utils.h"
 
 #define ENABLE_VALIDATION_LAYERS
-vkn::Renderer::Renderer(vkn::Context& _context, const gee::Window& window) : context_{_context}
+vkn::Renderer::Renderer(vkn::Context& _context, const gee::Window& window) : context_{ _context }
 {
 	swapchain_ = std::make_unique<vkn::Swapchain>(context_);
 
@@ -13,7 +13,7 @@ vkn::Renderer::Renderer(vkn::Context& _context, const gee::Window& window) : con
 	geometriesCache_ = std::make_unique<gee::ResourceHolder<vkn::MeshMemoryLocationFactory, vkn::MeshMemoryLocation, size_t>>(vkn::MeshMemoryLocationFactory{ context_ });
 	//buildImguiContext(window);
 }
-	
+
 vkn::Renderer::~Renderer()
 {
 	vkDestroySampler(context_.device->device, sampler_, nullptr);
@@ -65,9 +65,16 @@ void vkn::Renderer::end(RenderTarget& target)
 		boundPipelines_.clear();
 		currentCb_.reset();
 		boundPipeline_.reset();
-		swapchain_->setImageAvailableSignal(target.imageAvailableSignal());
-		context_.graphicsQueue->submit(currentCb_->get(), target.renderingFinishedSignal(), target.imageAvailableSignal(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
-		context_.graphicsQueue->present(*swapchain_, target.renderingFinishedSignal());
+		if (!target.isOffscreen())
+		{
+			swapchain_->setImageAvailableSignal(target.imageAvailableSignal());
+			context_.graphicsQueue->submit(currentCb_->get(), target.renderingFinishedSignal(), target.imageAvailableSignal(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
+			context_.graphicsQueue->present(*swapchain_, target.renderingFinishedSignal());
+		}
+		else
+		{
+			context_.graphicsQueue->submit(currentCb_->get(), target.renderingFinishedSignal());
+		}
 	}
 }
 
@@ -141,7 +148,7 @@ void vkn::Renderer::createSampler()
 
 /*void vkn::Renderer::buildImguiContext(const gee::Window& window)
 {
-	
+
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -176,7 +183,7 @@ void vkn::Renderer::createSampler()
 	const auto imageCount = 2;
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForVulkan(window.window(), true);
-	
+
 	guiInitInfo_.Instance = instance_->instance;
 	guiInitInfo_.PhysicalDevice = gpu_->device;
 	guiInitInfo_.Device = device_->device;
