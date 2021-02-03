@@ -10,7 +10,7 @@ const uint32_t& vkn::Queue::familyIndex() const
 	return familyIndex_;
 }
 
-void vkn::Queue::submit(const CommandBuffer& cb)
+void vkn::Queue::submit(CommandBuffer& cb)
 {
 	auto cmdBuffer = cb.commandBuffer();
 	VkSubmitInfo submitInfo{};
@@ -19,32 +19,12 @@ void vkn::Queue::submit(const CommandBuffer& cb)
 	submitInfo.waitSemaphoreCount = 0;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &cmdBuffer;
-	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, VK_NULL_HANDLE), "Unabled to command buffer");
-
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &cb.completeSignal().semaphore;
+	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, cb.completeSignal().fence), "Unabled to command buffer");
 }
 
-void vkn::Queue::submit(const CommandBuffer& cb, vkn::Signal& submittedSignal, const bool persistent)
-{
-	auto cmdBuffer = cb.commandBuffer();
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pNext = nullptr;
-	submitInfo.waitSemaphoreCount = 0;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBuffer;
-	if (persistent)
-	{
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &submittedSignal.semaphore;
-	}
-	else
-	{
-		submitInfo.signalSemaphoreCount = 0;
-	}
-	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, submittedSignal.fence), "Unabled to command buffer");
-}
-
-void vkn::Queue::submit(const CommandBuffer& cb, vkn::Signal& submittedSignal, Signal& waitOn, const VkPipelineStageFlags waitingStage, const bool persistent)
+void vkn::Queue::submit(CommandBuffer& cb, Signal& waitOn, const VkPipelineStageFlags waitingStage)
 {
 	const auto& cmdBuffer = cb.commandBuffer();
 	VkSubmitInfo submitInfo{};
@@ -55,18 +35,10 @@ void vkn::Queue::submit(const CommandBuffer& cb, vkn::Signal& submittedSignal, S
 	submitInfo.pWaitDstStageMask = &waitingStage;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &cmdBuffer;
-	if (persistent)
-	{
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &submittedSignal.semaphore;
-	}
-	else
-	{
-		submitInfo.signalSemaphoreCount = 0;
-	}
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &cb.completeSignal().semaphore;
 
-	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, submittedSignal.fence), "Unabled to command buffer");
-
+	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, cb.completeSignal().fence), "Unabled to command buffer");
 }
 
 void vkn::Queue::present(const vkn::Swapchain& swapchain, Signal& waitOn)

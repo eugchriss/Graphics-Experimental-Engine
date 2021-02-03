@@ -141,9 +141,11 @@ VkImageAspectFlags vkn::Framebuffer::getAspectFlag(const VkAttachmentDescription
 
 void vkn::Framebuffer::resize(const glm::u32vec2& size)
 { 
+	dimensions_.width = size.x;
+	dimensions_.height = size.y;
 	if (swapchain_.has_value())
 	{
-		swapchain_->get().resize(VkExtent2D{ size.x, size.y });
+		swapchain_->get().resize(dimensions_);
 	}
 	images_.clear();
 	VkFramebufferCreateInfo fbInfo{};
@@ -151,8 +153,8 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	fbInfo.pNext = nullptr;
 	fbInfo.flags = 0;
 	fbInfo.layers = 1;
-	fbInfo.width = size.x;
-	fbInfo.height = size.y;
+	fbInfo.width = dimensions_.width;
+	fbInfo.height = dimensions_.height;
 	fbInfo.renderPass = renderpass_->renderpass();
 	const auto& renderpassAttachments = renderpass_->attachments();
 	auto frameIndex = 0u;
@@ -172,14 +174,14 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 				else
 				{
 					auto& attachment = renderpassAttachments[i];
-					images_.emplace_back(context_, attachment, VkExtent3D{ swapchain_->get().extent().width, swapchain_->get().extent().height, 1 });
+					images_.emplace_back(context_, attachment, VkExtent3D{ dimensions_.width, dimensions_.height, 1 });
 					views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
 				}
 			}
 			else
 			{
 				auto& attachment = renderpassAttachments[i];
-				images_.emplace_back(context_, attachment, VkExtent3D{ swapchain_->get().extent().width, swapchain_->get().extent().height, 1 });
+				images_.emplace_back(context_, attachment, VkExtent3D{ dimensions_.width, dimensions_.height, 1 });
 				views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
 			}
 			

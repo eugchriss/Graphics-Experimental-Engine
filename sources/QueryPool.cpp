@@ -1,7 +1,8 @@
-#include "..\headers\QueryPool.h"
+#include "../headers/QueryPool.h"
 #include "../headers/Query.h"
 #include "../headers/vulkan_utils.h"
-vkn::QueryPool::QueryPool(vkn::Device& device, const VkQueryType type, const uint32_t queryCount, const VkQueryPipelineStatisticFlags pipelineStatisticFlags): device_{device}, queryCount_{queryCount}
+
+vkn::QueryPool::QueryPool(vkn::Context& context, const VkQueryType type, const uint32_t queryCount, const VkQueryPipelineStatisticFlags pipelineStatisticFlags) : context_{ context }, queryCount_{ queryCount }
 {
 	VkQueryPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -10,29 +11,42 @@ vkn::QueryPool::QueryPool(vkn::Device& device, const VkQueryType type, const uin
 	poolInfo.queryType = type;
 	poolInfo.queryCount = queryCount_;
 	poolInfo.pipelineStatistics = pipelineStatisticFlags;
-	vkn::error_check(vkCreateQueryPool(device_.device, &poolInfo, nullptr, &pool_), "Failed to create the query pool"); 
-	results_.resize(queryCount_);
+	vkn::error_check(vkCreateQueryPool(context_.device->device, &poolInfo, nullptr, &pool_), "Failed to create the query pool"); 
 }
-vkn::QueryPool::QueryPool(QueryPool&& other): device_{other.device_}
+vkn::QueryPool::QueryPool(QueryPool&& other): context_{other.context_}
 {
 	queryCount_ = other.queryCount_;
 	queryIndex_ = other.queryIndex_;
 	pool_ = other.pool_;
+	reusableQueryIndexes_ = std::move(other.reusableQueryIndexes_);
 	other.pool_ = VK_NULL_HANDLE;
 }
+
 vkn::QueryPool::~QueryPool()
 {
 	if (pool_ != VK_NULL_HANDLE)
 	{
-		vkDestroyQueryPool(device_.device, pool_, nullptr);
+		vkDestroyQueryPool(context_.device->device, pool_, nullptr);
 	}
 }
 
 vkn::Query vkn::QueryPool::getQuery()
 {
-	++queryIndex_;
-	assert(queryIndex_ <= queryCount_ && "The pool reached its maximum query count");
-	return Query{ *this, queryIndex_ };
+	auto queryIndex = newQueryIndex();
+	vkResetQueryPool(context_.device->device, pool_, queryIndex, 1);
+	return Query{ *this, queryIndex};
+}
+
+vkn::Query vkn::QueryPool::getQuery(CommandBuffer& cb)
+{
+	auto queryIndex = newQueryIndex();
+	vkCmdResetQueryPool(cb.commandBuffer(), pool_, queryIndex, 1);
+	return Query{ *this, queryIndex };
+}
+
+void vkn::QueryPool::deleteQuery(const uint32_t queryIndex)
+{
+	reusableQueryIndexes_.push(queryIndex);
 }
 
 VkQueryPool vkn::QueryPool::pool() const
@@ -45,20 +59,31 @@ void vkn::QueryPool::reset(CommandBuffer& cb)
 	vkCmdResetQueryPool(cb.commandBuffer(), pool_, 0, queryCount_);
 }
 
-const uint64_t vkn::QueryPool::getResult(Query& query, const float timestampPeriod)
+void vkn::QueryPool::reset(const uint32_t queryIndex)
 {
-	assert(timestampPeriod != 0 && "the gpu doesn't support timestamp");
-	return getResult(query.queryIndex_) * static_cast<uint64_t>(timestampPeriod);
+	vkResetQueryPool(context_.device->device, pool_, queryIndex, 1);
 }
 
-const uint64_t vkn::QueryPool::getResult(const uint32_t queryIndex, const VkQueryResultFlags resultFlag) const
+const uint64_t vkn::QueryPool::results(const uint32_t queryIndex, const VkQueryResultFlags resultFlag) const
 {
-	assert(std::size(results_) > queryIndex);
-	return results_[queryIndex];
+	std::vector<uint64_t> results(queryCount_);
+	vkGetQueryPoolResults(context_.device->device, pool_, 0, queryCount_, std::size(results) * sizeof(uint64_t), std::data(results), sizeof(uint64_t), resultFlag);
+	return results[queryIndex];
 }
 
-const std::vector<uint64_t> vkn::QueryPool::getResults(const VkQueryResultFlags resultFlag)
+const uint32_t vkn::QueryPool::newQueryIndex()
 {
-	vkGetQueryPoolResults(device_.device, pool_, 0, queryCount_, std::size(results_) * sizeof(uint64_t), std::data(results_), sizeof(uint64_t), resultFlag);
-	return results_;
+	uint32_t queryIndex{};
+	if (std::empty(reusableQueryIndexes_))
+	{
+		++queryIndex_;
+		assert(queryIndex_ <= queryCount_ && "The pool reached its maximum query count");
+		queryIndex = queryIndex_;
+	}
+	else
+	{
+		queryIndex = reusableQueryIndexes_.top();
+		reusableQueryIndexes_.pop();
+	}
+	return  queryIndex;
 }

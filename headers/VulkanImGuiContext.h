@@ -1,6 +1,7 @@
 #pragma once
 #include "Window.h"
 #include "vulkanContext.h"
+#include "VulkanRenderer.h"
 #include "RenderTarget.h"
 #include "vulkanFrameGraph.h"
 
@@ -11,8 +12,9 @@ namespace vkn
 	public:
 		ImGuiContext(gee::Window& window, Context& context, RenderTarget& renderTarget, const Pass& guiPass);
 		~ImGuiContext();
-		void render();
+		void render(Renderer& renderer);
 	private:
+		void render(CommandBuffer& cb);
 		Context& context_;
 		RenderTarget& renderTarget_;
 		uint32_t passIndex_;

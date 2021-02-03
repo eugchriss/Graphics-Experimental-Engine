@@ -11,10 +11,9 @@ void vkn::CommandBuffer::setDebugName(const std::string& name)
 	nameInfo.objectHandle = reinterpret_cast<uint64_t>(cb_);
 	nameInfo.pObjectName = name.c_str();
 
-	context_.device->setDebugOjectName(nameInfo);
+	context_.get().device->setDebugOjectName(nameInfo);
 }
 #endif 
-
 void vkn::CommandBuffer::begin(const VkCommandBufferUsageFlags usage)
 {
 	VkCommandBufferBeginInfo beginInfo{};
@@ -36,6 +35,16 @@ VkCommandBuffer vkn::CommandBuffer::commandBuffer() const
 	return cb_;
 }
 
-vkn::CommandBuffer::CommandBuffer(vkn::Context& context, const VkCommandBuffer cb) :context_{ context }, cb_ { cb }
+bool vkn::CommandBuffer::isComplete()
+{
+	return complete_.signaled();
+}
+
+vkn::Signal& vkn::CommandBuffer::completeSignal()
+{
+	return complete_;
+}
+
+vkn::CommandBuffer::CommandBuffer(vkn::Context& context, const VkCommandBuffer cb) :context_{std::ref(context) }, cb_{ cb }, complete_{ context_, false }
 {
 }

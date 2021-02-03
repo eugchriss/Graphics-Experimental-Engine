@@ -11,6 +11,7 @@ namespace vkn
 		CommandPool(Context& _context, const VkCommandPoolCreateFlagBits type);
 		CommandPool(CommandPool&& other);
 		~CommandPool();
+		std::vector<vkn::CommandBuffer> getCommandBuffers(const VkCommandBufferLevel level, const uint32_t count);
 		CommandBuffer getCommandBuffer(const VkCommandBufferLevel level);
 	private:
 		Context& context_;

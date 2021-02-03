@@ -13,6 +13,8 @@
 #include "VulkanImGuiContext.h"
 #include "RenderTarget.h"
 #include "Pipeline.h"
+#include "QueryPool.h"
+#include "Query.h"
 
 struct ShaderCamera
 {
@@ -95,6 +97,10 @@ namespace gee
 		std::unique_ptr<vkn::ImGuiContext> imguiContext_;
 		size_t lastDrawableIndex_{ 0u };
 		std::optional<std::reference_wrapper<gee::Drawable>> activeDrawable_;
-
+		gee::Timer renderingtimer_{ "rendering" };
+		gee::Timer cpuTimer_{ "cpu" };
+		float cpuTime_;
+		float gpuTime_;
+		std::unique_ptr<vkn::QueryPool> queryPool_;
 	};
 }

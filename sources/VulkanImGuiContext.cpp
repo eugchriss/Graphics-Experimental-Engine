@@ -69,16 +69,20 @@ vkn::ImGuiContext::~ImGuiContext()
 	ImGui::DestroyContext();
 }
 
-
-void vkn::ImGuiContext::render()
+void vkn::ImGuiContext::render(Renderer& renderer)
 {
-	auto cb = renderTarget_.cbs_[renderTarget_.currentFrame_].commandBuffer();
+	render(renderer.currentCmdBuffer());
+}
+
+
+void vkn::ImGuiContext::render(CommandBuffer& cb)
+{
 	if (passIndex_ != 0)
 	{
-		vkCmdNextSubpass(cb, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
 	}
 	ImGui::Render();
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb);
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
 }
 
 void vkn::ImGuiContext::loadFontsTextures()

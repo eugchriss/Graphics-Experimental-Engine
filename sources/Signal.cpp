@@ -1,7 +1,7 @@
 #include "../headers/signal.h"
 #include "../headers/vulkan_utils.h"
 
-vkn::Signal::Signal(vkn::Context& context, bool signaled) : context_{context}
+vkn::Signal::Signal(vkn::Context& context, bool signaled) : context_{std::ref(context)}
 {
 	VkFenceCreateInfo fenceCI{};
 	fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -14,7 +14,7 @@ vkn::Signal::Signal(vkn::Context& context, bool signaled) : context_{context}
 	{
 		fenceCI.flags = 0;
 	}
-	vkn::error_check(vkCreateFence(context_.device->device, &fenceCI, nullptr, &fence), "Unable to create the rendering finished fence");
+	vkn::error_check(vkCreateFence(context_.get().device->device, &fenceCI, nullptr, &fence), "Unable to create the rendering finished fence");
 
 	VkSemaphoreCreateInfo semaphoreCI{};
 	semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -40,13 +40,24 @@ vkn::Signal::~Signal()
 {
 	if (semaphore != VK_NULL_HANDLE)
 	{
-		vkDestroySemaphore(context_.device->device, semaphore, nullptr);
+		vkDestroySemaphore(context_.get().device->device, semaphore, nullptr);
 	}
 	if (fence != VK_NULL_HANDLE)
 	{
-		vkWaitForFences(context_.device->device, 1, &fence, VK_TRUE, 500000000);
-		vkDestroyFence(context_.device->device, fence, nullptr);
+		vkWaitForFences(context_.get().device->device, 1, &fence, VK_TRUE, 500000000);
+		vkDestroyFence(context_.get().device->device, fence, nullptr);
 	}
+}
+
+vkn::Signal& vkn::Signal::operator=(Signal&& other)
+{
+	context_ = other.context_;
+	fence = other.fence;
+	semaphore = other.semaphore;
+
+	other.fence = VK_NULL_HANDLE;
+	other.semaphore = VK_NULL_HANDLE;
+	return *this;
 }
 
 void vkn::Signal::reset()
@@ -54,12 +65,12 @@ void vkn::Signal::reset()
 #ifndef NDEBUG
 	signaled_ = false;
 #endif
-	vkn::error_check(vkResetFences(context_.device->device, 1, &fence), "Failed to reset the fence");
+	vkn::error_check(vkResetFences(context_.get().device->device, 1, &fence), "Failed to reset the fence");
 }
 
 bool vkn::Signal::signaled()
 {
-	if (vkGetFenceStatus(context_.device->device, fence) == VK_SUCCESS)
+	if (vkGetFenceStatus(context_.get().device->device, fence) == VK_SUCCESS)
 	{
 #ifndef NDEBUG
 		signaled_ = true;
@@ -77,5 +88,5 @@ bool vkn::Signal::signaled()
 
 void vkn::Signal::waitForSignal(const uint64_t timeout) const
 {
-	vkWaitForFences(context_.device->device, 1, &fence, true, timeout);
+	vkWaitForFences(context_.get().device->device, 1, &fence, true, timeout);
 }

@@ -4,7 +4,6 @@
 #include "../headers/Queue.h"
 #include "../headers/CommandPool.h"
 #include "../headers/CommandBuffer.h"
-#include "../headers/Signal.h"
 
 vkn::Image::Image(Context& context, VkImageUsageFlags usage, VkFormat format, VkExtent3D extent, const uint32_t layerCount) : context_{ context }, extent_{ extent }, format_{ format }, layerCount_{ layerCount }
 {
@@ -184,9 +183,8 @@ const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize off
 	transitionLayout(cb, aspect, previousLayout);
 	cb.end();
 
-	vkn::Signal copyDone{ context_ };
-	context_.transferQueue->submit(cb, copyDone);
-	copyDone.waitForSignal();
+	context_.transferQueue->submit(cb);
+	cb.completeSignal().waitForSignal();
 
 	// x4 because the image uses 4 component per pixel (RGBA)
 	return buffer.rawContentAt(offset * 4);
@@ -205,10 +203,8 @@ const std::vector<float> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkIma
 	cb.begin();
 	copyToBuffer(cb, buffer, VK_IMAGE_ASPECT_COLOR_BIT);
 	cb.end();
-
-	vkn::Signal copyDone{ context_ };
-	context_.transferQueue->submit(cb, copyDone);
-	copyDone.waitForSignal();
+	context_.transferQueue->submit(cb);
+	cb.completeSignal().waitForSignal();
 
 	return buffer.rawContent();
 }

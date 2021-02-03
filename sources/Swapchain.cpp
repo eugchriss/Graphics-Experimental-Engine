@@ -56,7 +56,7 @@ const VkExtent2D vkn::Swapchain::extent() const
 void vkn::Swapchain::setImageAvailableSignal(vkn::Signal& signal, const uint64_t timeout)
 {
 	signal.reset();
-	vkn::error_check(vkAcquireNextImageKHR(context_.device->device, swapchain_, timeout, signal.semaphore, signal.fence, &availableImageIndex_), "Failed to present images");
+	vkn::error_check(vkAcquireNextImageKHR(context_.device->device, swapchain_, timeout, VK_NULL_HANDLE, signal.fence, &availableImageIndex_), "Failed to present images");
 }
 
 const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(vkn::Signal& waitOn) const

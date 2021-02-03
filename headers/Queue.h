@@ -13,9 +13,8 @@ namespace vkn
 	public:
 		Queue(const vkn::Device& device, const QueueFamily& familyIndex, const uint32_t index);
 		const uint32_t& familyIndex() const;
-		void submit(const CommandBuffer& cb);
-		void submit(const CommandBuffer& cb, vkn::Signal& submittedSignal, const bool persistent = false);
-		void submit(const CommandBuffer& cb, vkn::Signal& submittedSignal, Signal& waitOn, const VkPipelineStageFlags waitingStage, const bool persistent = false);
+		void submit(CommandBuffer& cb);
+		void submit(CommandBuffer& cb, Signal& waitOn, const VkPipelineStageFlags waitingStage);
 		void present(const vkn::Swapchain& swapchain, Signal& waitOn);
 		void idle();
 		const VkQueue queue() const;

@@ -3,7 +3,8 @@
 #include <iostream>
 #include <sstream>
 #include <future>
-#include <functional>
+#include <numeric>
+#include <algorithm>
 #include "../headers/imgui_impl_glfw.h"
 #include "../headers/imgui_impl_vulkan.h"
 #include "../headers/vulkanFrameGraph.h"
@@ -56,6 +57,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 				firstMouseUse_ = true;
 			}
 			renderTarget_->resize(glm::u32vec2{ w, h });
+			pixelPerfectRenderTarget_->resize(glm::u32vec2{ w, h });
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 		{
@@ -83,6 +85,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		});
 
 	initPixelPerfect();
+	queryPool_ = std::make_unique<vkn::QueryPool>(*context_, VK_QUERY_TYPE_TIMESTAMP, 2);
 }
 
 gee::Application::~Application()
@@ -215,6 +218,11 @@ void gee::Application::updateGui()
 		}
 		drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
 	}
+
+	ImGui::Begin("Loop time");
+	ImGui::LabelText("cpu time (ms)", std::to_string(cpuTime_).c_str(), "0.3f");
+	ImGui::LabelText("gpu time (ms)", std::to_string(gpuTime_).c_str(), "0.3f");
+	ImGui::End();
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -264,7 +272,8 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		double x, y;
 		glfwGetCursorPos(window_.window(), &x, &y);
 		
-		renderer_->begin(*pixelPerfectRenderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
+		renderer_->begin();
+		renderer_->beginTarget(*pixelPerfectRenderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
 		renderer_->usePipeline(*pixelPerfectPipeline_);
 		ShaderCamera camera{};
 		camera.position = glm::vec4{ camera_.position_, 1.0f };
@@ -275,7 +284,8 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		{
 			renderer_->draw(mesh, count);
 		}
-		renderer_->end(*pixelPerfectRenderTarget_);
+		renderer_->endTarget(*pixelPerfectRenderTarget_);
+		renderer_->end();
 		auto value = pixelPerfectRenderTarget_->rawContextAt(x, y);
 		auto index = static_cast<size_t>(value * 255);
 		activeDrawable_ = std::nullopt;
@@ -409,34 +419,48 @@ void gee::Application::getTransforms()
 
 bool gee::Application::isRunning()
 {
-	updateGui();
-
-	getTransforms();
-	renderer_->begin(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
-	renderer_->usePipeline(*skyboxPipeline_);
-	auto proj = camera_.perspectiveProjection(window_.aspectRatio());
-	proj[1][1] *= -1;
-	auto view = glm::mat4{ glm::mat3{camera_.pointOfView()} };
-	renderer_->updateSmallBuffer("camera", proj * view);
-	renderer_->setTexture("skybox", *skyboxTexture_, VK_IMAGE_VIEW_TYPE_CUBE, 6);
-	renderer_->draw(*cubeMesh_);
-	renderTarget_->clearDepthAttachment();
-
-	renderer_->usePipeline(*colorPipeline_);
-	ShaderCamera camera{};
-	camera.position = glm::vec4{ camera_.position_, 1.0f };
-	camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
-	renderer_->updateSmallBuffer("camera", camera);
-	renderer_->setTextures("textures", textures_);
-	renderer_->updateBuffer("Model_Matrix", modelMatrices_);
-	renderer_->updateBuffer("Normal_Matrix", normalMatrices_);
-	renderer_->updateBuffer("PointLights", pointLights_);
-	for (const auto& [mesh, count] : geometryCount_)
+	if ((renderingtimer_.ellapsedMs() >= 100 / 6.0f))
 	{
-		renderer_->updateSmallBuffer("material", materials_[mesh]);
-		renderer_->draw(mesh, count);
-	}
-	imguiContext_->render();
-	renderer_->end(*renderTarget_);
+		renderingtimer_.reset();
+		cpuTimer_.reset();
+		updateGui();
+		getTransforms();
+
+		renderer_->begin();
+		auto beginQuery = renderer_->writeTimestamp(*queryPool_, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+
+		renderer_->beginTarget(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
+		renderer_->usePipeline(*skyboxPipeline_);
+		auto proj = camera_.perspectiveProjection(window_.aspectRatio());
+		proj[1][1] *= -1;
+		auto view = glm::mat4{ glm::mat3{camera_.pointOfView()} };
+		renderer_->updateSmallBuffer("camera", proj * view);
+		renderer_->setTexture("skybox", *skyboxTexture_, VK_IMAGE_VIEW_TYPE_CUBE, 6);
+		renderer_->draw(*cubeMesh_);
+		renderer_->clearDepthAttachment(*renderTarget_);
+
+		renderer_->usePipeline(*colorPipeline_);
+		ShaderCamera camera{};
+		camera.position = glm::vec4{ camera_.position_, 1.0f };
+		camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
+		renderer_->updateSmallBuffer("camera", camera);
+		renderer_->setTextures("textures", textures_);
+		renderer_->updateBuffer("Model_Matrix", modelMatrices_);
+		renderer_->updateBuffer("Normal_Matrix", normalMatrices_);
+		renderer_->updateBuffer("PointLights", pointLights_);
+		for (const auto& [mesh, count] : geometryCount_)
+		{
+			renderer_->updateSmallBuffer("material", materials_[mesh]);
+			renderer_->draw(mesh, count);
+		}
+		imguiContext_->render(*renderer_);
+		renderer_->endTarget(*renderTarget_);
+	
+		auto endQuery = renderer_->writeTimestamp(*queryPool_, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+		renderer_->end();
+
+		cpuTime_ = cpuTimer_.ellapsedMs();		
+		gpuTime_ = (endQuery.results() - beginQuery.results()) / 1000000.0f;
+	}	
 	return window_.isOpen();
 }

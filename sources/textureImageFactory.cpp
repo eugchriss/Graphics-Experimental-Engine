@@ -32,8 +32,7 @@ vkn::Image vkn::TextureImageFactory::create(const gee::Texture& texture) const
 	image.transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	cb.end();
 
-	vkn::Signal imageReady{ context_ };
-	context_.transferQueue->submit(cb, imageReady);
-	imageReady.waitForSignal();
+	context_.transferQueue->submit(cb);
+	cb.completeSignal().waitForSignal();
 	return std::move(image);
 }

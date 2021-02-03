@@ -1,5 +1,4 @@
 #include "../headers/Buffer.h"
-#include "../headers/Signal.h"
 #include "../headers/CommandPool.h"
 
 vkn::Buffer::Buffer(Context& context, const VkBufferUsageFlags usage, const VkDeviceSize size) : context_{ context }, size_{size}, usage_{usage}
@@ -61,9 +60,8 @@ void vkn::Buffer::moveTo(Queue& queue, DeviceMemory& memory)
 	vkCmdCopyBuffer(cb.commandBuffer(), buffer, dst.buffer, 1, &copy);
 	cb.end();
 
-	vkn::Signal copyFinished{ context_ };
-	queue.submit(cb, copyFinished);
-	copyFinished.waitForSignal();
+	queue.submit(cb);
+	cb.completeSignal().waitForSignal();
 
 	memory_ = Observer_ptr<vkn::DeviceMemory>{ memory };
 	vkDestroyBuffer(context_.device->device, buffer, nullptr);

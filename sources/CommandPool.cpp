@@ -32,17 +32,30 @@ vkn::CommandPool::~CommandPool()
 	}
 }
 
-vkn::CommandBuffer vkn::CommandPool::getCommandBuffer(const VkCommandBufferLevel level)
+std::vector<vkn::CommandBuffer> vkn::CommandPool::getCommandBuffers(const VkCommandBufferLevel level, const uint32_t count)
 {
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.pNext = nullptr;
 	allocInfo.commandPool = pool_;
 	allocInfo.level = level;
-	allocInfo.commandBufferCount = 1;
+	allocInfo.commandBufferCount = count;
 
-	VkCommandBuffer cb{ VK_NULL_HANDLE };
-	vkn::error_check(vkAllocateCommandBuffers(context_.device->device, &allocInfo, &cb), "Unable to allocate command buffer");
-	cbs_.push_back(cb);
-	return CommandBuffer{context_, cb };
+	std::vector<VkCommandBuffer> cbs(count);
+	vkn::error_check(vkAllocateCommandBuffers(context_.device->device, &allocInfo, std::data(cbs)), "Unable to allocate command buffer");
+	std::copy(std::begin(cbs), std::end(cbs), std::back_inserter(cbs_));
+	
+	std::vector<vkn::CommandBuffer> buffers;
+	buffers.reserve(count);
+	for (const auto& cb : cbs)
+	{
+		buffers.emplace_back(context_, cb);
+	}
+	return std::move(buffers);
+}
+
+vkn::CommandBuffer vkn::CommandPool::getCommandBuffer(const VkCommandBufferLevel level)
+{
+	auto& cbs = getCommandBuffers(level, 1);
+	return std::move(cbs[0]);
 }
