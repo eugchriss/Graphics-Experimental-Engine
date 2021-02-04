@@ -29,6 +29,7 @@ void vkn::Renderer::draw(const gee::Mesh& mesh, const size_t count)
 	if (shouldRender_)
 	{
 		auto& cb = availableCbs_.front();
+		assert(cb.isRecording() && "Command buffer needs to be in recording state");
 		VkDeviceSize offset{ 0 };
 		auto& memoryLocation = geometriesCache_->get(mesh.hash(), mesh);
 
@@ -55,7 +56,6 @@ void vkn::Renderer::begin()
 		}
 	}
 	availableCbs_.front().begin();
-
 	shouldRender_ = true;
 }
 
@@ -64,10 +64,14 @@ void vkn::Renderer::end()
 	shouldRender_ = false;
 	availableCbs_.front().end();
 
-	context_.graphicsQueue->submit(availableCbs_.front());
 	if (shouldPresent_)
 	{
+		context_.graphicsQueue->submitWithFeedbackSignal(availableCbs_.front());
 		context_.graphicsQueue->present(*swapchain_, availableCbs_.front().completeSignal());
+	}
+	else
+	{
+		context_.graphicsQueue->submit(availableCbs_.front());
 	}
 
 	pendingCbs_.emplace_back(std::move(availableCbs_.front()));
@@ -94,6 +98,7 @@ void vkn::Renderer::beginTarget(RenderTarget& target, const VkRect2D& renderArea
 	if (shouldRender_)
 	{
 		auto& cb = availableCbs_.front();
+		assert(cb.isRecording() && "Command buffer needs to be in recording state");
 		target.bind(cb, renderArea);
 		VkViewport viewport{};
 		viewport.x = renderArea.offset.x;
@@ -113,6 +118,7 @@ void vkn::Renderer::endTarget(RenderTarget& target)
 	if (shouldRender_)
 	{
 		auto& cb = availableCbs_.front();
+		assert(cb.isRecording() && "Command buffer needs to be in recording state");
 		target.unBind(cb);
 		for (auto& pipeline : boundPipelines_)
 		{
@@ -127,7 +133,9 @@ void vkn::Renderer::clearDepthAttachment(RenderTarget& target, const float clear
 {
 	if (shouldRender_)
 	{
-		target.clearDepthAttachment(availableCbs_.front(), clearColor);
+		auto& cb = availableCbs_.front();
+		assert(cb.isRecording() && "Command buffer needs to be in recording state");
+		target.clearDepthAttachment(cb, clearColor);
 	}
 }
 
@@ -136,6 +144,7 @@ void vkn::Renderer::usePipeline(Pipeline& pipeline)
 	if (shouldRender_)
 	{
 		auto& cb = availableCbs_.front();
+		assert(cb.isRecording() && "Command buffer needs to be in recording state");
 		if (!std::empty(boundPipelines_))
 		{
 			vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
@@ -173,17 +182,22 @@ void vkn::Renderer::setTextures(const std::string& name, const std::vector<std::
 
 void vkn::Renderer::beginQuery(Query& query)
 {
-	query.begin(availableCbs_.front());
+	auto& cb = availableCbs_.front();
+	assert(cb.isRecording() && "Command buffer needs to be in recording state");
+	query.begin(cb);
 }
 
 void vkn::Renderer::endQuery(Query& query)
 {
-	query.end(availableCbs_.front());
+	auto& cb = availableCbs_.front();
+	assert(cb.isRecording() && "Command buffer needs to be in recording state");
+	query.end(cb);
 }
 
 vkn::Query vkn::Renderer::writeTimestamp(QueryPool& queryPool, const VkPipelineStageFlagBits stage)
 {
 	auto& cb = availableCbs_.front();
+	assert(cb.isRecording() && "Command buffer needs to be in recording state");
 	auto query = queryPool.getQuery(cb);
 	query.writeTimeStamp(cb, stage);
 	return query;

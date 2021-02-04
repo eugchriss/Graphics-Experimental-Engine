@@ -23,11 +23,13 @@ void vkn::CommandBuffer::begin(const VkCommandBufferUsageFlags usage)
 	beginInfo.pInheritanceInfo = nullptr;
 
 	vkn::error_check(vkBeginCommandBuffer(cb_, &beginInfo), "Failed to begin the command buffer");
+	isRecording_ = true;
 }
 
 void vkn::CommandBuffer::end()
 {
 	vkn::error_check(vkEndCommandBuffer(cb_), "Failed to end the command buffer");
+	isRecording_ = false;
 }
 
 VkCommandBuffer vkn::CommandBuffer::commandBuffer() const
@@ -47,4 +49,9 @@ vkn::Signal& vkn::CommandBuffer::completeSignal()
 
 vkn::CommandBuffer::CommandBuffer(vkn::Context& context, const VkCommandBuffer cb) :context_{std::ref(context) }, cb_{ cb }, complete_{ context_, false }
 {
+}
+
+const bool vkn::CommandBuffer::isRecording() const
+{
+	return isRecording_;
 }

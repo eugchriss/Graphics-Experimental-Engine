@@ -49,7 +49,7 @@ namespace vkn
 		Swapchain& swapchain();
 
 	private:
-		const uint32_t CB_ALLOCATION_COUNT = 10u;
+		const uint32_t CB_ALLOCATION_COUNT = 2u;
 		vkn::Context& context_;
 		std::unique_ptr<Swapchain> swapchain_;
 		VkSampler sampler_{ VK_NULL_HANDLE };
@@ -89,7 +89,9 @@ namespace vkn
 		if (shouldRender_)
 		{
 			assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
-			boundPipeline_->get().pushConstant(availableCbs_.front(), name, datas);
+			auto& cb = availableCbs_.front();
+			assert(cb.isRecording() && "Command buffer needs to be in recording state");
+			boundPipeline_->get().pushConstant(cb, name, datas);
 		}
 	}
 }

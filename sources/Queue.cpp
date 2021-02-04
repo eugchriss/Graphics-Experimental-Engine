@@ -19,26 +19,23 @@ void vkn::Queue::submit(CommandBuffer& cb)
 	submitInfo.waitSemaphoreCount = 0;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &cmdBuffer;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &cb.completeSignal().semaphore;
+	submitInfo.signalSemaphoreCount = 0;
 	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, cb.completeSignal().fence), "Unabled to command buffer");
 }
 
-void vkn::Queue::submit(CommandBuffer& cb, Signal& waitOn, const VkPipelineStageFlags waitingStage)
+void vkn::Queue::submitWithFeedbackSignal(CommandBuffer& cb)
 {
-	const auto& cmdBuffer = cb.commandBuffer();
+	auto cmdBuffer = cb.commandBuffer();
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &waitOn.semaphore;
-	submitInfo.pWaitDstStageMask = &waitingStage;
+	submitInfo.waitSemaphoreCount = 0;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &cmdBuffer;
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &cb.completeSignal().semaphore;
-
 	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, cb.completeSignal().fence), "Unabled to command buffer");
+
 }
 
 void vkn::Queue::present(const vkn::Swapchain& swapchain, Signal& waitOn)

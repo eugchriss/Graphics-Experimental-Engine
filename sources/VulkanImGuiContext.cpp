@@ -77,6 +77,7 @@ void vkn::ImGuiContext::render(Renderer& renderer)
 
 void vkn::ImGuiContext::render(CommandBuffer& cb)
 {
+	assert(cb.isRecording() && "Command buffer needs to be in recording state");
 	if (passIndex_ != 0)
 	{
 		vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);

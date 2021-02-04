@@ -1,5 +1,4 @@
 #include "../headers/Application.h"
-#include  "../headers/Gpu.h"
 #include <iostream>
 #include <sstream>
 #include <future>
@@ -372,7 +371,6 @@ void gee::Application::initPixelPerfect()
 	frameGraph.setAttachmentColorDepthContent(colorAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
 	frameGraph.setAttachmentColorDepthContent(depthAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 	frameGraph.setRenderArea(window_.size().x, window_.size().y);
-	frameGraph.setPresentAttachment(colorAtt);
 	auto& pixelPerfectPass = frameGraph.addPass();
 	pixelPerfectPass.addColorAttachment(colorAtt);
 	pixelPerfectPass.addDepthStencilAttachment(depthAtt);
@@ -460,7 +458,12 @@ bool gee::Application::isRunning()
 		renderer_->end();
 
 		cpuTime_ = cpuTimer_.ellapsedMs();		
-		gpuTime_ = (endQuery.results() - beginQuery.results()) / 1000000.0f;
+		auto e = endQuery.results();
+		auto b = beginQuery.results();
+		if (b < e)
+		{
+			gpuTime_ = (e - b) / 1000000.0f;
+		}
 	}	
 	return window_.isOpen();
 }

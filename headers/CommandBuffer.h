@@ -20,10 +20,12 @@ namespace vkn
 		bool isComplete();
 		Signal& completeSignal();
 		CommandBuffer(Context& context, const VkCommandBuffer cb);
+		const bool isRecording() const;
 	private:
 		friend class CommandPool;
 		std::reference_wrapper<Context> context_;
 		VkCommandBuffer cb_{ VK_NULL_HANDLE };
 		Signal complete_;
+		bool isRecording_{ false };
 	};
 }
