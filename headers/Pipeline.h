@@ -37,8 +37,6 @@ namespace vkn
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
 		template<class T>
 		void updateBuffer(const std::string& resourceName, const T& datas);
-		const std::vector<Shader::Attachment>& outputAttachments() const;
-		const std::vector<Shader::Attachment>& subpassInputAttachments() const;
 		void updateUniforms();
 	private:
 

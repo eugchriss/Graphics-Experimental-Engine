@@ -2,7 +2,6 @@
 
 #include <fstream>
 
-std::string vkn::Shader::tweakingName_{ "tweakings" };
 vkn::Shader::Shader(vkn::Device& device, const VkShaderStageFlagBits stage, const std::string& path) : device_{ device }, stage_{ stage }
 {
 	auto spirv = readFile(path);
@@ -28,7 +27,7 @@ vkn::Shader::Shader(Shader&& other) : device_{ other.device_ }
 	bindings_ = std::move(other.bindings_);
 	pushConstants_ = std::move(other.pushConstants_);
 	outputAttachments_ = std::move(other.outputAttachments_);
-	tweakings_ = std::move(other.tweakings_);
+	inputTexturesNames_ = std::move(other.inputTexturesNames_);
 	spirv_ = std::move(other.spirv_);
 	/*****/
 
@@ -63,11 +62,6 @@ const std::vector<vkn::Shader::PushConstant>& vkn::Shader::pushConstants() const
 	return pushConstants_;
 }
 
-std::vector<vkn::Shader::Tweaking>& vkn::Shader::tweakings()
-{
-	return tweakings_;
-}
-
 const std::vector<VkDescriptorPoolSize> vkn::Shader::poolSize() const
 {
 	auto& resources = spirv_->get_shader_resources();
@@ -100,21 +94,6 @@ const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> vkn::S
 		offset += format.range;
 	}
 	return std::make_pair(attributeDescriptions, offset);
-}
-
-const std::vector<vkn::Shader::Attachment>& vkn::Shader::outputAttachments() const
-{
-	return outputAttachments_;
-}
-
-const std::vector<std::string>& vkn::Shader::inputTexturesNames() const
-{
-	return inputTexturesNames_;
-}
-
-const std::vector<vkn::Shader::Attachment>& vkn::Shader::subpassInputAttachments() const
-{
-	return subpassInputAttachments_;
 }
 
 const std::vector<char> vkn::Shader::readFile(const std::string& path)
@@ -162,7 +141,6 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 	}
 	for (const auto& resource : resources.push_constant_buffers)
 	{
-		//Tweakings parsing only supports primitives types. No vectors or matrices.
 		pushConstants_.push_back(parsePushConstant(resource, stage_));
 	}
 	for (const auto& resource : resources.stage_outputs)
@@ -174,15 +152,15 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 		attchment.format = vkn::getFormat(spirvType).format;
 		outputAttachments_.emplace_back(attchment);
 	}
-	for (const auto& resource : resources.subpass_inputs)
-	{
-		auto spirvType = spirv_->get_type(resource.type_id);
-		Attachment attchment{};
-		attchment.layoutIndex = spirv_->get_decoration(resource.id, spv::DecorationLocation);
-		attchment.name = resource.name;
-		attchment.format = vkn::getFormat(spirvType).format;
-		subpassInputAttachments_.emplace_back(attchment);
-	}
+}
+const std::vector<vkn::Shader::Attachment>& vkn::Shader::outputAttachments() const
+{
+	return outputAttachments_;
+}
+
+const std::vector<std::string>& vkn::Shader::inputTexturesNames() const
+{
+	return inputTexturesNames_;
 }
 
 const vkn::Shader::Binding vkn::Shader::parseBinding(const spirv_cross::Resource& resource, const VkShaderStageFlagBits stage, const VkDescriptorType type)
@@ -237,41 +215,5 @@ const vkn::Shader::PushConstant vkn::Shader::parsePushConstant(const spirv_cross
 		pc.ranges.push_back(spirv_->get_declared_struct_member_size(resourceType, i));
 		pc.size += spirv_->get_declared_struct_member_size(resourceType, i);
 	}
-	std::sort(std::begin(pc.offsets), std::end(pc.offsets)); // assuming for now that all pushconstant ranges have the same size
-	assert(std::size(pc.offsets) && "The push constant is not ACTIVELY used by the shader");
-	if (resource.name == tweakingName_)
-	{
-		assert(std::size(resourceType.array) == 0 && "Tweaking should only be primitives type (AKA no veci or mati)");
-		const auto member_count = resourceType.member_types.size();
-		for (auto i = 0u; i < member_count; ++i)
-		{
-			auto tweakingType = spirv_->get_type(resourceType.member_types[i]);
-			Tweaking tweaking{};
-			tweaking.name = spirv_->get_member_name(resourceType.self, i);
-			tweaking.size = spirv_->get_declared_struct_member_size(resourceType, i);
-			tweaking.offset = spirv_->type_struct_member_offset(resourceType, i);
-			getTweakingDataType(tweaking, tweakingType.basetype);
-			tweakings_.emplace_back(std::move(tweaking));
-		}
-	}
 	return pc;
-}
-
-void vkn::Shader::getTweakingDataType(vkn::Shader::Tweaking& tweaking, const spirv_cross::SPIRType::BaseType& type)
-{
-	switch (type)
-	{
-	case spirv_cross::SPIRType::BaseType::UInt:
-		tweaking.dataType = Shader::GLSL_Type::UINT;
-		break;
-	case spirv_cross::SPIRType::BaseType::Int:
-		tweaking.dataType = Shader::GLSL_Type::INT;
-		break;
-	case spirv_cross::SPIRType::BaseType::Float:
-		tweaking.dataType = Shader::GLSL_Type::FLOAT;
-		break;
-	default:
-		throw std::runtime_error{ "untreated type" };
-		break;
-	}
 }

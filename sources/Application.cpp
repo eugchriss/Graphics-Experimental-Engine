@@ -349,18 +349,11 @@ void gee::Application::createPipeline()
 	builder.subpass = 0;
 	skyboxPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
 
-	
-	vkn::PipelineBuilder builder2{ "../assets/shaders/vert.spv", "../assets/shaders/frag.spv" };
-	builder2.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
-	builder2.addRaterizationStage(VK_POLYGON_MODE_FILL);
-	builder2.addDepthStage(VK_COMPARE_OP_LESS);
-	builder2.addColorBlendStage();
-	builder2.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
-	builder2.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-	builder2.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-	builder2.renderpass = renderTarget_->renderpass->renderpass();
-	builder2.subpass = 1;
-	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder2.get(*context_));
+
+	builder.setShaderVertexStage("../assets/shaders/vert.spv");
+	builder.setShaderFragmentStage("../assets/shaders/frag.spv");
+	builder.subpass = 1;
+	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
 }
 
 void gee::Application::initPixelPerfect()

@@ -16,10 +16,10 @@ layout(push_constant) uniform Tweakings
 void main()
 {    
     finalColor = texture(input_outColor, texCoord);
-    if(tweakings.hdr)
+    if(true)
     {
         finalColor = finalColor / (finalColor + vec4(1.0));
-        finalColor = vec4(1.0) - exp(-finalColor * tweakings.exposure);
+        finalColor = vec4(1.0) - exp(-finalColor * 1.0f);
     }
     if(tweakings.gammaCorrection)
     {

@@ -7,6 +7,7 @@
 #include "vulkanContext.h"
 
 #include <vector>
+#include <unordered_map>
 #include <string>
 #include <utility>
 namespace vkn
@@ -24,6 +25,8 @@ namespace vkn
 		PipelineBuilder(PipelineBuilder&&) = default;
 		~PipelineBuilder() = default;
 		vkn::Pipeline get(Context& context);
+		void setShaderVertexStage(const std::string& path);
+		void setShaderFragmentStage(const std::string& path);
 		void setInputBindingRate(const uint32_t binding, const VkVertexInputRate rate);
 		void addAssemblyStage(const VkPrimitiveTopology primitive, const VkBool32 restart = VK_FALSE);
 		void addTesselationStage(const uint32_t controlPoints);
@@ -36,10 +39,6 @@ namespace vkn
 		void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment);
 		void addDynamicState(const VkDynamicState state);
 		void setPolygonMode(const VkPolygonMode mode);
-		const std::vector<std::string>& inputTexturesNames() const;
-		const std::vector<vkn::Shader::Attachment>& subpassInputAttachments() const;
-		const std::vector<vkn::Shader::Attachment>& outputAttachments() const;
-		std::vector<std::reference_wrapper<vkn::Shader::Tweaking>> tweakings();
 
 		VkFrontFace frontFace;
 		VkCullModeFlags cullMode;
@@ -57,14 +56,10 @@ namespace vkn
 		VkPipelineDepthStencilStateCreateInfo depthStencilCI_{};
 		VkPipelineColorBlendStateCreateInfo colorBlendCI_{};
 		VkPipelineDynamicStateCreateInfo dynamicStateCI_{};
-
-		void addShaderStage(const VkShaderStageFlagBits stage, const std::string& path);
-
 		std::vector<RenderArea> renderAreas_{};
 		std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments_{};
 		std::vector<VkDynamicState> dynamicStates_{};
-		std::vector<std::pair<VkShaderStageFlagBits, std::string>> shaderStages_;
+		std::unordered_map<VkShaderStageFlagBits, std::string> shaderStages_;
 		std::vector<vkn::Shader> shaders_{};
-
 	};
 }

@@ -8,8 +8,8 @@
 
 vkn::PipelineBuilder::PipelineBuilder(const std::string& vertexShaderPath, const std::string& fragmentShaderPath): lineWidth{ 1.0f }, frontFace{ VK_FRONT_FACE_CLOCKWISE }, cullMode{ VK_CULL_MODE_NONE }
 {
-	addShaderStage(VK_SHADER_STAGE_VERTEX_BIT, vertexShaderPath);
-	addShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShaderPath);
+	shaderStages_[VK_SHADER_STAGE_VERTEX_BIT] = vertexShaderPath;
+	shaderStages_[VK_SHADER_STAGE_FRAGMENT_BIT] = fragmentShaderPath;
 	//initialize input state info
 	{
 		vertexInput_.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -134,14 +134,7 @@ vkn::Pipeline vkn::PipelineBuilder::get(Context& context)
 	//create the pipeline
 	VkPhysicalDeviceProperties props{};
 	vkGetPhysicalDeviceProperties(context.gpu->device, &props);
-	for (auto& shader : shaders_)
-	{
-		const auto& tweakings = shader.tweakings();
-		if (!std::empty(tweakings))
-		{
-			assert(tweakings.back().offset < props.limits.maxPushConstantsSize && "The tweakings have too much parameters");
-		}
-	}
+
 	vkn::PipelineLayout pipelineLayout{ *context.device, shaders_ };
 	VkPipeline pipeline{ VK_NULL_HANDLE };
 	{
@@ -173,14 +166,14 @@ vkn::Pipeline vkn::PipelineBuilder::get(Context& context)
 	return vkn::Pipeline{ context, pipeline, std::move(shaders_) };
 }
 
-void vkn::PipelineBuilder::addShaderStage(const VkShaderStageFlagBits stage, const std::string& path)
+void vkn::PipelineBuilder::setShaderVertexStage(const std::string& path)
 {
-	auto result = std::find_if(std::begin(shaderStages_), std::end(shaderStages_), [&](const auto& pair) { return pair.first == stage; });
-	if (result != std::end(shaderStages_))
-	{
-		throw std::runtime_error{ "There is already a code for this shader stage" };
-	}
-	shaderStages_.emplace_back(stage, path);
+	shaderStages_[VK_SHADER_STAGE_VERTEX_BIT] = path;
+}
+
+void vkn::PipelineBuilder::setShaderFragmentStage(const std::string& path)
+{
+	shaderStages_[VK_SHADER_STAGE_FRAGMENT_BIT] = path;
 }
 
 void vkn::PipelineBuilder::setInputBindingRate(const uint32_t binding, const VkVertexInputRate rate)
@@ -285,50 +278,4 @@ void vkn::PipelineBuilder::addDynamicState(const VkDynamicState state)
 void vkn::PipelineBuilder::setPolygonMode(const VkPolygonMode mode)
 {
 	rasterizationCI_.polygonMode = mode;
-}
-
-const std::vector<std::string>& vkn::PipelineBuilder::inputTexturesNames() const
-{
-	auto fragmentShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
-	if (fragmentShader == std::end(shaders_))
-	{
-		throw std::runtime_error{ "The pipeline requires a fragment shader" };
-	}
-
-	return fragmentShader->inputTexturesNames();
-}
-
-const std::vector<vkn::Shader::Attachment>& vkn::PipelineBuilder::subpassInputAttachments() const
-{
-	auto fragmentShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
-	if (fragmentShader == std::end(shaders_))
-	{
-		throw std::runtime_error{ "The pipeline requires a fragment shader" };
-	}
-
-	return fragmentShader->subpassInputAttachments();
-}
-const std::vector<vkn::Shader::Attachment>& vkn::PipelineBuilder::outputAttachments() const
-{
-	auto fragmentShader = std::find_if(std::begin(shaders_), std::end(shaders_), [](const auto& shader) { return shader.stage() == VK_SHADER_STAGE_FRAGMENT_BIT; });
-	if (fragmentShader == std::end(shaders_))
-	{
-		throw std::runtime_error{ "The pipeline requires a fragment shader" };
-	}
-
-	return fragmentShader->outputAttachments();
-}
-
-std::vector<std::reference_wrapper<vkn::Shader::Tweaking>> vkn::PipelineBuilder::tweakings()
-{
-	std::vector<std::reference_wrapper<vkn::Shader::Tweaking>> tweakings;
-	for (auto& shader : shaders_)
-	{
-		auto& shaderTweakings = shader.tweakings();
-		for (auto& tweaking : shaderTweakings)
-		{
-			tweakings.emplace_back(std::ref(tweaking));
-		}
-	}
-	return std::move(tweakings);
 }
