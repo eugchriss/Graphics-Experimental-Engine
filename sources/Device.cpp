@@ -9,6 +9,8 @@ vkn::Device::Device(vkn::Gpu& gpu,const std::vector<std::string>& requestedExten
 	{
 		extensions.emplace_back(extension.c_str());
 	}
+	pushDescriptorEnabled_ =  std::find(std::begin(requestedExtensions), std::end(requestedExtensions), "VK_KHR_push_descriptor") != std::end(requestedExtensions);
+	
 	auto features = gpu.enabledFeatures();
 	VkDeviceCreateInfo deviceCI{};
 	auto queueInfo = queueFamily.info();
@@ -25,14 +27,14 @@ vkn::Device::Device(vkn::Gpu& gpu,const std::vector<std::string>& requestedExten
 
 	vkn::error_check(vkCreateDevice(gpu.device, &deviceCI, nullptr, &device), "unable to create a logical device");
 
-	vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
+	vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT"));
 }
 
 vkn::Device::Device(Device&& other)
 {
 	device = other.device;
 	other.device = VK_NULL_HANDLE;
-	vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
+	vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT"));
 }
 
 vkn::Device::~Device()
@@ -43,6 +45,11 @@ vkn::Device::~Device()
 		idle();
 		vkDestroyDevice(device, nullptr);
 	}
+}
+
+const bool vkn::Device::pushDescriptorEnabled() const
+{
+	return pushDescriptorEnabled_;
 }
 
 void vkn::Device::idle()

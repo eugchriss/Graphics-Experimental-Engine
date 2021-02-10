@@ -32,3 +32,8 @@ vkn::Context::~Context()
 		vkDestroySurfaceKHR(instance->instance, surface, nullptr);
 	}
 }
+
+const bool vkn::Context::pushDescriptorEnabled() const
+{
+	return device->pushDescriptorEnabled();
+}

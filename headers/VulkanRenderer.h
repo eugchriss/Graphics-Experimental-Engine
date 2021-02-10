@@ -59,12 +59,12 @@ namespace vkn
 		bool isWindowMinimized_{};
 		bool shouldRender_{ false };
 		bool shouldPresent_{ false };
+		bool isFirstPass_{ true };
 		uint32_t firstInstance_{};
 		template <class T>
 		using OptionalRef = std::optional<std::reference_wrapper<T>>;
 
 		OptionalRef<Pipeline> boundPipeline_;
-		std::vector<OptionalRef<Pipeline>> boundPipelines_;
 
 		template <class Factory, class Resource, class Key>
 		using CachePtr = std::unique_ptr<gee::ResourceHolder<Factory, Resource, Key>>;

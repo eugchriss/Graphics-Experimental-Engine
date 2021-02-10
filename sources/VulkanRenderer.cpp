@@ -30,6 +30,7 @@ void vkn::Renderer::draw(const gee::Mesh& mesh, const size_t count)
 	{
 		auto& cb = availableCbs_.front();
 		assert(cb.isRecording() && "Command buffer needs to be in recording state");
+		boundPipeline_->get().updateUniforms(cb);
 		VkDeviceSize offset{ 0 };
 		auto& memoryLocation = geometriesCache_->get(mesh.hash(), mesh);
 
@@ -120,12 +121,8 @@ void vkn::Renderer::endTarget(RenderTarget& target)
 		auto& cb = availableCbs_.front();
 		assert(cb.isRecording() && "Command buffer needs to be in recording state");
 		target.unBind(cb);
-		for (auto& pipeline : boundPipelines_)
-		{
-			pipeline->get().updateUniforms();
-		}
-		boundPipelines_.clear();
 		boundPipeline_.reset();
+		isFirstPass_ = true;
 	}
 }
 
@@ -145,13 +142,17 @@ void vkn::Renderer::usePipeline(Pipeline& pipeline)
 	{
 		auto& cb = availableCbs_.front();
 		assert(cb.isRecording() && "Command buffer needs to be in recording state");
-		if (!std::empty(boundPipelines_))
+		
+		if (isFirstPass_)
+		{
+			isFirstPass_ = false;
+		}
+		else
 		{
 			vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
 		}
 		pipeline.bind(cb);
 		boundPipeline_ = std::make_optional<std::reference_wrapper<vkn::Pipeline>>(pipeline);
-		boundPipelines_.emplace_back(boundPipeline_);
 		firstInstance_ = 0;
 	}
 }

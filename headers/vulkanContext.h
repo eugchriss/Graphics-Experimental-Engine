@@ -15,6 +15,7 @@ namespace vkn
 		Context(Context&&);
 		Context(const Context&) = default;
 		~Context();
+		const bool pushDescriptorEnabled() const;
 		std::shared_ptr<vkn::Instance> instance;
 		std::unique_ptr<vkn::DebugMessenger> debugMessenger;
 		VkSurfaceKHR surface{ VK_NULL_HANDLE };

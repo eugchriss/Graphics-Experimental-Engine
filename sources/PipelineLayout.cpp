@@ -62,21 +62,11 @@ void vkn::PipelineLayout::createSets(const std::vector<vkn::Shader>& shaders)
 	for (const auto& setBinding : setBindings)
 	{
 		VkDescriptorSetLayout set{ VK_NULL_HANDLE };
-		std::vector<VkDescriptorBindingFlags> bindingFlags;
-		for (const auto binding : setBinding.second)
-		{
-			bindingFlags.push_back(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
-		}
-		VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{};
-		flagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-		flagsInfo.pNext = nullptr;
-		flagsInfo.bindingCount = std::size(bindingFlags);
-		flagsInfo.pBindingFlags = std::data(bindingFlags);
 
 		VkDescriptorSetLayoutCreateInfo setInfo{};
 		setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		setInfo.pNext = &flagsInfo;
-		setInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+		setInfo.pNext = nullptr;
+		setInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
 		setInfo.bindingCount = std::size(setBinding.second);
 		setInfo.pBindings = std::data(setBinding.second);
 

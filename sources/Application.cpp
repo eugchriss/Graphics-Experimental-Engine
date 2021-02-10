@@ -116,49 +116,6 @@ void gee::Application::addDrawable(Drawable& drawable)
 		else
 		{
 			geometryCount_.emplace_back(std::make_pair(std::ref(drawable.mesh), 1));
-				bool diffuseTexExist{ false };
-				bool normalTexExist{ false };
-				bool specularTexExist{ false };
-
-				ShaderMaterial material{};
-				for (auto i = 0u; i < std::size(textures_); ++i)
-				{
-					const auto& texture = textures_[i].get();
-					if (texture.paths_[0] == drawable.mesh.material().diffuseTex.paths_[0])
-					{
-						diffuseTexExist = true;
-						material.diffuseTex = i;
-					}
-					else if (texture.paths_[0] == drawable.mesh.material().normalTex.paths_[0])
-					{
-						normalTexExist = true;
-						material.normalTex = i;
-					}
-					else if (texture.paths_[0] == drawable.mesh.material().specularTex.paths_[0])
-					{
-						specularTexExist = true;
-						material.specularTex = i;
-					}
-
-					if (diffuseTexExist && normalTexExist && specularTexExist)
-						break;
-				}
-				if (!diffuseTexExist)
-				{
-					material.diffuseTex = std::size(textures_);
-					textures_.emplace_back(std::ref(drawable.mesh.material().diffuseTex));
-				}
-				if (!normalTexExist)
-				{
-					material.normalTex = std::size(textures_);
-					textures_.emplace_back(std::ref(drawable.mesh.material().normalTex));
-				}
-				if (!specularTexExist)
-				{
-					material.specularTex = std::size(textures_);
-					textures_.emplace_back(std::ref(drawable.mesh.material().specularTex));
-				}
-				materials_.emplace(std::ref(drawable.mesh), material);
 		}
 	}
 }
@@ -328,6 +285,7 @@ void gee::Application::createContext()
 	contextBuilder.addDeviceExtention("VK_KHR_swapchain");
 	contextBuilder.addDeviceExtention("VK_EXT_descriptor_indexing");
 	contextBuilder.addDeviceExtention("VK_KHR_maintenance3");
+	contextBuilder.addDeviceExtention("VK_KHR_push_descriptor");
 	contextBuilder.addQueueFlag(VK_QUEUE_GRAPHICS_BIT);
 	contextBuilder.addQueueFlag(VK_QUEUE_TRANSFER_BIT);
 	contextBuilder.setQueueCount(2);
@@ -435,16 +393,17 @@ bool gee::Application::isRunning()
 		camera.position = glm::vec4{ camera_.position_, 1.0f };
 		camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
 		renderer_->updateSmallBuffer("camera", camera);
-		renderer_->setTextures("textures", textures_);
 		renderer_->updateBuffer("Model_Matrix", modelMatrices_);
 		renderer_->updateBuffer("Normal_Matrix", normalMatrices_);
 		renderer_->updateBuffer("PointLights", pointLights_);
 		for (const auto& [mesh, count] : geometryCount_)
 		{
-			renderer_->updateSmallBuffer("material", materials_[mesh]);
+			renderer_->setTexture("diffuseTex", mesh.get().material().diffuseTex);
+			renderer_->setTexture("normalTex", mesh.get().material().normalTex);
+			renderer_->setTexture("specularTex", mesh.get().material().specularTex);
 			renderer_->draw(mesh, count);
 		}
-		imguiContext_->render(*renderer_);
+		imguiContext_->render(*renderer_, *renderTarget_);
 		renderer_->endTarget(*renderTarget_);
 	
 		auto endQuery = renderer_->writeTimestamp(*queryPool_, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);

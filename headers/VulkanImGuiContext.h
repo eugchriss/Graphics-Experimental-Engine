@@ -12,7 +12,7 @@ namespace vkn
 	public:
 		ImGuiContext(gee::Window& window, Context& context, RenderTarget& renderTarget, const Pass& guiPass);
 		~ImGuiContext();
-		void render(Renderer& renderer);
+		void render(Renderer& renderer, const RenderTarget& target);
 	private:
 		void render(CommandBuffer& cb);
 		Context& context_;

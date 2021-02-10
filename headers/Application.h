@@ -21,32 +21,7 @@ struct ShaderCamera
 	glm::vec4 position;
 	glm::mat4 viewProj;
 };
-struct ShaderMaterial
-{
-	uint32_t diffuseTex;
-	uint32_t normalTex;
-	uint32_t specularTex;
-};
-
 using Mesh_t = std::reference_wrapper<const gee::Mesh>;
-namespace std
-{
-	template<> struct hash<Mesh_t>
-	{
-		std::size_t operator()(const Mesh_t& mesh) const noexcept
-		{
-			return mesh.get().hash();
-		}
-	};
-
-	template<> struct equal_to<Mesh_t>
-	{
-		bool operator()(const Mesh_t& lhs, const Mesh_t& rhs) const
-		{
-			return lhs.get().hash() == rhs.get().hash();
-		}
-	};
-}
 namespace gee
 {
 	class Application
@@ -72,8 +47,6 @@ namespace gee
 		std::unique_ptr<vkn::Renderer> renderer_;
 		std::vector<std::pair<Mesh_t, size_t>> geometryCount_;
 		std::vector<std::reference_wrapper<gee::Drawable>> drawables_;
-		std::vector<std::reference_wrapper<const gee::Texture>> textures_;
-		std::unordered_map<Mesh_t, ShaderMaterial, std::hash<Mesh_t>, std::equal_to<Mesh_t>> materials_;
 		Camera camera_;
 		std::vector<glm::mat4> modelMatrices_;
 		std::vector<glm::mat4> normalMatrices_;

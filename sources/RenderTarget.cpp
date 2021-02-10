@@ -22,6 +22,7 @@ void  vkn::RenderTarget::bind(CommandBuffer& cb, const VkRect2D& renderArea)
 {
 	renderArea_ = renderArea;
 	renderpass->begin(cb, framebuffer.frame(currentFrame_), renderArea_, VK_SUBPASS_CONTENTS_INLINE);
+	isBound_ = true;
 }
 
 bool vkn::RenderTarget::isReady(Swapchain& swapchain)
@@ -36,6 +37,7 @@ void vkn::RenderTarget::unBind(CommandBuffer& cb)
 	++currentFrame_;
 	currentFrame_ %= framebuffer.frameCount();
 	assert(currentFrame_ < framebuffer.frameCount());
+	isBound_ = false;
 }
 
 void vkn::RenderTarget::resize(const glm::u32vec2& size)
@@ -59,4 +61,9 @@ float vkn::RenderTarget::rawContextAt(const uint32_t x, const uint32_t y)
 const bool vkn::RenderTarget::isOffscreen() const
 {
 	return framebuffer.isOffscreen();
+}
+
+const bool vkn::RenderTarget::isBound() const
+{
+	return isBound_;
 }

@@ -69,9 +69,12 @@ vkn::ImGuiContext::~ImGuiContext()
 	ImGui::DestroyContext();
 }
 
-void vkn::ImGuiContext::render(Renderer& renderer)
+void vkn::ImGuiContext::render(Renderer& renderer, const RenderTarget& target)
 {
-	render(renderer.currentCmdBuffer());
+	if (target.isBound());
+	{
+		render(renderer.currentCmdBuffer());
+	}
 }
 
 

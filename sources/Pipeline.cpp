@@ -1,11 +1,14 @@
 #include "../headers/Pipeline.h"
 #include <cassert>
 
+
 vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders) : context_{ context }, pipeline_{ pipeline }, shaders_{ std::move(shaders) }
 {
+	if (!context_.pushDescriptorEnabled())
+	{
+		throw std::runtime_error{"Push descriptor'device extension needs to be enabled" };
+	}
 	layout_ = std::make_unique<vkn::PipelineLayout>(*context.device, shaders_);
-	createPool();
-	createSets();
 
 	VkPhysicalDeviceProperties props;
 	vkGetPhysicalDeviceProperties(context.gpu->device, &props);
@@ -19,6 +22,7 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 	};
 
 	VkDeviceSize size{ 0 };
+	const auto& layouts = layout_->layouts();
 	for (const auto& shader : shaders_)
 	{
 		//uniforms
@@ -27,7 +31,7 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 		{
 			Uniform uniform{};
 			uniform.name = binding.name;
-			uniform.set = sets_[binding.set];
+			uniform.setLayout = layouts[binding.set];
 			uniform.binding = binding.layoutBinding.binding;
 			uniform.offset = size;
 			uniform.size = binding.size;
@@ -56,14 +60,13 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 
 	buffer_->bind(*memory_);
 
+	vkCmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkGetInstanceProcAddr(context_.instance->instance, "vkCmdPushDescriptorSetKHR"));
 }
 
 vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{other.context_}
 {
 	pipeline_ = other.pipeline_;
 	layout_ = std::move(other.layout_);
-	descriptorPool_ = other.descriptorPool_;
-	sets_ = std::move(other.sets_);
 	memory_ = std::move(other.memory_);
 	buffer_ = std::move(other.buffer_);
 
@@ -72,7 +75,7 @@ vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{other.context_}
 	pushConstants_ = std::move(other.pushConstants_);
 
 	other.pipeline_ = VK_NULL_HANDLE;
-	other.descriptorPool_ = VK_NULL_HANDLE;
+	vkCmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkGetInstanceProcAddr(context_.instance->instance, "vkCmdPushDescriptorSetKHR"));
 }
 
 vkn::Pipeline::~Pipeline()
@@ -81,20 +84,11 @@ vkn::Pipeline::~Pipeline()
 	{
 		vkDestroyPipeline(context_.device->device, pipeline_, nullptr);
 	}
-	if (!std::empty(sets_))
-	{
-		vkFreeDescriptorSets(context_.device->device, descriptorPool_, std::size(sets_), std::data(sets_));
-	}
-	if (descriptorPool_ != VK_NULL_HANDLE)
-	{
-		vkDestroyDescriptorPool(context_.device->device, descriptorPool_, nullptr);
-	}
 }
 
 void vkn::Pipeline::bind(vkn::CommandBuffer& cb)
 {
 	vkCmdBindPipeline(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
-	vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_->layout, 0, std::size(sets_), std::data(sets_), 0, nullptr);
 }
 
 
@@ -114,7 +108,6 @@ void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampl
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.pNext = nullptr;
-	write.dstSet = uniform->set;
 	write.dstBinding = uniform->binding;
 	write.descriptorType = uniform->type;
 	write.pImageInfo = imageInfo.get();
@@ -141,7 +134,6 @@ void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSamp
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.pNext = nullptr;
-	write.dstSet = uniform->set;
 	write.dstBinding = uniform->binding;
 	write.descriptorType = uniform->type;
 	write.pImageInfo = std::data(*imagesInfos);
@@ -155,61 +147,13 @@ const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const
 	return uniforms_;
 }
 
-void vkn::Pipeline::updateUniforms()
+void vkn::Pipeline::updateUniforms(CommandBuffer& cb)
 {
-	vkUpdateDescriptorSets(context_.device->device, std::size(uniformsWrites_), std::data(uniformsWrites_), 0, nullptr);
+	assert(cb.isRecording() && "Command buffer needs to be in recording state");
+	//need to sort uniform write to make a push per set
+	vkCmdPushDescriptorSetKHR(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_->layout, 0, std::size(uniformsWrites_), std::data(uniformsWrites_));
 	uniformsWrites_.clear();
 	imageInfos_.clear();
 	imagesInfos_.clear();
 	bufferInfos_.clear();
-}
-
-void vkn::Pipeline::createSets()
-{
-	auto layouts = layout_->layouts();
-	VkDescriptorSetAllocateInfo setInfo{};
-	setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	setInfo.pNext = nullptr;
-	setInfo.descriptorPool = descriptorPool_;
-	setInfo.pSetLayouts = std::data(layouts);
-	setInfo.descriptorSetCount = std::size(layouts);
-
-	sets_.resize(std::size(layouts));
-	vkn::error_check(vkAllocateDescriptorSets(context_.device->device, &setInfo, std::data(sets_)), "Failed to allocate the pipeline sets");
-}
-
-const std::vector<VkDescriptorPoolSize> vkn::Pipeline::getPoolSizes() const
-{
-	std::vector<VkDescriptorPoolSize> poolSize;
-	for (const auto& shader : shaders_)
-	{
-		auto sizes = shader.poolSize();
-		for (const auto& size : sizes)
-		{
-			auto pool = std::find_if(std::begin(poolSize), std::end(poolSize), [&](auto& pool) { return pool.type == size.type; });
-			if (pool == std::end(poolSize))
-			{
-				poolSize.push_back(size);
-			}
-			else
-			{
-				pool->descriptorCount += size.descriptorCount;
-			}
-		}
-	}
-	return poolSize;
-}
-
-void vkn::Pipeline::createPool()
-{
-	auto poolSizes = getPoolSizes();
-	VkDescriptorPoolCreateInfo poolInfo{};
-	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.pNext = nullptr;
-	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-	poolInfo.maxSets = 1;
-	poolInfo.poolSizeCount = std::size(poolSizes);
-	poolInfo.pPoolSizes = std::data(poolSizes);
-
-	vkn::error_check(vkCreateDescriptorPool(context_.device->device, &poolInfo, nullptr, &descriptorPool_), "Failed to create the descriptor pool");
 }

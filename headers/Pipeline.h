@@ -20,7 +20,7 @@ namespace vkn
 		{
 			std::string name;
 			VkDescriptorType type;
-			VkDescriptorSet set;
+			VkDescriptorSetLayout setLayout;
 			uint32_t binding;
 			VkDeviceSize offset;
 			VkDeviceSize size;
@@ -37,15 +37,13 @@ namespace vkn
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
 		template<class T>
 		void updateBuffer(const std::string& resourceName, const T& datas);
-		void updateUniforms();
+		void updateUniforms(CommandBuffer& cb);
 	private:
 
 		Context& context_;
 		VkPipeline pipeline_{ VK_NULL_HANDLE };
 		std::unique_ptr<vkn::PipelineLayout> layout_;
 		std::vector<vkn::Shader> shaders_;
-		std::vector<VkDescriptorSet> sets_;
-		VkDescriptorPool descriptorPool_{ VK_NULL_HANDLE };
 		std::vector<Uniform> uniforms_;
 		std::vector<vkn::Shader::PushConstant> pushConstants_;
 		std::unique_ptr<vkn::DeviceMemory> memory_;
@@ -54,9 +52,7 @@ namespace vkn
 		std::vector<std::shared_ptr<VkDescriptorImageInfo>> imageInfos_;
 		std::vector<std::shared_ptr<std::vector<VkDescriptorImageInfo>>> imagesInfos_;
 		std::vector<std::shared_ptr<VkDescriptorBufferInfo>> bufferInfos_;
-		void createPool();
-		void createSets();
-		const std::vector<VkDescriptorPoolSize> getPoolSizes() const;
+		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR;
 	};
 
 	template<class T>
@@ -80,7 +76,6 @@ namespace vkn
 		VkWriteDescriptorSet write{};
 		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write.pNext = nullptr;
-		write.dstSet = uniform->set;
 		write.dstBinding = uniform->binding;
 		write.descriptorType = uniform->type;
 		write.descriptorCount = uniform->size;
