@@ -9,16 +9,14 @@ vkn::PipelineLayout::PipelineLayout(vkn::Device& device, const std::vector<vkn::
 	createSubpassInputSets(shaders);
 	createPushConstantRanges(shaders);
 
-	std::vector<VkDescriptorSetLayout> sets(sets_);
-	std::copy(std::begin(subpassInputSets_), std::end(subpassInputSets_), std::back_inserter(sets));
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutInfo.pNext = nullptr;
 	layoutInfo.flags = 0;
 	layoutInfo.pushConstantRangeCount = std::size(pushConstantRanges_);
 	layoutInfo.pPushConstantRanges = std::data(pushConstantRanges_);
-	layoutInfo.setLayoutCount = std::size(sets);
-	layoutInfo.pSetLayouts = std::data(sets);
+	layoutInfo.setLayoutCount = std::size(sets_);
+	layoutInfo.pSetLayouts = std::data(sets_);
 	vkn::error_check(vkCreatePipelineLayout(device.device, &layoutInfo, nullptr, &layout), "Failed to create the pipeline Layout");
 }
 
@@ -26,7 +24,6 @@ vkn::PipelineLayout::PipelineLayout(PipelineLayout&& other) : device_{ other.dev
 {
 	layout = other.layout;
 	sets_ = std::move(other.sets_);
-	subpassInputSets_ = std::move(other.subpassInputSets_);
 
 	other.layout = VK_NULL_HANDLE;
 }
@@ -49,11 +46,6 @@ vkn::PipelineLayout::~PipelineLayout()
 const std::vector<VkDescriptorSetLayout>& vkn::PipelineLayout::layouts() const
 {
 	return sets_;
-}
-
-const std::vector<VkDescriptorSetLayout>& vkn::PipelineLayout::subpassInputLayouts() const
-{
-	return subpassInputSets_;
 }
 
 void vkn::PipelineLayout::createSets(const std::vector<vkn::Shader>& shaders)
