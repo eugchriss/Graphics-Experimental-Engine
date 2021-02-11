@@ -186,6 +186,12 @@ void gee::Application::updateGui()
 	ImGui::LabelText("cpu time (ms)", std::to_string(cpuTime_).c_str(), "0.3f");
 	ImGui::LabelText("gpu time (ms)", std::to_string(gpuTime_).c_str(), "0.3f");
 	ImGui::End();
+
+	ImGui::Begin("Postprocess effects");
+	ImGui::Checkbox("use hdr", &useHdr_);
+	ImGui::SliderFloat("exposure", &exposure_, 0.1, 5.0f, "%.1f");
+	ImGui::Checkbox("use gamma correction", &useGammaCorrection_);
+	ImGui::End();
 }
 
 void gee::Application::onMouseMoveEvent(double x, double y)
@@ -420,6 +426,9 @@ bool gee::Application::isRunning()
 		
 		renderer_->usePipeline(*gammaCorrectionPipeline_);
 		renderer_->setTexture("outputTexture", renderTarget_->attachmentImage("color"));
+		renderer_->updateBuffer("Exposure", exposure_);
+		renderer_->updateBuffer("HDR", useHdr_);
+		renderer_->updateBuffer("GammaCorrection", useGammaCorrection_);
 		renderer_->draw(*quadMesh_);
 
 		imguiContext_->render(*renderer_, *renderTarget_);

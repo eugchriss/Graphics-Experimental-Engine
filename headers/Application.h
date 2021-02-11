@@ -61,6 +61,10 @@ namespace gee
 		bool rightButtonPressed_{ false };
 		bool firstMouseUse_{ true };
 		bool drawblesShouldBeSorted_{ false };
+		bool useGammaCorrection_{ true };
+		bool useHdr_{ true };
+		float exposure_{ 1.0f };
+
 		glm::vec2 lastPos_{};
 		void createContext();
 		void createPipeline();
