@@ -52,15 +52,23 @@ void vkn::RenderTarget::resize(const glm::u32vec2& size)
 	}
 }
 
-float vkn::RenderTarget::rawContextAt(const uint32_t x, const uint32_t y)
+float vkn::RenderTarget::rawContextAt(const std::string& name, const uint32_t x, const uint32_t y)
 {	
 	auto offset = (x + y * framebuffer.dimensions().width) * 4;
-	return framebuffer.rawContentAt(offset);
+	return framebuffer.rawContentAt(name, offset);
 }
 
 const bool vkn::RenderTarget::isOffscreen() const
 {
 	return framebuffer.isOffscreen();
+}
+
+vkn::Image& vkn::RenderTarget::attachmentImage(const std::string& name)
+{
+	auto& attachments = framebuffer.attachments(currentFrame_);
+	auto result = attachments.find(name);
+	assert(result != std::end(attachments) && "non existent attachment");
+	return result->second;
 }
 
 const bool vkn::RenderTarget::isBound() const

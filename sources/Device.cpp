@@ -9,7 +9,7 @@ vkn::Device::Device(vkn::Gpu& gpu,const std::vector<std::string>& requestedExten
 	{
 		extensions.emplace_back(extension.c_str());
 	}
-	pushDescriptorEnabled_ =  std::find(std::begin(requestedExtensions), std::end(requestedExtensions), "VK_KHR_push_descriptor") != std::end(requestedExtensions);
+	pushDescriptorEnabled_ = std::find(std::begin(requestedExtensions), std::end(requestedExtensions), "VK_KHR_push_descriptor") != std::end(requestedExtensions);
 	
 	auto features = gpu.enabledFeatures();
 	VkDeviceCreateInfo deviceCI{};
@@ -38,8 +38,7 @@ vkn::Device::Device(Device&& other)
 }
 
 vkn::Device::~Device()
-{
-	
+{	
 	if (device != VK_NULL_HANDLE)
 	{
 		idle();

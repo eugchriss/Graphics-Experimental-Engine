@@ -42,7 +42,20 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 			size += uniform.range;
 			size = align(size);
 		}
+		const auto& subpassInputBindings = shader.subpassInputBindings();
+		for (const auto& binding : subpassInputBindings)
+		{
+			Uniform uniform{};
+			uniform.name = binding.name;
+			uniform.setLayout = layouts[binding.set];
+			uniform.binding = binding.layoutBinding.binding;
+			uniform.offset = size;
+			uniform.size = binding.size;
+			uniform.range = binding.range;
+			uniform.type = binding.layoutBinding.descriptorType;
 
+			uniforms_.push_back(uniform);
+		}
 		//push constants
 		const auto& pushConstants = shader.pushConstants();
 		std::copy(std::begin(pushConstants), std::end(pushConstants), std::back_inserter(pushConstants_));

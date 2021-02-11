@@ -157,6 +157,15 @@ void vkn::Renderer::usePipeline(Pipeline& pipeline)
 	}
 }
 
+void vkn::Renderer::setTexture(const std::string& name, vkn::Image& image, const VkImageViewType& viewType, const uint32_t layerCount)
+{
+	if (shouldRender_)
+	{
+		assert(boundPipeline_.has_value() && "A pipeline needs to bind first");
+		boundPipeline_->get().updateTexture(name, sampler_, image.getView(VK_IMAGE_ASPECT_COLOR_BIT, viewType, layerCount), VK_SHADER_STAGE_FRAGMENT_BIT);
+	}
+}
+
 void vkn::Renderer::setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType, const uint32_t layerCount)
 {
 	if (shouldRender_)

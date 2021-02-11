@@ -37,6 +37,7 @@ namespace vkn
 		void endTarget(RenderTarget& target);
 		void clearDepthAttachment(RenderTarget& target, const float clearColor = 1.0f);
 		void usePipeline(Pipeline& pipeline);
+		void setTexture(const std::string& name, vkn::Image& image, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D, const uint32_t layerCount = 1);
 		void setTexture(const std::string& name, const gee::Texture& texture, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D, const uint32_t layerCount = 1);
 		void setTextures(const std::string& name, const std::vector<std::reference_wrapper<const gee::Texture>>& textures, const VkImageViewType& viewType = VK_IMAGE_VIEW_TYPE_2D);
 		template <class T>

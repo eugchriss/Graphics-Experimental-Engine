@@ -8,13 +8,18 @@
 
 namespace vkn
 {
-	using Attachment = uint32_t;
+	struct Attachment
+	{
+		std::string name;
+		uint32_t index;
+	};
 
 	class Pass
 	{
 	public:
 		void addColorAttachment(const Attachment attachment);
 		void addDepthStencilAttachment(const Attachment attachment);
+		void addInputAttachment(const Attachment attachment);
 		const uint32_t index() const;
 		friend class FrameGraph;
 	private:
@@ -24,7 +29,7 @@ namespace vkn
 		std::vector<VkAttachmentReference> colorAttachments{};
 		std::vector<VkAttachmentReference> depthStencilAttachments;
 		std::vector<uint32_t> preservedAttachments;
-		std::unordered_set<Attachment> usedAttachments;
+		std::unordered_set<uint32_t> usedAttachments;
 		uint32_t index_;
 		
 	};
@@ -33,15 +38,15 @@ namespace vkn
 	public:
 		FrameGraph() = default;
 		void setRenderArea(const uint32_t width, const uint32_t height);
-		const Attachment addColorAttachment(const VkFormat format, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-		const Attachment addDepthAttachment(const VkFormat format, const VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		const Attachment addDepthAttachment(const std::string& name, const VkFormat format, const VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		const Attachment addColorAttachment(const std::string& name, const VkFormat format, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 		void setAttachmentColorDepthContent(const Attachment attchment, const VkAttachmentLoadOp load, const VkAttachmentStoreOp store);
 		void setPresentAttachment(const Attachment attachment);
 		Pass& addPass();
 		RenderTarget createRenderTarget(Context& context, const uint32_t frameCount = 1);
 		RenderTarget createRenderTarget(Context& context, Swapchain& swapchain);
 	private:
-		std::vector<VkAttachmentDescription> attachments_;
+		std::vector<std::pair<Attachment, VkAttachmentDescription>> attachments_;
 		std::vector<Pass> passes_;
 		std::vector<VkSubpassDependency> dependencies_;
 		std::optional<Attachment> presentAttchment_;

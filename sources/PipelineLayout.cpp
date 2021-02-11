@@ -6,16 +6,19 @@
 vkn::PipelineLayout::PipelineLayout(vkn::Device& device, const std::vector<vkn::Shader>& shaders) : device_{ device }
 {
 	createSets(shaders);
+	createSubpassInputSets(shaders);
 	createPushConstantRanges(shaders);
 
+	std::vector<VkDescriptorSetLayout> sets(sets_);
+	std::copy(std::begin(subpassInputSets_), std::end(subpassInputSets_), std::back_inserter(sets));
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutInfo.pNext = nullptr;
 	layoutInfo.flags = 0;
 	layoutInfo.pushConstantRangeCount = std::size(pushConstantRanges_);
 	layoutInfo.pPushConstantRanges = std::data(pushConstantRanges_);
-	layoutInfo.setLayoutCount = std::size(sets_);
-	layoutInfo.pSetLayouts = std::data(sets_);
+	layoutInfo.setLayoutCount = std::size(sets);
+	layoutInfo.pSetLayouts = std::data(sets);
 	vkn::error_check(vkCreatePipelineLayout(device.device, &layoutInfo, nullptr, &layout), "Failed to create the pipeline Layout");
 }
 
@@ -23,6 +26,7 @@ vkn::PipelineLayout::PipelineLayout(PipelineLayout&& other) : device_{ other.dev
 {
 	layout = other.layout;
 	sets_ = std::move(other.sets_);
+	subpassInputSets_ = std::move(other.subpassInputSets_);
 
 	other.layout = VK_NULL_HANDLE;
 }
@@ -45,6 +49,11 @@ vkn::PipelineLayout::~PipelineLayout()
 const std::vector<VkDescriptorSetLayout>& vkn::PipelineLayout::layouts() const
 {
 	return sets_;
+}
+
+const std::vector<VkDescriptorSetLayout>& vkn::PipelineLayout::subpassInputLayouts() const
+{
+	return subpassInputSets_;
 }
 
 void vkn::PipelineLayout::createSets(const std::vector<vkn::Shader>& shaders)
@@ -72,6 +81,36 @@ void vkn::PipelineLayout::createSets(const std::vector<vkn::Shader>& shaders)
 
 		vkn::error_check(vkCreateDescriptorSetLayout(device_.device, &setInfo, nullptr, &set), "Failed to create the set");
 		sets_.push_back(set);
+	}
+}
+
+void vkn::PipelineLayout::createSubpassInputSets(const std::vector<vkn::Shader>& shaders)
+{
+	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> setBindings;
+	for (const auto& shader : shaders)
+	{
+		auto& subpassInputBindings = shader.subpassInputBindings();
+		for (const auto& subpassInputBinding : subpassInputBindings)
+		{
+			setBindings[subpassInputBinding.set].push_back(subpassInputBinding.layoutBinding);
+		}
+	}
+	if (!std::empty(setBindings))
+	{
+		for (const auto& setBinding : setBindings)
+		{
+			VkDescriptorSetLayout set{ VK_NULL_HANDLE };
+			
+			VkDescriptorSetLayoutCreateInfo setInfo{};
+			setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			setInfo.pNext = nullptr;
+			setInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+			setInfo.bindingCount = std::size(setBinding.second);
+			setInfo.pBindings = std::data(setBinding.second);
+
+			vkn::error_check(vkCreateDescriptorSetLayout(device_.device, &setInfo, nullptr, &set), "Failed to create the set");
+			sets_.push_back(set);
+		}
 	}
 }
 

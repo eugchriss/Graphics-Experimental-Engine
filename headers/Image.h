@@ -21,7 +21,7 @@ namespace vkn
 	{
 	public:
 		//the default image layout is undefined
-		Image(Context& context, const VkImageUsageFlags usage, const VkFormat format, const VkExtent3D extent, const uint32_t layerCount = 1);
+		Image(Context& context, const VkImageUsageFlags usage, const VkFormat format, const VkExtent3D extent, const uint32_t layerCount = 1) ;
 		Image(Context& context, const VkAttachmentDescription& attachment, const VkExtent3D extent, const uint32_t layerCount = 1);
 		Image(Context& context, const VkImage image, const VkFormat format, const uint32_t layerCount = 1, bool owned = false);
 		Image(Image&& image);

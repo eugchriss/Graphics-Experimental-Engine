@@ -14,6 +14,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 {
 	std::cout << "The application has been launched.\n";
 	cubeMesh_ = std::make_unique<gee::Mesh>(gee::getCubeMesh());
+	quadMesh_ = std::make_unique<gee::Mesh>(gee::getQuadMesh());
 	std::array<std::string, 6> skyboxPaths{ "../assets/skybox/space/right.png",
 											"../assets/skybox/space/left.png",
 											"../assets/skybox/space/top.png",
@@ -25,11 +26,13 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	renderer_ = std::make_unique<vkn::Renderer>(*context_, window_);
 
 	vkn::FrameGraph frameGraph{};
-	auto colorAtt = frameGraph.addColorAttachment(VK_FORMAT_R32G32B32A32_SFLOAT);
-	auto depthAtt = frameGraph.addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT);
-	frameGraph.setAttachmentColorDepthContent(colorAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
+	auto colorAtt = frameGraph.addColorAttachment("color", VK_FORMAT_R32G32B32A32_SFLOAT);
+	auto inputAtt = frameGraph.addColorAttachment("input", VK_FORMAT_R32G32B32A32_SFLOAT);
+	auto depthAtt = frameGraph.addDepthAttachment("depth", VK_FORMAT_D24_UNORM_S8_UINT);
+	frameGraph.setAttachmentColorDepthContent(colorAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+	frameGraph.setAttachmentColorDepthContent(inputAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
 	frameGraph.setAttachmentColorDepthContent(depthAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
-	frameGraph.setPresentAttachment(colorAtt);
+	frameGraph.setPresentAttachment(inputAtt);
 	
 	auto& skyboxPass = frameGraph.addPass();
 	skyboxPass.addColorAttachment(colorAtt);
@@ -39,8 +42,12 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	colorPass.addColorAttachment(colorAtt);
 	colorPass.addDepthStencilAttachment(depthAtt);
 
+	auto& gammaCorrectionPass = frameGraph.addPass();
+	gammaCorrectionPass.addColorAttachment(inputAtt);
+	gammaCorrectionPass.addInputAttachment(depthAtt);
+
 	auto& guiPass = frameGraph.addPass();
-	guiPass.addColorAttachment(colorAtt);
+	guiPass.addColorAttachment(inputAtt);
 
 	renderTarget_ = std::make_unique<vkn::RenderTarget>(frameGraph.createRenderTarget(*context_, renderer_->swapchain()));
 	createPipeline();
@@ -242,7 +249,7 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		}
 		renderer_->endTarget(*pixelPerfectRenderTarget_);
 		renderer_->end();
-		auto value = pixelPerfectRenderTarget_->rawContextAt(x, y);
+		auto value = pixelPerfectRenderTarget_->rawContextAt("color", x, y);
 		auto index = static_cast<size_t>(value * 255);
 		activeDrawable_ = std::nullopt;
 		if (index > 0)
@@ -312,13 +319,19 @@ void gee::Application::createPipeline()
 	builder.setShaderFragmentStage("../assets/shaders/frag.spv");
 	builder.subpass = 1;
 	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
+
+
+	builder.setShaderVertexStage("../assets/shaders/gamma Correction/vert.spv");
+	builder.setShaderFragmentStage("../assets/shaders/gamma Correction/frag.spv");
+	builder.subpass = 2;
+	gammaCorrectionPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
 }
 
 void gee::Application::initPixelPerfect()
 {
 	vkn::FrameGraph frameGraph{};
-	auto colorAtt = frameGraph.addColorAttachment(VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	auto depthAtt = frameGraph.addDepthAttachment(VK_FORMAT_D24_UNORM_S8_UINT);
+	auto colorAtt = frameGraph.addColorAttachment("color", VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	auto depthAtt = frameGraph.addDepthAttachment("depth", VK_FORMAT_D24_UNORM_S8_UINT);
 	frameGraph.setAttachmentColorDepthContent(colorAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
 	frameGraph.setAttachmentColorDepthContent(depthAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 	frameGraph.setRenderArea(window_.size().x, window_.size().y);
@@ -403,6 +416,12 @@ bool gee::Application::isRunning()
 			renderer_->setTexture("specularTex", mesh.get().material().specularTex);
 			renderer_->draw(mesh, count);
 		}
+
+		
+		renderer_->usePipeline(*gammaCorrectionPipeline_);
+		renderer_->setTexture("outputTexture", renderTarget_->attachmentImage("color"));
+		renderer_->draw(*quadMesh_);
+
 		imguiContext_->render(*renderer_, *renderTarget_);
 		renderer_->endTarget(*renderTarget_);
 	

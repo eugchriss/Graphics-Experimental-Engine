@@ -45,6 +45,7 @@ namespace vkn
 		};
 
 		const std::vector<Binding>& bindings() const;
+		const std::vector<Binding>& subpassInputBindings() const;
 		const std::vector<PushConstant>& pushConstants() const;
 		const std::vector<VkDescriptorPoolSize> poolSize() const;
 		const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> attributeDescriptions() const;
@@ -56,6 +57,7 @@ namespace vkn
 		VkShaderStageFlagBits stage_;
 		std::vector<std::string> inputTexturesNames_;
 		std::vector<Binding> bindings_;
+		std::vector<Binding> subpassInputBindings_;
 		std::vector<PushConstant> pushConstants_;
 		std::vector<Attachment> outputAttachments_;
 		std::unique_ptr<spirv_cross::CompilerGLSL> spirv_;

@@ -10,8 +10,12 @@ void vkn::FrameGraph::setRenderArea(const uint32_t width, const uint32_t height)
 	renderArea_.height = height;
 }
 
-const vkn::Attachment vkn::FrameGraph::addColorAttachment(const VkFormat format, const VkImageLayout layout)
+const vkn::Attachment vkn::FrameGraph::addColorAttachment(const std::string& name, const VkFormat format, const VkImageLayout layout)
 {
+	Attachment att;
+	att.name = name;
+	att.index = std::size(attachments_);
+
 	VkAttachmentDescription attachment{};
 	attachment.flags = 0;
 	attachment.format = format;
@@ -20,12 +24,16 @@ const vkn::Attachment vkn::FrameGraph::addColorAttachment(const VkFormat format,
 	attachment.finalLayout = layout;
 	attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments_.emplace_back(attachment);
-    return std::size(attachments_) - 1;
+    attachments_.emplace_back(std::make_pair(att, attachment));
+	return att;
 }
 
-const vkn::Attachment vkn::FrameGraph::addDepthAttachment(const VkFormat format, const VkImageLayout layout)
+const vkn::Attachment vkn::FrameGraph::addDepthAttachment(const std::string& name, const VkFormat format, const VkImageLayout layout)
 {
+	Attachment att;
+	att.name = name;
+	att.index = std::size(attachments_);
+
 	VkAttachmentDescription attachment{};
 	attachment.flags = 0;
 	attachment.format = format;
@@ -34,15 +42,15 @@ const vkn::Attachment vkn::FrameGraph::addDepthAttachment(const VkFormat format,
 	attachment.finalLayout = layout;
 	attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachments_.emplace_back(attachment);
-	return std::size(attachments_) - 1;
+	attachments_.emplace_back(std::make_pair(att, attachment));
+	return att;
 }
 
 void vkn::FrameGraph::setAttachmentColorDepthContent(const Attachment attachment, const VkAttachmentLoadOp load, const VkAttachmentStoreOp store)
 {
-	assert(attachment <= std::size(attachments_) && "Invalid attachment");
-	attachments_[attachment].loadOp = load;
-	attachments_[attachment].storeOp = store;
+	assert(attachment.index <= std::size(attachments_) && "Invalid attachment");
+	attachments_[attachment.index].second.loadOp = load;
+	attachments_[attachment.index].second.storeOp = store;
 }
 
 void vkn::FrameGraph::setPresentAttachment(const Attachment attachment)
@@ -66,20 +74,28 @@ vkn::RenderTarget vkn::FrameGraph::createRenderTarget(Context& context, const ui
 vkn::RenderTarget vkn::FrameGraph::createRenderTarget(Context& context, Swapchain& swapchain)
 {
 	assert(presentAttchment_.has_value() && "Need to set a present attachment for presenting frames");
-	attachments_[*presentAttchment_].format = swapchain.imageFormat();
-	attachments_[*presentAttchment_].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	attachments_[presentAttchment_->index].second.format = swapchain.imageFormat();
+	attachments_[presentAttchment_->index].second.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	auto renderpass = std::make_shared<vkn::Renderpass>(createRenderpass(context));
-	vkn::Framebuffer framebuffer{ context, renderpass, swapchain, *presentAttchment_ };
+
+	vkn::Framebuffer framebuffer{ context, renderpass, swapchain, presentAttchment_->index };
 	return RenderTarget{context, std::move(renderpass), std::move(framebuffer) };
 }
 
 vkn::Renderpass vkn::FrameGraph::createRenderpass(vkn::Context& context)
 {
+	std::vector<VkAttachmentDescription> descriptions;
+	descriptions.reserve(std::size(attachments_));
+	for (const auto& [attachment, description] : attachments_)
+	{
+		descriptions.emplace_back(description);
+	}
+
 	std::vector<VkSubpassDescription> subpasses;
 	for (auto& pass : passes_)
 	{
-		pass.setPreservedAttachments(attachments_);
+		pass.setPreservedAttachments(descriptions);
 		VkSubpassDescription subpass{};
 		subpass.flags = 0;
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -98,8 +114,8 @@ vkn::Renderpass vkn::FrameGraph::createRenderpass(vkn::Context& context)
 	info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	info.pNext = nullptr;
 	info.flags = 0;
-	info.attachmentCount = std::size(attachments_);
-	info.pAttachments = std::data(attachments_);
+	info.attachmentCount = std::size(descriptions);
+	info.pAttachments = std::data(descriptions);
 	info.subpassCount = std::size(subpasses);
 	info.pSubpasses = std::data(subpasses);
 	info.dependencyCount = std::size(dependencies_);
@@ -107,12 +123,21 @@ vkn::Renderpass vkn::FrameGraph::createRenderpass(vkn::Context& context)
 
 	VkRenderPass renderpass{ VK_NULL_HANDLE };
 	vkn::error_check(vkCreateRenderPass(context.device->device, &info, nullptr, &renderpass), "Failed to create the render pass");
-	return Renderpass{context, renderpass, attachments_ };
+	std::vector<Renderpass::Attachment> attachments;
+	attachments.reserve(std::size(attachments_));
+	for (const auto& [attachment, description] : attachments_)
+	{
+		Renderpass::Attachment att;
+		att.name = attachment.name;
+		att.description = description;
+		attachments.emplace_back(att);
+	}
+	return Renderpass{context, renderpass, attachments};
 }
 
 void vkn::FrameGraph::findDependencies()
 {
-	std::unordered_map<Attachment, std::vector<SubpassAttachmentUsage>> attachmentUsages;
+	std::unordered_map<uint32_t, std::vector<SubpassAttachmentUsage>> attachmentUsages;
 	for (auto i = 0u; i < std::size(passes_); ++i)
 	{
 		const auto& pass = passes_[i];
@@ -164,19 +189,28 @@ void vkn::FrameGraph::findDependencies()
 void vkn::Pass::addColorAttachment(const Attachment attachment)
 {
 	VkAttachmentReference reference{};
-	reference.attachment = attachment;		 
+	reference.attachment = attachment.index;		 
 	reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	colorAttachments.emplace_back(reference);
-	usedAttachments.insert(attachment);
+	usedAttachments.insert(attachment.index);
 }
 
 void vkn::Pass::addDepthStencilAttachment(const Attachment attachment)
 {
 	VkAttachmentReference reference{};
-	reference.attachment = attachment;
+	reference.attachment = attachment.index;
 	reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	depthStencilAttachments.emplace_back(reference);
-	usedAttachments.insert(attachment);
+	usedAttachments.insert(attachment.index);
+}
+
+void vkn::Pass::addInputAttachment(const Attachment attachment)
+{
+	VkAttachmentReference reference{};
+	reference.attachment = attachment.index;
+	reference.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	inputAttachments.emplace_back(reference);
+	usedAttachments.insert(attachment.index);
 }
 
 const uint32_t vkn::Pass::index() const

@@ -1,12 +1,12 @@
 #include "..\headers\Renderpass.h"
 
-vkn::Renderpass::Renderpass(vkn::Context& context, const VkRenderPass& renderpass, std::vector<VkAttachmentDescription>& attachments) : 
+vkn::Renderpass::Renderpass(vkn::Context& context, const VkRenderPass& renderpass, std::vector<Attachment>& attachments) : 
 	device_{*context.device }, renderpass_{ renderpass },
 	attachments_ { std::move(attachments) }
 {
 	for (const auto& attachment : attachments_)
 	{
-		if (isColorAttachment(attachment))
+		if (isColorAttachment(attachment.description))
 		{
 			colorClearValuesIndices_.push_back(std::size(clearValues_));
 			VkClearValue clear{};
@@ -109,7 +109,7 @@ void vkn::Renderpass::setClearColor(const glm::vec3& color)
 	}
 }
 
-const std::vector<VkAttachmentDescription>& vkn::Renderpass::attachments() const
+const std::vector<vkn::Renderpass::Attachment>& vkn::Renderpass::attachments() const
 {
 	return attachments_;
 }

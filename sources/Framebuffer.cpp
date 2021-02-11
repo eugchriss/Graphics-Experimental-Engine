@@ -17,12 +17,13 @@ vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass
 	for (auto& framebuffer : framebuffers_)
 	{
 		std::vector<VkImageView> views;
-
+		auto& imagesMap = images_.emplace_back();
 		views.reserve(std::size(renderpassAttachments));
 		for (const auto& attachment : renderpassAttachments)
 		{
-			images_.emplace_back(context_, attachment, VkExtent3D{ dimensions_.width, dimensions_.height, 1 });
-			views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
+			Image image{ context_, attachment.description, VkExtent3D{ dimensions_.width, dimensions_.height, 1} };
+			views.emplace_back(image.getView(getAspectFlag(attachment.description)));
+			imagesMap.emplace(attachment.name, std::move(image));
 		}
 		fbInfo.attachmentCount = std::size(views);
 		fbInfo.pAttachments = std::data(views);
@@ -53,19 +54,20 @@ vkn::Framebuffer::Framebuffer(Context& context, const std::shared_ptr<Renderpass
 	for (auto& framebuffer : framebuffers_)
 	{
 		std::vector<VkImageView> views;
-
+		auto& imagesMap = images_.emplace_back();
 		views.reserve(std::size(renderpassAttachments));
 		for (auto i = 0u; i < std::size(renderpassAttachments); ++i)
 		{
 			if (i == presentAttachment_)
 			{
-				views.emplace_back(swapchain.images()[frameIndex].getView(getAspectFlag(renderpassAttachments[presentAttachment])));
+				views.emplace_back(swapchain.images()[frameIndex].getView(getAspectFlag(renderpassAttachments[presentAttachment].description)));
 			}
 			else
 			{
 				auto& attachment = renderpassAttachments[i];
-				images_.emplace_back(context_, attachment, VkExtent3D{ dimensions_.width, dimensions_.height, 1 });
-				views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
+				Image image{ context_, attachment.description, VkExtent3D{ dimensions_.width, dimensions_.height, 1} };
+				views.emplace_back(image.getView(getAspectFlag(attachment.description)));
+				imagesMap.emplace(attachment.name, std::move(image));
 			}
 		}
 		fbInfo.attachmentCount = std::size(views);
@@ -87,25 +89,20 @@ vkn::Framebuffer::~Framebuffer()
 #ifndef NDEBUG
 void vkn::Framebuffer::setDebugName(const std::string& name)
 {
-	for (auto& image : images_)
+	for (auto& imagesMap : images_)
 	{
-		image.setDebugName(name + "image ");
+		for(auto& [name, image]: imagesMap)
+		{
+			image.setDebugName(name );
+		}
 	}
 }
 #endif
-const std::vector<vkn::Pixel> vkn::Framebuffer::frameContent(const uint32_t imageIndex)
-{
-	return images_[imageIndex].content(*context_.gpu);
-}
 
-const float vkn::Framebuffer::rawContentAt(const VkDeviceSize offset, const uint32_t imageIndex)
+const float vkn::Framebuffer::rawContentAt(const std::string& name, const VkDeviceSize offset, const uint32_t imageIndex)
 {
-	return images_[imageIndex].rawContentAt(*context_.gpu, offset);
-}
-
-const std::vector<float> vkn::Framebuffer::frameRawContent(const uint32_t imageIndex)
-{
-	return images_[imageIndex].rawContent(*context_.gpu);
+	auto image = images_[imageIndex].find(name);
+	return image->second.rawContentAt(*context_.gpu, offset);
 }
 
 const size_t vkn::Framebuffer::frameCount() const
@@ -162,29 +159,21 @@ void vkn::Framebuffer::resize(const glm::u32vec2& size)
 	{
 		vkDestroyFramebuffer(context_.device->device, framebuffer, nullptr);
 		std::vector<VkImageView> views;
+		auto& imagesMap = images_.emplace_back();
 		views.reserve(std::size(renderpassAttachments));
 		for (auto i = 0u; i < std::size(renderpassAttachments); ++i)
 		{
-			if (presentAttachment_.has_value())
+			if (i == presentAttachment_)
 			{
-				if (i == presentAttachment_)
-				{
-					views.emplace_back(swapchain_->get().images()[frameIndex].getView(getAspectFlag(renderpassAttachments[presentAttachment_.value()])));
-				}
-				else
-				{
-					auto& attachment = renderpassAttachments[i];
-					images_.emplace_back(context_, attachment, VkExtent3D{ dimensions_.width, dimensions_.height, 1 });
-					views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
-				}
+				views.emplace_back(swapchain_->get().images()[frameIndex].getView(getAspectFlag(renderpassAttachments[*presentAttachment_].description)));
 			}
 			else
 			{
 				auto& attachment = renderpassAttachments[i];
-				images_.emplace_back(context_, attachment, VkExtent3D{ dimensions_.width, dimensions_.height, 1 });
-				views.emplace_back(images_.back().getView(getAspectFlag(attachment)));
+				Image image{ context_, attachment.description, VkExtent3D{ dimensions_.width, dimensions_.height, 1} };
+				views.emplace_back(image.getView(getAspectFlag(attachment.description)));
+				imagesMap.emplace(attachment.name, std::move(image));
 			}
-			
 		}
 		fbInfo.attachmentCount = std::size(views);
 		fbInfo.pAttachments = std::data(views);
@@ -202,4 +191,10 @@ const VkExtent2D& vkn::Framebuffer::dimensions() const
 const bool vkn::Framebuffer::isOffscreen() const
 {
 	return !swapchain_.has_value();
+}
+
+std::unordered_map<std::string, vkn::Image>& vkn::Framebuffer::attachments(const uint32_t imageIndex)
+{
+	assert(imageIndex < std::size(images_) && "out of range image index");
+	return images_[imageIndex];
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <memory>
+#include <string>
 #include "vulkanContext.h"
 #include "Renderpass.h"
 #include "Framebuffer.h"
@@ -21,9 +22,10 @@ namespace vkn
 		bool isReady(Swapchain& swapchain);
 		void unBind(CommandBuffer& cb);
 		void resize(const glm::u32vec2& size);
-		float rawContextAt(const uint32_t x, const uint32_t y);
+		float rawContextAt(const std::string& attachmentName, const uint32_t x, const uint32_t y);
 		const bool isOffscreen() const;
 		const bool isBound() const;
+		vkn::Image& attachmentImage(const std::string& name);
 		std::shared_ptr<Renderpass> renderpass;
 		Framebuffer framebuffer;
 

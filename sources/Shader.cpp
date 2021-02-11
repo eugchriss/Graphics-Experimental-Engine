@@ -25,6 +25,7 @@ vkn::Shader::Shader(Shader&& other) : device_{ other.device_ }
 	stage_ = other.stage_;
 	/*not neccesary but for rigor	*/
 	bindings_ = std::move(other.bindings_);
+	subpassInputBindings_ = std::move(other.subpassInputBindings_);
 	pushConstants_ = std::move(other.pushConstants_);
 	outputAttachments_ = std::move(other.outputAttachments_);
 	inputTexturesNames_ = std::move(other.inputTexturesNames_);
@@ -57,6 +58,11 @@ const std::vector<vkn::Shader::Binding>& vkn::Shader::bindings() const
 	return bindings_;
 }
 
+const std::vector<vkn::Shader::Binding>& vkn::Shader::subpassInputBindings() const
+{
+	return subpassInputBindings_;
+}
+
 const std::vector<vkn::Shader::PushConstant>& vkn::Shader::pushConstants() const
 {
 	return pushConstants_;
@@ -68,6 +74,7 @@ const std::vector<VkDescriptorPoolSize> vkn::Shader::poolSize() const
 	std::vector<VkDescriptorPoolSize> poolSizes;
 	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , static_cast<uint32_t>(std::size(resources.uniform_buffers)) + 1 });
 	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , static_cast<uint32_t>(std::size(resources.sampled_images)) + 10000 });
+	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT , static_cast<uint32_t>(std::size(resources.subpass_inputs)) + 10000 });
 
 	return poolSizes;
 }
@@ -152,6 +159,10 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 		attchment.format = vkn::getFormat(spirvType).format;
 		outputAttachments_.emplace_back(attchment);
 	}
+	for (const auto& resource : resources.subpass_inputs)
+	{
+		subpassInputBindings_.push_back(parseBinding(resource, stage, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
+	}
 }
 const std::vector<vkn::Shader::Attachment>& vkn::Shader::outputAttachments() const
 {
@@ -194,7 +205,7 @@ const vkn::Shader::Binding vkn::Shader::parseBinding(const spirv_cross::Resource
 	binding.set = spirv_->get_decoration(resource.id, spv::DecorationDescriptorSet);
 	binding.layoutBinding = descriptorBinding;
 	binding.size = size;
-	if ((spirvType.basetype != spirv_cross::SPIRType::Struct) && (spirvType.basetype != spirv_cross::SPIRType::SampledImage))
+	if ((spirvType.basetype != spirv_cross::SPIRType::Struct) && (spirvType.basetype != spirv_cross::SPIRType::SampledImage) && (type != VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT))
 	{
 		binding.format = vkn::getFormat(spirvType);
 	}
