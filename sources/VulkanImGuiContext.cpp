@@ -71,22 +71,22 @@ vkn::ImGuiContext::~ImGuiContext()
 
 void vkn::ImGuiContext::render(Renderer& renderer, const RenderTarget& target)
 {
-	if (target.isBound());
-	{
-		render(renderer.currentCmdBuffer());
-	}
+	render(target, renderer.currentCmdBuffer());
 }
 
 
-void vkn::ImGuiContext::render(CommandBuffer& cb)
+void vkn::ImGuiContext::render(const RenderTarget& target, CommandBuffer& cb)
 {
 	assert(cb.isRecording() && "Command buffer needs to be in recording state");
-	if (passIndex_ != 0)
+	if (target.isBound())
 	{
-		vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
+		if (passIndex_ != 0)
+		{
+			vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
+		}
+		ImGui::Render();
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
 	}
-	ImGui::Render();
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
 }
 
 void vkn::ImGuiContext::loadFontsTextures()

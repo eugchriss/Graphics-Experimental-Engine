@@ -37,7 +37,7 @@ int main()
 	gee::Drawable backpack2{ "backpack2", backpackMesh, glm::vec3{10.0f, 10.0f, 10.0f} };
 	gee::Optics l{ gee::Light::PointLight };
 	gee::Drawable light{ "light", cubeMesh, l };
-	light.setPosition(glm::vec3{ 10.0f });
+	light.setPosition(glm::vec3{ -10.0f });
 
 	cube.setSize(glm::vec3{ 0.1f });
 	cube2.setSize(glm::vec3{ 0.1f });
@@ -47,7 +47,7 @@ int main()
 	app.addDrawable(cube2);
 	app.addDrawable(backpack);
 	app.addDrawable(backpack2);
-//	app.addDrawable(light);
+	app.addDrawable(light);
 
 	gee::Drawable skybox{ "skybox", skyboxMesh };
 	auto& floorMesh = gee::getFloorMesh(gee::Material{ "../assets/textures/floor/diffuse.jpg", "../assets/textures/floor/normal.png" });

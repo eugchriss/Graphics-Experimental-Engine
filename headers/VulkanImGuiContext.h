@@ -14,7 +14,7 @@ namespace vkn
 		~ImGuiContext();
 		void render(Renderer& renderer, const RenderTarget& target);
 	private:
-		void render(CommandBuffer& cb);
+		void render(const RenderTarget& target, CommandBuffer& cb);
 		Context& context_;
 		RenderTarget& renderTarget_;
 		uint32_t passIndex_;

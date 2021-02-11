@@ -28,6 +28,10 @@ layout(binding = 5) uniform PointLights
 {
     PointLight[100] values;
 }pointLights;
+layout(binding = 6) uniform LightCount
+{
+    int value;
+}lightCount;
 
 vec4 computePointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
@@ -37,9 +41,9 @@ void main()
     vec3 viewDir = normalize(viewPos.xyz - fragPos.xyz);
     normal = 2.0 * normal - vec3(1.0);
     outColor = vec4(0.0);
-    for(int i = 0; i < 1; ++i)
+    for(int i = 0; i < lightCount.value; ++i)
     {
-        outColor = computePointLight(pointLights.values[i], normal, fragPos, viewDir);
+        outColor += computePointLight(pointLights.values[i], normal, fragPos, viewDir);
     }
 }
 

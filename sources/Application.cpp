@@ -415,6 +415,7 @@ bool gee::Application::isRunning()
 		renderer_->updateBuffer("Model_Matrix", modelMatrices_);
 		renderer_->updateBuffer("Normal_Matrix", normalMatrices_);
 		renderer_->updateBuffer("PointLights", pointLights_);
+		renderer_->updateBuffer("LightCount", std::size(pointLights_));
 		for (const auto& [mesh, count] : geometryCount_)
 		{
 			renderer_->setTexture("diffuseTex", mesh.get().material().diffuseTex);
