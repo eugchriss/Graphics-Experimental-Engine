@@ -33,11 +33,11 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	frameGraph.setAttachmentColorDepthContent(inputAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
 	frameGraph.setAttachmentColorDepthContent(depthAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 	frameGraph.setPresentAttachment(inputAtt);
-	
+
 	auto& skyboxPass = frameGraph.addPass();
 	skyboxPass.addColorAttachment(colorAtt);
 	skyboxPass.addDepthStencilAttachment(depthAtt);
-	
+
 	auto& colorPass = frameGraph.addPass();
 	colorPass.addColorAttachment(colorAtt);
 	colorPass.addDepthStencilAttachment(depthAtt);
@@ -110,20 +110,11 @@ void gee::Application::setSkybox(Drawable& skybox)
 
 void gee::Application::addDrawable(Drawable& drawable)
 {
-	auto exist = std::find_if(std::begin(drawables_), std::end(drawables_), [&](auto& drawableRef) { return drawableRef.get().name == drawable.name; });
-	if (exist == std::end(drawables_))
+	auto& drawables = drawablesGeometries_[std::ref(drawable.mesh)];
+	auto result = std::find_if(std::begin(drawables), std::end(drawables), [&](const auto& drawableRef) { return drawableRef.get().name == drawable.name; });
+	if (result == std::end(drawables))
 	{
-		drawables_.emplace_back(std::ref(drawable));
-
-		auto geometryExist = std::find_if(std::begin(geometryCount_), std::end(geometryCount_), [&](const auto& pair) {return pair.first.get().hash() == drawable.mesh.hash(); });
-		if (geometryExist != std::end(geometryCount_))
-		{
-			++geometryExist->second;
-		}
-		else
-		{
-			geometryCount_.emplace_back(std::make_pair(std::ref(drawable.mesh), 1));
-		}
+		drawables.emplace_back(std::ref(drawable));
 	}
 }
 
@@ -240,7 +231,7 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		rightButtonPressed_ = true;
 		double x, y;
 		glfwGetCursorPos(window_.window(), &x, &y);
-		
+
 		renderer_->begin();
 		renderer_->beginTarget(*pixelPerfectRenderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
 		renderer_->usePipeline(*pixelPerfectPipeline_);
@@ -248,10 +239,10 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		camera.position = glm::vec4{ camera_.position_, 1.0f };
 		camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
 		renderer_->updateSmallBuffer("camera", camera);
-		renderer_->updateBuffer("Model_Matrix", modelMatrices_);
-		for (const auto& [mesh, count] : geometryCount_)
+		for (const auto& [mesh, drawableRefs] : drawablesGeometries_)
 		{
-			renderer_->draw(mesh, count);
+			renderer_->updateBuffer("Model_Matrix", modelMatrices_);
+			renderer_->draw(mesh, std::size(drawableRefs));
 		}
 		renderer_->endTarget(*pixelPerfectRenderTarget_);
 		renderer_->end();
@@ -260,19 +251,29 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 		activeDrawable_ = std::nullopt;
 		if (index > 0)
 		{
-			if (index != lastDrawableIndex_)
+			--index;
+			if ((lastDrawableIndex_.has_value() && (lastDrawableIndex_.value() != index)) || !lastDrawableIndex_.has_value())
 			{
-				activeDrawable_.emplace(std::ref(drawables_[index - 1].get()));
+				size_t i{};
+				for (const auto& [mesh, drawableRefs] : drawablesGeometries_)
+				{
+					if ((i <= index) && (i + std::size(drawableRefs)) > index)
+					{
+						activeDrawable_.emplace(std::ref(drawableRefs[index - i]));
+						break;
+					}
+					i += std::size(drawableRefs);
+				}
 				lastDrawableIndex_ = index;
 			}
 			else
 			{
-				lastDrawableIndex_ = 0;
+				lastDrawableIndex_ = std::nullopt;
 			}
 		}
 		else
 		{
-			lastDrawableIndex_ = 0;
+			lastDrawableIndex_ = std::nullopt;
 		}
 	}
 
@@ -365,22 +366,25 @@ void gee::Application::getTransforms()
 	modelMatrices_.clear();
 	normalMatrices_.clear();
 	pointLights_.clear();
-	for (auto& drawableRef : drawables_)
+	for (auto& [mesh, drawableRefs] : drawablesGeometries_)
 	{
-		auto& drawable = drawableRef.get();
-		modelMatrices_.emplace_back(drawable.getTransform());
-		normalMatrices_.emplace_back(drawable.getNormalMatrix());
-		if (drawable.hasLightComponent())
+		for (const auto& drawableRef : drawableRefs)
 		{
-			auto& light = drawable.light();
+			auto& drawable = drawableRef.get();
+			modelMatrices_.emplace_back(drawable.getTransform());
+			normalMatrices_.emplace_back(drawable.getNormalMatrix());
+			if (drawable.hasLightComponent())
+			{
+				auto& light = drawable.light();
 
-			auto& shaderLight = pointLights_.emplace_back(gee::ShaderPointLight{});
-			shaderLight.ambient = glm::vec4{ light.ambient, 1.0f };
-			shaderLight.diffuse = glm::vec4{ light.diffuse, 1.0 };
-			shaderLight.specular = glm::vec4{light.specular, 1.0f};
-			shaderLight.position = glm::vec4{light.position, 1.0f};
-			shaderLight.linear = light.linear;
-			shaderLight.quadratic = light.quadratic;
+				auto& shaderLight = pointLights_.emplace_back(gee::ShaderPointLight{});
+				shaderLight.ambient = glm::vec4{ light.ambient, 1.0f };
+				shaderLight.diffuse = glm::vec4{ light.diffuse, 1.0 };
+				shaderLight.specular = glm::vec4{ light.specular, 1.0f };
+				shaderLight.position = glm::vec4{ light.position, 1.0f };
+				shaderLight.linear = light.linear;
+				shaderLight.quadratic = light.quadratic;
+			}
 		}
 	}
 }
@@ -416,15 +420,15 @@ bool gee::Application::isRunning()
 		renderer_->updateBuffer("Normal_Matrix", normalMatrices_);
 		renderer_->updateBuffer("PointLights", pointLights_);
 		renderer_->updateBuffer("LightCount", std::size(pointLights_));
-		for (const auto& [mesh, count] : geometryCount_)
+		for (const auto& [mesh, drawableRefs] : drawablesGeometries_)
 		{
 			renderer_->setTexture("diffuseTex", mesh.get().material().diffuseTex);
 			renderer_->setTexture("normalTex", mesh.get().material().normalTex);
 			renderer_->setTexture("specularTex", mesh.get().material().specularTex);
-			renderer_->draw(mesh, count);
+			renderer_->draw(mesh, std::size(drawableRefs));
 		}
 
-		
+
 		renderer_->usePipeline(*gammaCorrectionPipeline_);
 		renderer_->setTexture("outputTexture", renderTarget_->attachmentImage("color"));
 		renderer_->updateBuffer("Exposure", exposure_);
@@ -434,17 +438,17 @@ bool gee::Application::isRunning()
 
 		imguiContext_->render(*renderer_, *renderTarget_);
 		renderer_->endTarget(*renderTarget_);
-	
+
 		auto endQuery = renderer_->writeTimestamp(*queryPool_, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 		renderer_->end();
 
-		cpuTime_ = cpuTimer_.ellapsedMs();		
+		cpuTime_ = cpuTimer_.ellapsedMs();
 		auto e = endQuery.results();
 		auto b = beginQuery.results();
 		if (b < e)
 		{
 			gpuTime_ = (e - b) / 1000000.0f;
 		}
-	}	
+	}
 	return window_.isOpen();
 }

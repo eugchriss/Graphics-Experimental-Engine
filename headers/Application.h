@@ -2,6 +2,7 @@
 #include <memory>
 #include <utility>
 #include <unordered_map>
+#include <functional>
 #include <vector>
 #include "Window.h"
 #include "VulkanRenderer.h"
@@ -21,7 +22,37 @@ struct ShaderCamera
 	glm::vec4 position;
 	glm::mat4 viewProj;
 };
-using Mesh_t = std::reference_wrapper<const gee::Mesh>;
+using MeshRef = std::reference_wrapper<const gee::Mesh>;
+using DrawableRef = std::reference_wrapper<gee::Drawable>;
+
+namespace std
+{
+	template<>
+	struct hash<const MeshRef>
+	{
+		size_t operator()(const MeshRef& meshRef) const
+		{
+			return meshRef.get().hash();
+		}
+	};
+
+	template<>
+	struct hash<MeshRef>
+	{
+		size_t operator()(const MeshRef& meshRef) const
+		{
+			return meshRef.get().hash();
+		}
+	};
+	template<>
+	struct equal_to<MeshRef>
+	{
+		bool operator()(const MeshRef& lhs, const MeshRef& rhs) const
+		{
+			return lhs.get().hash() == rhs.get().hash();
+		}
+	};
+}
 namespace gee
 {
 	class Application
@@ -46,8 +77,7 @@ namespace gee
 		std::unique_ptr<vkn::Pipeline> pixelPerfectPipeline_;
 		gee::EventDispatcher eventDispatcher_;
 		std::unique_ptr<vkn::Renderer> renderer_;
-		std::vector<std::pair<Mesh_t, size_t>> geometryCount_;
-		std::vector<std::reference_wrapper<gee::Drawable>> drawables_;
+		std::unordered_map<MeshRef, std::vector<DrawableRef>, std::hash<MeshRef>, std::equal_to<MeshRef>> drawablesGeometries_;
 		Camera camera_;
 		std::vector<glm::mat4> modelMatrices_;
 		std::vector<glm::mat4> normalMatrices_;
@@ -74,7 +104,7 @@ namespace gee
 		std::unique_ptr<gee::Mesh> quadMesh_;
 		std::shared_ptr<gee::Texture> skyboxTexture_;
 		std::unique_ptr<vkn::ImGuiContext> imguiContext_;
-		size_t lastDrawableIndex_{ 0u };
+		std::optional<size_t> lastDrawableIndex_{};
 		std::optional<std::reference_wrapper<gee::Drawable>> activeDrawable_;
 		gee::Timer renderingtimer_{ "rendering" };
 		gee::Timer cpuTimer_{ "cpu" };
