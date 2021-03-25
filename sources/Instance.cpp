@@ -15,9 +15,9 @@ vkn::Instance::Instance(const std::vector<std::string>& requestedLayers)
 		availableLayers.push_back(layersProps[i].layerName);
 
 	count = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+	auto r = vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
 	std::vector<VkExtensionProperties> extensionsProps(count);
-	vkEnumerateInstanceExtensionProperties(nullptr, &count, std::data(extensionsProps));
+	r = vkEnumerateInstanceExtensionProperties(nullptr, &count, std::data(extensionsProps));
 	std::vector<const char*> extensions;
 	for (auto i = 0u; i < count; ++i)
 		extensions.push_back(extensionsProps[i].extensionName);

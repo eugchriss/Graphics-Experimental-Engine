@@ -165,7 +165,7 @@ const VkDeviceSize vkn::DeviceMemory::bind(const VkImage image)
 	vkGetImageMemoryRequirements(device_.device, image, &memRequirements);
 
 	assert(size_ >= memRequirements.size && "The memory capacity is not high enough for the image");
-	assert((memRequirements.memoryTypeBits & memoryIndex_) == memoryIndex_ && "The image doesn t match this memory index");
+	assert((memRequirements.memoryTypeBits & (1 << memoryIndex_)) == (1 << memoryIndex_) && "The image doesn t match this memory index");
 
 	checkAlignment(memRequirements.alignment);
 	vkn::error_check(vkBindImageMemory(device_.device, image, memory_, offset_), "Unabled to bind the image and the memory");
