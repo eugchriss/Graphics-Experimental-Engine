@@ -2,8 +2,9 @@
 #include "glm/glm.hpp"
 #include "vulkan/vulkan.hpp"
 #include "vulkanContext.h"
-#include "CommandBuffer.h"
+#include "Pass.h"
 #include <vector>
+
 namespace vkn
 {
 	struct SubpassAttachmentUsage
@@ -16,30 +17,35 @@ namespace vkn
 	class Renderpass
 	{
 	public:
-		struct Attachment
-		{
-			std::string name{ "un-named" };
-			VkAttachmentDescription description;
-		};
-		Renderpass(Context& context, const VkRenderPass& renderpass, std::vector<Attachment>& attachments);
+		Renderpass(Context& context, const VkExtent2D& extent, std::vector<Pass>&& passes, const uint32_t framebufferCount = 2);
 		Renderpass(Renderpass&&);
 		~Renderpass();
-		void setClearColor(const glm::vec3& color);
-		const std::vector<Attachment>& attachments() const;
-		const VkRenderPass renderpass() const;
-		void begin(vkn::CommandBuffer& cb, const VkFramebuffer& fb, const VkRect2D& renderArea, const VkSubpassContents subpassContent);
+		const VkRenderPass& operator()() const;
+		const uint32_t passesCount() const;
+		void resize(const glm::u32vec2& newSize);
+		void begin(vkn::CommandBuffer& cb, const VkRect2D& renderArea, const VkSubpassContents subpassContent = VK_SUBPASS_CONTENTS_INLINE);
 		void end(vkn::CommandBuffer& cb);
-		void clearDepthAttachment(vkn::CommandBuffer& cb, const VkRect2D& area, const VkClearValue& clearValue);
-#ifndef NDEBUG
-		void setDebugName(const std::string& name);
-#endif
+		void draw(vkn::CommandBuffer& cb, const uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,	uint32_t firstInstance);
 	private:
-		friend class RenderpassBuilder;
-		vkn::Device& device_;
+		Context& context_;
 		VkRenderPass renderpass_{ VK_NULL_HANDLE };
-		std::vector<Attachment> attachments_;
+		uint32_t currentFramebuffer{};
+		std::vector<VkFramebuffer> framebuffers_;
+		std::vector<Pass> passes_;
 		std::vector<VkClearValue> clearValues_;
-		std::vector<size_t> colorClearValuesIndices_;
-		bool isColorAttachment(const VkAttachmentDescription& attachment) const;
+		std::vector<RenderTargetRef> getUniqueRenderTargets();
+		void createRenderpass();
+		struct SubpassDatas
+		{
+			std::vector<VkAttachmentReference> inputAttachments;
+			std::vector<VkAttachmentReference> colorAttachments;
+			std::vector<VkAttachmentReference> depthStencilAttachments;
+			std::vector<uint32_t> preservedAttachments;
+		};
+		const std::vector<VkAttachmentDescription> getAttachments(const std::vector<RenderTargetRef>& targets) const;
+		const std::vector<SubpassDatas> getSubpassesDatas(const std::vector<RenderTargetRef>& targets);
+		const std::vector<VkSubpassDependency> findDependencies(const std::vector<RenderTargetRef>& targets);
+		void createFramebuffers(const uint32_t framebufferCount, const VkExtent2D& extent);
 	};
+	MAKE_REFERENCE(Renderpass);
 }

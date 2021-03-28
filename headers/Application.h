@@ -5,7 +5,7 @@
 #include <functional>
 #include <vector>
 #include "Window.h"
-#include "VulkanRenderer.h"
+#include "Swapchain.h"
 #include "Drawable.h"
 #include "Timer.h"
 #include "Camera.h"
@@ -13,9 +13,7 @@
 #include "vulkanContext.h"
 #include "VulkanImGuiContext.h"
 #include "RenderTarget.h"
-#include "Pipeline.h"
-#include "QueryPool.h"
-#include "Query.h"
+#include "CommandPool.h"
 
 struct ShaderCamera
 {
@@ -69,14 +67,15 @@ namespace gee
 
 		gee::Window window_;
 		std::unique_ptr<vkn::Context> context_;
-		std::unique_ptr<vkn::RenderTarget> renderTarget_;
+		std::unique_ptr<vkn::Swapchain> swapchain_;
+		std::unique_ptr<vkn::CommandPool> commandPool_;
+		std::unique_ptr<vkn::Renderpass> renderpass_;
 		std::unique_ptr<vkn::Pipeline> skyboxPipeline_;
 		std::unique_ptr<vkn::Pipeline> colorPipeline_;
 		std::unique_ptr<vkn::Pipeline> gammaCorrectionPipeline_;
 		std::unique_ptr<vkn::RenderTarget> pixelPerfectRenderTarget_;
 		std::unique_ptr<vkn::Pipeline> pixelPerfectPipeline_;
 		gee::EventDispatcher eventDispatcher_;
-		std::unique_ptr<vkn::Renderer> renderer_;
 		std::unordered_map<MeshRef, std::vector<DrawableRef>, std::hash<MeshRef>, std::equal_to<MeshRef>> drawablesGeometries_;
 		Camera camera_;
 		std::vector<glm::mat4> modelMatrices_;
@@ -110,6 +109,5 @@ namespace gee
 		gee::Timer cpuTimer_{ "cpu" };
 		float cpuTime_;
 		float gpuTime_;
-		std::unique_ptr<vkn::QueryPool> queryPool_;
 	};
 }

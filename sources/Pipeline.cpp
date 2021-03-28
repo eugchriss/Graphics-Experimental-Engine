@@ -162,7 +162,6 @@ const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const
 
 void vkn::Pipeline::updateUniforms(CommandBuffer& cb)
 {
-	assert(cb.isRecording() && "Command buffer needs to be in recording state");
 	//need to sort uniform write to make a push per set
 	vkCmdPushDescriptorSetKHR(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_->layout, 0, std::size(uniformsWrites_), std::data(uniformsWrites_));
 	uniformsWrites_.clear();

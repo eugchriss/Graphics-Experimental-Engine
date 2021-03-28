@@ -16,9 +16,11 @@ namespace gee
 		void resize();
 		const glm::u32vec2 size() const;
 		const float aspectRatio() const;
+		const bool isVisible() const;
 
 	private:
 		GLFWwindow* window_{};
 		float aspectRatio_{};
+		bool isVisible_{ false };
 	};
 }

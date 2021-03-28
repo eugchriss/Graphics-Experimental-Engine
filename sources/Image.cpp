@@ -42,13 +42,6 @@ vkn::Image::Image(Context& context, VkImageUsageFlags usage, VkFormat format, Vk
 #endif
 }
 
-vkn::Image::Image(Context& context, const VkAttachmentDescription& attachment, const VkExtent3D extent, const uint32_t layerCount):
-	Image(context, getUsageFlag(attachment), attachment.format, extent, layerCount)
-{
-	isRenderpassAttachment_ = true;
-	afterRenderpassLayout_ = attachment.finalLayout;
-}
-
 vkn::Image::Image(Context& context, const VkImage image, const VkFormat format, const uint32_t layerCount, bool owned) : context_{ context }, owned_{ owned }, format_{ format }, layerCount_{ layerCount }
 {
 	this->image = image;
@@ -67,8 +60,6 @@ vkn::Image::Image(Image&& other) : context_{ other.context_ }
 	format_ = other.format_;
 	extent_ = other.extent_;
 	layout_ = other.layout_;
-	afterRenderpassLayout_ = other.afterRenderpassLayout_;
-	isRenderpassAttachment_ = other.isRenderpassAttachment_;
 	layerCount_ = other.layerCount_;
 
 	other.image = VK_NULL_HANDLE;
@@ -174,7 +165,7 @@ const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize off
 	buffer.bind(memory);
 
 	vkn:CommandPool cbPool{ context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
-	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	auto& cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	const auto previousLayout = layout_;
 	cb.begin();
@@ -183,8 +174,8 @@ const float vkn::Image::rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize off
 	transitionLayout(cb, aspect, previousLayout);
 	cb.end();
 
-	context_.transferQueue->submit(cb);
-	cb.completeSignal().waitForSignal();
+	auto completedFence = context_.transferQueue->submit(cb);
+	completedFence->wait();
 
 	// x4 because the image uses 4 component per pixel (RGBA)
 	return buffer.rawContentAt(offset * 4);
@@ -198,13 +189,13 @@ const std::vector<float> vkn::Image::rawContent(const vkn::Gpu& gpu, const VkIma
 	buffer.bind(memory);
 
 	vkn:CommandPool cbPool{ context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
-	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	auto& cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	cb.begin();
 	copyToBuffer(cb, buffer, VK_IMAGE_ASPECT_COLOR_BIT);
 	cb.end();
-	context_.transferQueue->submit(cb);
-	cb.completeSignal().waitForSignal();
+	auto completedFence = context_.transferQueue->submit(cb);
+	completedFence->wait();
 
 	return buffer.rawContent();
 }
@@ -401,14 +392,6 @@ const VkImageView vkn::Image::getView(const VkImageAspectFlags aspect, const VkI
 		auto imageView = createView(view);
 		views_[hash] = imageView;
 		return imageView;
-	}
-}
-
-void vkn::Image::setAfterRenderpassLayout()
-{
-	if (isRenderpassAttachment_)
-	{	
-		layout_ = afterRenderpassLayout_;
 	}
 }
 

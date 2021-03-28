@@ -11,9 +11,15 @@ void vkn::CommandBuffer::setDebugName(const std::string& name)
 	nameInfo.objectHandle = reinterpret_cast<uint64_t>(cb_);
 	nameInfo.pObjectName = name.c_str();
 
-	context_.get().device->setDebugOjectName(nameInfo);
+	context_.device->setDebugOjectName(nameInfo);
 }
 #endif 
+
+void vkn::CommandBuffer::attachFence(std::shared_ptr<Fence>& fence)
+{
+	isPendingFence_ = fence;
+}
+
 void vkn::CommandBuffer::begin(const VkCommandBufferUsageFlags usage)
 {
 	VkCommandBufferBeginInfo beginInfo{};
@@ -23,13 +29,12 @@ void vkn::CommandBuffer::begin(const VkCommandBufferUsageFlags usage)
 	beginInfo.pInheritanceInfo = nullptr;
 
 	vkn::error_check(vkBeginCommandBuffer(cb_, &beginInfo), "Failed to begin the command buffer");
-	isRecording_ = true;
 }
 
 void vkn::CommandBuffer::end()
 {
 	vkn::error_check(vkEndCommandBuffer(cb_), "Failed to end the command buffer");
-	isRecording_ = false;
+
 }
 
 VkCommandBuffer vkn::CommandBuffer::commandBuffer() const
@@ -37,21 +42,18 @@ VkCommandBuffer vkn::CommandBuffer::commandBuffer() const
 	return cb_;
 }
 
-bool vkn::CommandBuffer::isComplete()
+const bool vkn::CommandBuffer::isPending() const
 {
-	return complete_.signaled();
+	return isPendingFence_ ? !isPendingFence_->signaled() : false;
 }
 
-vkn::Signal& vkn::CommandBuffer::completeSignal()
-{
-	return complete_;
-}
-
-vkn::CommandBuffer::CommandBuffer(vkn::Context& context, const VkCommandBuffer cb) :context_{std::ref(context) }, cb_{ cb }, complete_{ context_, false }
+vkn::CommandBuffer::CommandBuffer(vkn::Context& context, const VkCommandBuffer cb) :
+	context_{context}, cb_{ cb },
+	completedSemaphore{ context}
 {
 }
 
-const bool vkn::CommandBuffer::isRecording() const
+vkn::Context& vkn::CommandBuffer::context() const
 {
-	return isRecording_;
+	return context_;
 }

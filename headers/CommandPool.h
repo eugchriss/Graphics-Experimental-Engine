@@ -2,7 +2,9 @@
 #include "vulkan/vulkan.hpp"
 #include "vulkanContext.h"
 #include "Commandbuffer.h"
+#include <map>
 #include <vector>
+#include <queue>
 namespace vkn
 {
 	class CommandPool
@@ -11,11 +13,18 @@ namespace vkn
 		CommandPool(Context& _context, const VkCommandPoolCreateFlagBits type);
 		CommandPool(CommandPool&& other);
 		~CommandPool();
-		std::vector<vkn::CommandBuffer> getCommandBuffers(const VkCommandBufferLevel level, const uint32_t count);
-		CommandBuffer getCommandBuffer(const VkCommandBufferLevel level);
+		CommandBuffer& getCommandBuffer(const VkCommandBufferLevel level);
 	private:
 		Context& context_;
 		VkCommandPool pool_{ VK_NULL_HANDLE };
-		std::vector<VkCommandBuffer> cbs_;
+		struct CommandBufferLevel
+		{
+			std::vector<CommandBuffer> commandBuffers;
+			std::queue<CommandBufferRef> availableCommandBuffers;
+			std::vector<CommandBufferRef> pendingCommandBuffers;
+		};
+		std::map<VkCommandBufferLevel, CommandBufferLevel> commandBuffers_;
+		void allocateCommandBuffer(const VkCommandBufferLevel level, const uint32_t count);
+		void sortCompletedCommandBuffers();
 	};
 }

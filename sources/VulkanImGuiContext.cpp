@@ -3,7 +3,7 @@
 #include "../headers/imgui_impl_glfw.h"
 #include "../headers/CommandPool.h"
 
-vkn::ImGuiContext::ImGuiContext(gee::Window& window, Context& context, RenderTarget& renderTarget, const Pass& guiPass): context_{context}, renderTarget_{renderTarget}, passIndex_{ guiPass.index() }
+vkn::ImGuiContext::ImGuiContext(gee::Window& window, Context& context, const Renderpass& renderpass) : context_{ context }
 {
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
@@ -52,9 +52,9 @@ vkn::ImGuiContext::ImGuiContext(gee::Window& window, Context& context, RenderTar
 	initInfo.MinImageCount = imageCount;
 	initInfo.ImageCount = imageCount;
 	initInfo.CheckVkResultFn = nullptr;
-	initInfo.Subpass = passIndex_;
+	initInfo.Subpass = renderpass.passesCount() - 1;
 
-	ImGui_ImplVulkan_Init(&initInfo, renderTarget.renderpass->renderpass());
+	ImGui_ImplVulkan_Init(&initInfo, renderpass());
 	loadFontsTextures();
 }
 
@@ -69,34 +69,20 @@ vkn::ImGuiContext::~ImGuiContext()
 	ImGui::DestroyContext();
 }
 
-void vkn::ImGuiContext::render(Renderer& renderer, const RenderTarget& target)
+void vkn::ImGuiContext::render(CommandBuffer& cb)
 {
-	render(target, renderer.currentCmdBuffer());
-}
-
-
-void vkn::ImGuiContext::render(const RenderTarget& target, CommandBuffer& cb)
-{
-	assert(cb.isRecording() && "Command buffer needs to be in recording state");
-	if (target.isBound())
-	{
-		if (passIndex_ != 0)
-		{
-			vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
-		}
-		ImGui::Render();
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
-	}
+	ImGui::Render();
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
 }
 
 void vkn::ImGuiContext::loadFontsTextures()
 {
 	CommandPool pool{ context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
-	auto cb = pool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	auto& cb = pool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	cb.begin();
 	ImGui_ImplVulkan_CreateFontsTexture(cb.commandBuffer());
 	cb.end();
 
-	context_.transferQueue->submit(cb);
-	context_.transferQueue->idle();
+	auto completedFence = context_.transferQueue->submit(cb);
+	completedFence->wait();
 }

@@ -55,13 +55,13 @@ void vkn::Buffer::moveTo(Queue& queue, DeviceMemory& memory)
 	copy.size = size_;
 
 	vkn::CommandPool cbPool{ context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
-	auto cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	auto& cb = cbPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	cb.begin();
 	vkCmdCopyBuffer(cb.commandBuffer(), buffer, dst.buffer, 1, &copy);
 	cb.end();
 
-	queue.submit(cb);
-	cb.completeSignal().waitForSignal();
+	auto& completedFence = queue.submit(cb);
+	completedFence->wait();
 
 	memory_ = Observer_ptr<vkn::DeviceMemory>{ memory };
 	vkDestroyBuffer(context_.device->device, buffer, nullptr);

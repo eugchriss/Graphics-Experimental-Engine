@@ -6,72 +6,59 @@
 #include <algorithm>
 #include "../headers/imgui_impl_glfw.h"
 #include "../headers/imgui_impl_vulkan.h"
-#include "../headers/vulkanFrameGraph.h"
 #include "../headers/vulkanContextBuilder.h"
-#include "../headers/PipelineBuilder.h"
 
 gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : window_{ name, width, height }, eventDispatcher_{ window_.window() }
 {
-	std::cout << "The application has been launched.\n";
-	cubeMesh_ = std::make_unique<gee::Mesh>(gee::getCubeMesh());
-	quadMesh_ = std::make_unique<gee::Mesh>(gee::getQuadMesh());
-	std::array<std::string, 6> skyboxPaths{ "../assets/skybox/space/right.png",
-											"../assets/skybox/space/left.png",
-											"../assets/skybox/space/top.png",
-											"../assets/skybox/space/bottom.png",
-											"../assets/skybox/space/front.png",
-											"../assets/skybox/space/back.png" };
-	skyboxTexture_ = std::make_unique<gee::Texture>(skyboxPaths, gee::Texture::ColorSpace::LINEAR);
-	createContext();
-	renderer_ = std::make_unique<vkn::Renderer>(*context_, window_);
-
-	vkn::FrameGraph frameGraph{};
-	auto colorAtt = frameGraph.addColorAttachment("color", VK_FORMAT_R32G32B32A32_SFLOAT);
-	auto inputAtt = frameGraph.addColorAttachment("input", VK_FORMAT_R32G32B32A32_SFLOAT);
-	auto depthAtt = frameGraph.addDepthAttachment("depth", VK_FORMAT_D24_UNORM_S8_UINT);
-	frameGraph.setAttachmentColorDepthContent(colorAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
-	frameGraph.setAttachmentColorDepthContent(inputAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
-	frameGraph.setAttachmentColorDepthContent(depthAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
-	frameGraph.setPresentAttachment(inputAtt);
-
-	auto& skyboxPass = frameGraph.addPass();
-	skyboxPass.addColorAttachment(colorAtt);
-	skyboxPass.addDepthStencilAttachment(depthAtt);
-
-	auto& colorPass = frameGraph.addPass();
-	colorPass.addColorAttachment(colorAtt);
-	colorPass.addDepthStencilAttachment(depthAtt);
-
-	auto& gammaCorrectionPass = frameGraph.addPass();
-	gammaCorrectionPass.addColorAttachment(inputAtt);
-	gammaCorrectionPass.addInputAttachment(depthAtt);
-
-	auto& guiPass = frameGraph.addPass();
-	guiPass.addColorAttachment(inputAtt);
-
-	renderTarget_ = std::make_unique<vkn::RenderTarget>(frameGraph.createRenderTarget(*context_, renderer_->swapchain()));
-	createPipeline();
-
-	imguiContext_ = std::make_unique<vkn::ImGuiContext>(window_, *context_, *renderTarget_, guiPass);
-
 	window_.setTitle(name);
+	std::cout << "The application has been launched.\n";
+
+	createContext();
+	commandPool_ = std::make_unique<vkn::CommandPool>(*context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	swapchain_ = std::make_unique<vkn::Swapchain>(*context_);
+	auto& colorTargets = swapchain_->renderTargets();
+	for (auto& target : colorTargets)
+	{
+		target.loadOperation = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		target.storeOperation = VK_ATTACHMENT_STORE_OP_STORE;
+	}
+
+	vkn::Pass colorPass{ "../assets/shaders/vert.spv", "../assets/shaders/frag.spv" };
+	colorPass.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
+	colorPass.addRaterizationStage(VK_POLYGON_MODE_FILL);
+	//colorPass.addDepthStage(VK_COMPARE_OP_LESS);
+	colorPass.addColorBlendStage();
+	colorPass.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
+	colorPass.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+	colorPass.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
+	for (auto& colorTarget : colorTargets)
+	{
+		colorPass.usesColorTarget(colorTarget);
+	}
+
+	std::vector<vkn::Pass> passes;
+	passes.emplace_back(std::move(colorPass));
+
+	renderpass_ = std::make_unique<vkn::Renderpass>(*context_, VkExtent2D{width, height}, std::move(passes));
+
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
 		{
+			window_.resize();
 			if (w != 0 && h != 0)
 			{
-				window_.resize();
+				context_->device->idle();
 				firstMouseUse_ = true;
-			}
-			renderTarget_->resize(glm::u32vec2{ w, h });
-			pixelPerfectRenderTarget_->resize(glm::u32vec2{ w, h });
+				swapchain_->resize(VkExtent2D{ w, h });
+				renderpass_->resize(glm::u32vec2{ w, h });
+			}			
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 		{
-			ImGuiIO& io = ImGui::GetIO();
+		/*	ImGuiIO& io = ImGui::GetIO();
 			if (!io.WantCaptureMouse)
 			{
 				onMouseScrollEvent(x, y);
-			}
+			}*/
 		});
 	eventDispatcher_.addMouseButtonCallback([&](uint32_t button, uint32_t action, uint32_t mods)
 		{
@@ -89,9 +76,6 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		{
 			onMouseMoveEvent(x, y);
 		});
-
-	initPixelPerfect();
-	queryPool_ = std::make_unique<vkn::QueryPool>(*context_, VK_QUERY_TYPE_TIMESTAMP, 2);
 }
 
 gee::Application::~Application()
@@ -222,70 +206,6 @@ void gee::Application::onMouseScrollEvent(double x, double y)
 
 void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint32_t mods)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-	{
-		leftButtonPressed_ = true;
-	}
-	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
-	{
-		rightButtonPressed_ = true;
-		double x, y;
-		glfwGetCursorPos(window_.window(), &x, &y);
-
-		renderer_->begin();
-		renderer_->beginTarget(*pixelPerfectRenderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
-		renderer_->usePipeline(*pixelPerfectPipeline_);
-		ShaderCamera camera{};
-		camera.position = glm::vec4{ camera_.position_, 1.0f };
-		camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
-		renderer_->updateSmallBuffer("camera", camera);
-		for (const auto& [mesh, drawableRefs] : drawablesGeometries_)
-		{
-			renderer_->updateBuffer("Model_Matrix", modelMatrices_);
-			renderer_->draw(mesh, std::size(drawableRefs));
-		}
-		renderer_->endTarget(*pixelPerfectRenderTarget_);
-		renderer_->end();
-		auto value = pixelPerfectRenderTarget_->rawContextAt("color", x, y);
-		auto index = static_cast<size_t>(value * 255);
-		activeDrawable_ = std::nullopt;
-		if (index > 0)
-		{
-			--index;
-			if ((lastDrawableIndex_.has_value() && (lastDrawableIndex_.value() != index)) || !lastDrawableIndex_.has_value())
-			{
-				size_t i{};
-				for (const auto& [mesh, drawableRefs] : drawablesGeometries_)
-				{
-					if ((i <= index) && (i + std::size(drawableRefs)) > index)
-					{
-						activeDrawable_.emplace(std::ref(drawableRefs[index - i]));
-						break;
-					}
-					i += std::size(drawableRefs);
-				}
-				lastDrawableIndex_ = index;
-			}
-			else
-			{
-				lastDrawableIndex_ = std::nullopt;
-			}
-		}
-		else
-		{
-			lastDrawableIndex_ = std::nullopt;
-		}
-	}
-
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
-	{
-		leftButtonPressed_ = false;
-		firstMouseUse_ = true;
-	}
-	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
-	{
-		rightButtonPressed_ = false;
-	}
 }
 
 void gee::Application::createContext()
@@ -296,6 +216,7 @@ void gee::Application::createContext()
 
 	vkn::ContextBuilder contextBuilder{ severityFlags, messageTypeFlags };
 	contextBuilder.addInstanceLayer("VK_LAYER_KHRONOS_validation");
+	contextBuilder.addInstanceLayer("VK_LAYER_LUNARG_monitor");
 	contextBuilder.addDeviceExtention("VK_KHR_swapchain");
 	contextBuilder.addDeviceExtention("VK_EXT_descriptor_indexing");
 	contextBuilder.addDeviceExtention("VK_KHR_maintenance3");
@@ -305,60 +226,6 @@ void gee::Application::createContext()
 	contextBuilder.setQueueCount(2);
 
 	context_ = std::make_unique<vkn::Context>(std::move(contextBuilder.build(window_)));
-}
-
-void gee::Application::createPipeline()
-{
-	vkn::PipelineBuilder builder{ "../assets/shaders/skybox/vert.spv", "../assets/shaders/skybox/frag.spv" };
-	builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
-	builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
-	builder.addDepthStage(VK_COMPARE_OP_LESS);
-	builder.addColorBlendStage();
-	builder.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
-	builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-	builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-	builder.renderpass = renderTarget_->renderpass->renderpass();
-	builder.subpass = 0;
-	skyboxPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
-
-
-	builder.setShaderVertexStage("../assets/shaders/vert.spv");
-	builder.setShaderFragmentStage("../assets/shaders/frag.spv");
-	builder.subpass = 1;
-	colorPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
-
-
-	builder.setShaderVertexStage("../assets/shaders/gamma Correction/vert.spv");
-	builder.setShaderFragmentStage("../assets/shaders/gamma Correction/frag.spv");
-	builder.subpass = 2;
-	gammaCorrectionPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
-}
-
-void gee::Application::initPixelPerfect()
-{
-	vkn::FrameGraph frameGraph{};
-	auto colorAtt = frameGraph.addColorAttachment("color", VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	auto depthAtt = frameGraph.addDepthAttachment("depth", VK_FORMAT_D24_UNORM_S8_UINT);
-	frameGraph.setAttachmentColorDepthContent(colorAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
-	frameGraph.setAttachmentColorDepthContent(depthAtt, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
-	frameGraph.setRenderArea(window_.size().x, window_.size().y);
-	auto& pixelPerfectPass = frameGraph.addPass();
-	pixelPerfectPass.addColorAttachment(colorAtt);
-	pixelPerfectPass.addDepthStencilAttachment(depthAtt);
-
-	pixelPerfectRenderTarget_ = std::make_unique<vkn::RenderTarget>(frameGraph.createRenderTarget(*context_));
-
-	vkn::PipelineBuilder builder{ "../assets/shaders/pixelPerfect/vert.spv", "../assets/shaders/pixelPerfect/frag.spv" };
-	builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
-	builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
-	builder.addDepthStage(VK_COMPARE_OP_LESS);
-	builder.addColorBlendStage();
-	builder.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
-	builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-	builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-	builder.renderpass = pixelPerfectRenderTarget_->renderpass->renderpass();
-	builder.subpass = 0;
-	pixelPerfectPipeline_ = std::make_unique<vkn::Pipeline>(builder.get(*context_));
 }
 
 void gee::Application::getTransforms()
@@ -393,61 +260,17 @@ bool gee::Application::isRunning()
 {
 	if ((renderingtimer_.ellapsedMs() >= 100 / 6.0f))
 	{
-		renderingtimer_.reset();
-		cpuTimer_.reset();
-		updateGui();
-		getTransforms();
-
-		renderer_->begin();
-		auto beginQuery = renderer_->writeTimestamp(*queryPool_, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-
-		renderer_->beginTarget(*renderTarget_, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
-		renderer_->usePipeline(*skyboxPipeline_);
-		auto proj = camera_.perspectiveProjection(window_.aspectRatio());
-		proj[1][1] *= -1;
-		auto view = glm::mat4{ glm::mat3{camera_.pointOfView()} };
-		renderer_->updateSmallBuffer("camera", proj * view);
-		renderer_->setTexture("skybox", *skyboxTexture_, VK_IMAGE_VIEW_TYPE_CUBE, 6);
-		renderer_->draw(*cubeMesh_);
-		renderer_->clearDepthAttachment(*renderTarget_);
-
-		renderer_->usePipeline(*colorPipeline_);
-		ShaderCamera camera{};
-		camera.position = glm::vec4{ camera_.position_, 1.0f };
-		camera.viewProj = camera_.viewProjMatrix(window_.aspectRatio());
-		renderer_->updateSmallBuffer("camera", camera);
-		renderer_->updateBuffer("Model_Matrix", modelMatrices_);
-		renderer_->updateBuffer("Normal_Matrix", normalMatrices_);
-		renderer_->updateBuffer("PointLights", pointLights_);
-		renderer_->updateBuffer("LightCount", std::size(pointLights_));
-		for (const auto& [mesh, drawableRefs] : drawablesGeometries_)
+		if (window_.isVisible())
 		{
-			renderer_->setTexture("diffuseTex", mesh.get().material().diffuseTex);
-			renderer_->setTexture("normalTex", mesh.get().material().normalTex);
-			renderer_->setTexture("specularTex", mesh.get().material().specularTex);
-			renderer_->draw(mesh, std::size(drawableRefs));
-		}
-
-
-		renderer_->usePipeline(*gammaCorrectionPipeline_);
-		renderer_->setTexture("outputTexture", renderTarget_->attachmentImage("color"));
-		renderer_->updateBuffer("Exposure", exposure_);
-		renderer_->updateBuffer("HDR", useHdr_);
-		renderer_->updateBuffer("GammaCorrection", useGammaCorrection_);
-		renderer_->draw(*quadMesh_);
-
-		imguiContext_->render(*renderer_, *renderTarget_);
-		renderer_->endTarget(*renderTarget_);
-
-		auto endQuery = renderer_->writeTimestamp(*queryPool_, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-		renderer_->end();
-
-		cpuTime_ = cpuTimer_.ellapsedMs();
-		auto e = endQuery.results();
-		auto b = beginQuery.results();
-		if (b < e)
-		{
-			gpuTime_ = (e - b) / 1000000.0f;
+			auto& cb = commandPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+			cb.begin();
+			renderpass_->begin(cb, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
+			renderpass_->draw(cb, 3, 1, 0, 0);
+			renderpass_->end(cb);
+			cb.end();
+			context_->graphicsQueue->submit(cb);
+			swapchain_->swapBuffers();
+			context_->graphicsQueue->present(cb, *swapchain_);
 		}
 	}
 	return window_.isOpen();

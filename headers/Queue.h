@@ -2,20 +2,21 @@
 #include "vulkan/vulkan.hpp"
 #include "QueueFamily.h"
 #include "Device.h"
+#include <memory>
 
 namespace vkn
 {
 	class CommandBuffer;
 	class Swapchain;
-	class Signal;
+	class Fence;
+	class Semaphore;
 	class Queue
 	{
 	public:
 		Queue(const vkn::Device& device, const QueueFamily& familyIndex, const uint32_t index);
 		const uint32_t& familyIndex() const;
-		void submit(CommandBuffer& cb);
-		void submitWithFeedbackSignal(CommandBuffer& cb);
-		void present(const vkn::Swapchain& swapchain, Signal& waitOn);
+		std::shared_ptr<Fence> submit(CommandBuffer& cb);
+		void present(CommandBuffer& cb, const vkn::Swapchain& swapchain);
 		void idle();
 		const VkQueue queue() const;
 		const uint32_t timestampValidBits() const;

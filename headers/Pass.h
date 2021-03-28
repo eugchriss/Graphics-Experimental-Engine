@@ -1,18 +1,16 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
-#include "Gpu.h"
-#include "Device.h"
 #include "Shader.h"
 #include "Pipeline.h"
 #include "vulkanContext.h"
-
+#include "RenderTarget.h"
 #include <vector>
 #include <unordered_map>
 #include <string>
-#include <utility>
 namespace vkn
 {
-	class PipelineBuilder
+	class Renderpass;
+	class Pass
 	{
 	public:
 		struct RenderArea
@@ -21,10 +19,18 @@ namespace vkn
 			VkRect2D scissor;
 		};
 
-		PipelineBuilder(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
-		PipelineBuilder(PipelineBuilder&&) = default;
-		~PipelineBuilder() = default;
-		vkn::Pipeline get(Context& context);
+		Pass(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+		Pass(Pass&&) = default;
+		~Pass() = default;
+		void attachToRenderpass(Context& constext, const VkRenderPass& renderpass, const uint32_t subpassIndex);
+		void bind(CommandBuffer& cb);
+		void rebuild(Context& context);
+		void usesColorTarget(RenderTarget& target);
+		void usesDepthStencilTarget(RenderTarget& target);
+		void consumesTarget(RenderTarget& target);
+		std::vector<RenderTargetRef>& colorTargets();
+		std::vector<RenderTargetRef>& depthStencilTargets();
+		std::vector<RenderTargetRef>& inputTargets();
 		void setShaderVertexStage(const std::string& path);
 		void setShaderFragmentStage(const std::string& path);
 		void setInputBindingRate(const uint32_t binding, const VkVertexInputRate rate);
@@ -39,14 +45,12 @@ namespace vkn
 		void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment);
 		void addDynamicState(const VkDynamicState state);
 		void setPolygonMode(const VkPolygonMode mode);
-
 		VkFrontFace frontFace;
 		VkCullModeFlags cullMode;
 		float lineWidth;
-		VkRenderPass renderpass;
-		uint32_t subpass;
 	private:
 		bool support3D{ false };
+		VkGraphicsPipelineCreateInfo pipelineInfo_{};
 		VkPipelineVertexInputStateCreateInfo vertexInput_{};
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyCI_{};
 		VkPipelineTessellationStateCreateInfo tesselationCI_{};
@@ -61,5 +65,12 @@ namespace vkn
 		std::vector<VkDynamicState> dynamicStates_{};
 		std::unordered_map<VkShaderStageFlagBits, std::string> shaderStages_;
 		std::vector<vkn::Shader> shaders_{};
+
+		std::vector<RenderTargetRef> colorTargets_;
+		std::vector<RenderTargetRef> depthStencilTargets_;
+		std::vector<RenderTargetRef> inputTargets_;
+
+		std::unique_ptr<Pipeline>pipeline_;
+		void buildPipeline(Context& context, const VkRenderPass& renderpass, const uint32_t subpassIndex);
 	};
 }

@@ -15,6 +15,7 @@ gee::Window::Window(const std::string& title, const uint32_t width, const uint32
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	window_ = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 	aspectRatio_ = width / static_cast<float>(height);
+	isVisible_ = width != 0 && height != 0;
 }
 
 const bool gee::Window::isOpen() const
@@ -37,6 +38,7 @@ void gee::Window::resize()
 {
 	const auto& sz = size();
 	aspectRatio_ = sz.x / static_cast<float>(sz.y);
+	isVisible_ = sz.x != 0 && sz.y != 0;
 }
 
 const glm::u32vec2 gee::Window::size() const
@@ -49,4 +51,9 @@ const glm::u32vec2 gee::Window::size() const
 const float gee::Window::aspectRatio() const
 {
 	return aspectRatio_;
+}
+
+const bool gee::Window::isVisible() const
+{
+	return isVisible_;
 }

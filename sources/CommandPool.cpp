@@ -4,35 +4,63 @@
 vkn::CommandPool::CommandPool(Context& _context, const VkCommandPoolCreateFlagBits type) : context_{ _context }
 {
 	VkCommandPoolCreateInfo commandPoolCI{};
-
 	commandPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	commandPoolCI.pNext = nullptr;
 	commandPoolCI.flags = type;
 	commandPoolCI.queueFamilyIndex = context_.queueFamily->familyIndex();
-
 	vkn::error_check(vkCreateCommandPool(context_.device->device, &commandPoolCI, nullptr, &pool_), "Unable to create the command buffer pool");
+
+	commandBuffers_[VK_COMMAND_BUFFER_LEVEL_PRIMARY];
+	commandBuffers_[VK_COMMAND_BUFFER_LEVEL_SECONDARY];
+	for (auto& [level, cbs] : commandBuffers_)
+	{
+		allocateCommandBuffer(level, 10);
+	}
 }
 
-vkn::CommandPool::CommandPool(CommandPool&& other): context_{other.context_}
+vkn::CommandPool::CommandPool(CommandPool&& other) : context_{ other.context_ }
 {
 	pool_ = other.pool_;
-	cbs_ = std::move(other.cbs_);
+	commandBuffers_ = std::move(other.commandBuffers_);
 	other.pool_ = VK_NULL_HANDLE;
 }
 
 vkn::CommandPool::~CommandPool()
 {
-	if (!std::empty(cbs_))
+	for (const auto& [level, cbs] : commandBuffers_)
 	{
-		vkFreeCommandBuffers(context_.device->device, pool_, std::size(cbs_), std::data(cbs_));
+		std::vector<VkCommandBuffer> buffers;
+		for (const auto& cb : cbs.commandBuffers)
+		{
+			buffers.emplace_back(cb.commandBuffer());
+		}
+		vkFreeCommandBuffers(context_.device->device, pool_, std::size(buffers), std::data(buffers));
 	}
+
 	if (pool_ != VK_NULL_HANDLE)
 	{
 		vkDestroyCommandPool(context_.device->device, pool_, nullptr);
 	}
 }
 
-std::vector<vkn::CommandBuffer> vkn::CommandPool::getCommandBuffers(const VkCommandBufferLevel level, const uint32_t count)
+vkn::CommandBuffer& vkn::CommandPool::getCommandBuffer(const VkCommandBufferLevel level)
+{
+	sortCompletedCommandBuffers();
+	auto& cbs = commandBuffers_[level];
+	if (std::empty(cbs.availableCommandBuffers))
+	{
+		allocateCommandBuffer(level, 10);
+	}
+	else
+	{
+		auto& cb = cbs.availableCommandBuffers.front();
+		cbs.availableCommandBuffers.pop();
+		cbs.pendingCommandBuffers.emplace_back(std::ref(cb));
+		return cb.get();
+	}
+}
+
+void vkn::CommandPool::allocateCommandBuffer(const VkCommandBufferLevel level, const uint32_t count)
 {
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -40,22 +68,30 @@ std::vector<vkn::CommandBuffer> vkn::CommandPool::getCommandBuffers(const VkComm
 	allocInfo.commandPool = pool_;
 	allocInfo.level = level;
 	allocInfo.commandBufferCount = count;
-
+	
 	std::vector<VkCommandBuffer> cbs(count);
 	vkn::error_check(vkAllocateCommandBuffers(context_.device->device, &allocInfo, std::data(cbs)), "Unable to allocate command buffer");
-	std::copy(std::begin(cbs), std::end(cbs), std::back_inserter(cbs_));
 	
-	std::vector<vkn::CommandBuffer> buffers;
-	buffers.reserve(count);
-	for (const auto& cb : cbs)
+	auto& levelCbs = commandBuffers_[level];
+	levelCbs.commandBuffers.reserve(std::size(levelCbs.commandBuffers) + count);
+	for (auto& cb: cbs)
 	{
-		buffers.emplace_back(context_, cb);
+		levelCbs.commandBuffers.emplace_back(context_, cb);
+		levelCbs.availableCommandBuffers.push(std::ref(levelCbs.commandBuffers.back()));
 	}
-	return std::move(buffers);
 }
 
-vkn::CommandBuffer vkn::CommandPool::getCommandBuffer(const VkCommandBufferLevel level)
+void vkn::CommandPool::sortCompletedCommandBuffers()
 {
-	auto& cbs = getCommandBuffers(level, 1);
-	return std::move(cbs[0]);
+	for (auto& [level, cbs] : commandBuffers_)
+	{
+		for (const auto& cbRef : cbs.pendingCommandBuffers)
+		{
+			if (!cbRef.get().isPending())
+			{
+				cbs.availableCommandBuffers.push(cbRef);
+			}
+		}
+		std::remove_if(std::begin(cbs.pendingCommandBuffers), std::end(cbs.pendingCommandBuffers), [](const auto& cbRef) { return !cbRef.get().isPending(); });
+	}
 }

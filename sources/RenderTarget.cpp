@@ -1,77 +1,76 @@
 #include "..\headers\RenderTarget.h"
 
-vkn::RenderTarget::RenderTarget(vkn::Context& _context, std::shared_ptr<Renderpass>& _renderpass, Framebuffer&& _framebuffer) :
-	context_{ _context },
-	renderpass { std::move(_renderpass) }, 
-	framebuffer{ std::move(_framebuffer) }
+vkn::RenderTarget::RenderTarget(Context& context, const VkFormat fmt, const VkExtent2D& extent, const VkImageUsageFlags usage, const VkImageLayout finalLayout):
+	context_{context}, format{fmt},
+	usage_{usage}, finalLayout{finalLayout}
 {
-	for (auto i = 0u; i < framebuffer.frameCount(); ++i)
+	
+	assert((usage_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) 
+		 ^ (usage_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+		&& "Rendertarget usage must be VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT xor VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT");
+	image_ = std::make_unique<Image>(context_, usage_, format, VkExtent3D{ extent.width, extent.height, 1 });
+}
+
+vkn::RenderTarget::RenderTarget(Context& context, VkImage image, const VkFormat fmt):
+	context_{ context }, format{ fmt },
+	usage_{ VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT }, finalLayout{ VK_IMAGE_LAYOUT_PRESENT_SRC_KHR }
+{
+	image_ = std::make_unique<Image>(context_, image, format);
+}
+
+void vkn::RenderTarget::resize(const VkExtent2D& newExtent)
+{
+	extent_ = newExtent;
+	image_ = std::make_unique<Image>(context_, usage_, format, VkExtent3D{ extent_.width, extent_.height, 1 });
+}
+
+void vkn::RenderTarget::clear(CommandBuffer& cb)
+{
+	VkClearAttachment clearAttachment{};
+	if (usage_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
 	{
-		imageAvailableSignals_.emplace_back(context_);
+		throw std::runtime_error{ "color clear is not implemented yet" };
 	}
-}
-
-void vkn::RenderTarget::clearDepthAttachment(CommandBuffer& cb, const float clearColor)
-{
-	VkClearValue clear{};
-	clear.depthStencil.depth = clearColor;
-	renderpass->clearDepthAttachment(cb, renderArea_, clear);
-}
-
-void  vkn::RenderTarget::bind(CommandBuffer& cb, const VkRect2D& renderArea)
-{
-	renderArea_ = renderArea;
-	renderpass->begin(cb, framebuffer.frame(currentFrame_), renderArea_, VK_SUBPASS_CONTENTS_INLINE);
-	isBound_ = true;
-}
-
-bool vkn::RenderTarget::isReady(Swapchain& swapchain)
-{
-	swapchain.setImageAvailableSignal(imageAvailableSignals_[currentFrame_]);
-	return imageAvailableSignals_[currentFrame_].signaled();
-}
-
-void vkn::RenderTarget::unBind(CommandBuffer& cb)
-{
-	renderpass->end(cb);
-	++currentFrame_;
-	currentFrame_ %= framebuffer.frameCount();
-	assert(currentFrame_ < framebuffer.frameCount());
-	isBound_ = false;
-}
-
-void vkn::RenderTarget::resize(const glm::u32vec2& size)
-{
-	currentFrame_ = 0;
-	context_.device->idle();
-	framebuffer.resize(size);
-	imageAvailableSignals_.clear();
-	for (auto i = 0u; i < framebuffer.frameCount(); ++i)
+	else if (usage_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 	{
-		imageAvailableSignals_.emplace_back(context_);
+		clearAttachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		VkClearValue clearValue{};
+		clearValue.depthStencil = { clearDepthStencil.r, static_cast<uint32_t>(clearDepthStencil.g)};
+		clearAttachment.clearValue = clearValue;
 	}
+	else
+	{
+		//this should never happen due to the assert in ctor, but just in case...
+		throw std::runtime_error{ "wrong rendertarget usage" };
+	}
+
+	VkRect2D area{};
+	area.offset = { 0,0 };
+	area.extent = extent_;
+
+	VkClearRect clearRect{};
+	clearRect.baseArrayLayer = 0;
+	clearRect.layerCount = 1;
+	clearRect.rect = area;
+	vkCmdClearAttachments(cb.commandBuffer(), 1, &clearAttachment, 1, &clearRect);
 }
 
-float vkn::RenderTarget::rawContextAt(const std::string& name, const uint32_t x, const uint32_t y)
-{	
-	auto offset = (x + y * framebuffer.dimensions().width) * 4;
-	return framebuffer.rawContentAt(name, offset);
-}
-
-const bool vkn::RenderTarget::isOffscreen() const
+VkImageView vkn::RenderTarget::view(const VkImageViewType viewType, const uint32_t layerCount)
 {
-	return framebuffer.isOffscreen();
+	VkImageAspectFlags aspect{};
+	if ((usage_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+	{
+		aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+	else if ((usage_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+	{
+		aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+	assert(aspect != 0 && "Unabled to find the image's aspect");
+	return image_->getView(aspect, viewType, layerCount);
 }
 
-vkn::Image& vkn::RenderTarget::attachmentImage(const std::string& name)
+const uint64_t vkn::RenderTarget::id() const
 {
-	auto& attachments = framebuffer.attachments(currentFrame_);
-	auto result = attachments.find(name);
-	assert(result != std::end(attachments) && "non existent attachment");
-	return result->second;
-}
-
-const bool vkn::RenderTarget::isBound() const
-{
-	return isBound_;
+	return reinterpret_cast<uint64_t>(image_->image);
 }

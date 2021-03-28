@@ -32,7 +32,7 @@ vkn::Swapchain::Swapchain(Context& context): context_{context}
 	swapchainInfo_.oldSwapchain = VK_NULL_HANDLE;
 	vkn::error_check(vkCreateSwapchainKHR(context_.device->device, &swapchainInfo_, nullptr, &swapchain_), "Unable to create the swapchain");
 
-	retrieveImages();
+	retrieveTargets();
 }
 
 vkn::Swapchain::~Swapchain()
@@ -45,7 +45,7 @@ void vkn::Swapchain::resize(const VkExtent2D& extent)
 	swapchainInfo_.imageExtent = extent;
 	swapchainInfo_.oldSwapchain = swapchain_;
 	vkn::error_check(vkCreateSwapchainKHR(context_.device->device, &swapchainInfo_, nullptr, &swapchain_), "Unable to REcreate the swapchain");
-	retrieveImages();
+	retrieveTargets();
 }
 
 const VkExtent2D vkn::Swapchain::extent() const
@@ -53,19 +53,20 @@ const VkExtent2D vkn::Swapchain::extent() const
 	return swapchainInfo_.imageExtent;
 }
 
-void vkn::Swapchain::setImageAvailableSignal(vkn::Signal& signal, const uint64_t timeout)
+void vkn::Swapchain::swapBuffers(const uint64_t timeout)
 {
-	signal.reset();
-	vkn::error_check(vkAcquireNextImageKHR(context_.device->device, swapchain_, timeout, VK_NULL_HANDLE, signal.fence, &availableImageIndex_), "Failed to present images");
+	Fence ready{ context_, false };
+	vkn::error_check(vkAcquireNextImageKHR(context_.device->device, swapchain_, timeout, VK_NULL_HANDLE, ready(), &availableImageIndex_), "Failed to acquire the next image");
+	ready.wait();
 }
 
-const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(vkn::Signal& waitOn) const
+const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(Semaphore& waitOnSemaphore) const
 {
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.pNext = nullptr;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &waitOn.semaphore;
+	presentInfo.pWaitSemaphores = &waitOnSemaphore();
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &swapchain_;
 	presentInfo.pImageIndices = &availableImageIndex_;
@@ -74,9 +75,9 @@ const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(vkn::Signal& waitOn) con
 	return presentInfo;
 }
 
-std::vector<vkn::Image>& vkn::Swapchain::images()
+std::vector<vkn::RenderTarget>& vkn::Swapchain::renderTargets()
 {
-	return images_;
+	return renderTargets_;
 }
 
 const VkFormat vkn::Swapchain::imageFormat() const
@@ -102,16 +103,17 @@ const VkSurfaceFormatKHR vkn::Swapchain::getSurfaceFormat(vkn::Gpu& gpu, const V
 	}
 }
 
-void vkn::Swapchain::retrieveImages()
+void vkn::Swapchain::retrieveTargets()
 {
 	uint32_t count;
 	vkn::error_check(vkGetSwapchainImagesKHR(context_.device->device, swapchain_, &count, nullptr), "Unabled to get the swapchain images count");
 	std::vector<VkImage> images(count);
 	vkn::error_check(vkGetSwapchainImagesKHR(context_.device->device, swapchain_, &count, std::data(images)), "Unabled to get the swapchain images");
 
-	images_.clear();
+	renderTargets_.clear();
 	for (auto image : images)
 	{
-		images_.emplace_back(context_, image, swapchainInfo_.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		renderTargets_.emplace_back(context_, image, swapchainInfo_.imageFormat);
+		//TODO: copy all metadata of the old renderTarget to the new one
 	}
 }

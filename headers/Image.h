@@ -4,7 +4,6 @@
 #include "vulkanContext.h"
 #include "Buffer.h"
 #include "DeviceMemory.h"
-#include "Renderpass.h"
 #include <unordered_map>
 #include <memory>
 
@@ -21,8 +20,7 @@ namespace vkn
 	{
 	public:
 		//the default image layout is undefined
-		Image(Context& context, const VkImageUsageFlags usage, const VkFormat format, const VkExtent3D extent, const uint32_t layerCount = 1) ;
-		Image(Context& context, const VkAttachmentDescription& attachment, const VkExtent3D extent, const uint32_t layerCount = 1);
+		Image(Context& context, const VkImageUsageFlags usage, const VkFormat format, const VkExtent3D extent, const uint32_t layerCount = 1);
 		Image(Context& context, const VkImage image, const VkFormat format, const uint32_t layerCount = 1, bool owned = false);
 		Image(Image&& image);
 		~Image();
@@ -41,13 +39,10 @@ namespace vkn
 		VkImage image{ VK_NULL_HANDLE };
 		const VkImageView getView(const VkImageAspectFlags aspect, const VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D, const uint32_t layerCount = 1);
 		const VkImageView getView(const VkImageAspectFlags aspect, const VkImageViewType viewType, const VkFormat format, const uint32_t layerCount = 1);
-		void setAfterRenderpassLayout();
 	private:
 		std::string name_;//only used for debugging purpose
 		Context& context_;
 		VkImageLayout layout_{ VK_IMAGE_LAYOUT_UNDEFINED };
-		VkImageLayout afterRenderpassLayout_{ VK_IMAGE_LAYOUT_UNDEFINED };
-		bool isRenderpassAttachment_{false };
 		VkFormat format_{};
 		uint32_t layerCount_{};
 		struct ViewType

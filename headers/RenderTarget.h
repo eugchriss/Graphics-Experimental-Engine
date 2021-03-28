@@ -1,13 +1,11 @@
 #pragma once
+#include "glm/glm.hpp"
 #include <vector>
 #include <memory>
-#include <string>
 #include "vulkanContext.h"
-#include "Renderpass.h"
-#include "Framebuffer.h"
+#include "Image.h"
 #include "CommandBuffer.h"
-#include "Signal.h"
-#include "Swapchain.h"
+#include <functional>
 
 namespace vkn
 {
@@ -15,26 +13,29 @@ namespace vkn
 	{
 	public:
 
-		RenderTarget(Context& _context, std::shared_ptr<Renderpass>& _renderpass, Framebuffer&& _framebuffer);
+		RenderTarget(Context& context, const VkFormat format, const VkExtent2D& size, const VkImageUsageFlags usage, const VkImageLayout finalLayout);
+		//This ctor is specific for the swapchain's images
+		RenderTarget(Context& context, VkImage image, const VkFormat format);
 		RenderTarget(RenderTarget&&) = default;
-		void clearDepthAttachment(CommandBuffer& cb, const float clearColor = 1.0f);
-		void bind(CommandBuffer& cb, const VkRect2D& renderArea);
-		bool isReady(Swapchain& swapchain);
-		void unBind(CommandBuffer& cb);
-		void resize(const glm::u32vec2& size);
-		float rawContextAt(const std::string& attachmentName, const uint32_t x, const uint32_t y);
-		const bool isOffscreen() const;
-		const bool isBound() const;
-		vkn::Image& attachmentImage(const std::string& name);
-		std::shared_ptr<Renderpass> renderpass;
-		Framebuffer framebuffer;
+		void resize(const VkExtent2D& newExtent);
+		void clear(CommandBuffer& cb);
+		VkFormat format{ VK_FORMAT_UNDEFINED };
+		VkImageView view(const VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D, const uint32_t layerCount = 1);
+		glm::vec3 clearColor{};
+		glm::vec2 clearDepthStencil{1.0f, 0};
+		VkImageLayout finalLayout{ VK_IMAGE_LAYOUT_UNDEFINED };
+		VkAttachmentLoadOp loadOperation{ VK_ATTACHMENT_LOAD_OP_DONT_CARE };
+		VkAttachmentStoreOp storeOperation{ VK_ATTACHMENT_STORE_OP_DONT_CARE };
+		VkAttachmentLoadOp stencilLoadOperation{ VK_ATTACHMENT_LOAD_OP_DONT_CARE };
+		VkAttachmentStoreOp stencilStoreOperation{ VK_ATTACHMENT_STORE_OP_DONT_CARE };
+		const uint64_t id() const;
 
 	private:
 		Context& context_;
-		uint32_t currentFrame_{};
-		std::vector<Signal> imageAvailableSignals_;
-		VkRect2D renderArea_;
-		bool isBound_{ false };
+		std::unique_ptr<Image> image_;
+		VkImageUsageFlags usage_{};
+		VkExtent2D extent_{};
 	};
 
+	MAKE_REFERENCE(RenderTarget);
 }

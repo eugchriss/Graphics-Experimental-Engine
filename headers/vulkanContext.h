@@ -7,6 +7,8 @@
 #include "Device.h"
 #include "Queue.h"
 
+#define MAKE_REFERENCE(object) using object##Ref = std::reference_wrapper<object>;
+
 namespace vkn
 {
 	class Context

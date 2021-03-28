@@ -4,6 +4,7 @@
 #include "Signal.h"
 #include <string>
 #include <functional>
+#include <memory>
 namespace vkn
 {
 	class CommandBuffer
@@ -12,20 +13,22 @@ namespace vkn
 #ifndef NDEBUG
 		void setDebugName(const std::string&);
 #endif
+		CommandBuffer(Context& context, const VkCommandBuffer cb);
+		CommandBuffer(CommandBuffer&) = delete;
 		CommandBuffer(CommandBuffer&&) = default;
-		CommandBuffer& operator=(CommandBuffer&&) = default;
+		void attachFence(std::shared_ptr<Fence>& fence);
 		void begin(const VkCommandBufferUsageFlags usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 		void end();
 		VkCommandBuffer commandBuffer() const;
-		bool isComplete();
-		Signal& completeSignal();
-		CommandBuffer(Context& context, const VkCommandBuffer cb);
-		const bool isRecording() const;
+		Semaphore completedSemaphore;
+		const bool isPending() const;
+		Context& context() const;
 	private:
 		friend class CommandPool;
-		std::reference_wrapper<Context> context_;
+		Context& context_;
 		VkCommandBuffer cb_{ VK_NULL_HANDLE };
-		Signal complete_;
-		bool isRecording_{ false };
+		std::shared_ptr<Fence> isPendingFence_;
 	};
+
+	MAKE_REFERENCE(CommandBuffer);
 }

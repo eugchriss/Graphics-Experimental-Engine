@@ -1,23 +1,17 @@
 #pragma once
 #include "Window.h"
 #include "vulkanContext.h"
-#include "VulkanRenderer.h"
-#include "RenderTarget.h"
-#include "vulkanFrameGraph.h"
-
+#include "Renderpass.h"
 namespace vkn
 {
 	class ImGuiContext
 	{
 	public:
-		ImGuiContext(gee::Window& window, Context& context, RenderTarget& renderTarget, const Pass& guiPass);
+		ImGuiContext(gee::Window& window, Context& context, const Renderpass& renderpass);
 		~ImGuiContext();
-		void render(Renderer& renderer, const RenderTarget& target);
+		void render(CommandBuffer& cb);
 	private:
-		void render(const RenderTarget& target, CommandBuffer& cb);
 		Context& context_;
-		RenderTarget& renderTarget_;
-		uint32_t passIndex_;
 		VkDescriptorPool descriptorPool_{ VK_NULL_HANDLE };
 
 		void loadFontsTextures();

@@ -5,25 +5,31 @@
 
 namespace vkn
 {
-	class Signal
+	class Fence
 	{
 	public:
-		Signal(Context& context, bool signaled = false);
-		Signal(const Signal&) = delete;
-		Signal(Signal&& other);
-		~Signal();
-		Signal& operator=(Signal&&);
-		Signal& operator=(const Signal&) = delete;
+		Fence(Context& context, const bool signaled);
+		Fence(Fence&&);
+		~Fence();
+		VkFence& operator()();
+		void wait(const uint64_t timeout = UINT64_MAX) const;
+		bool signaled() const;
 		void reset();
-		VkSemaphore semaphore{ VK_NULL_HANDLE };
-		VkFence fence{ VK_NULL_HANDLE };
-		bool signaled();
-		void waitForSignal(const uint64_t timeout = UINT64_MAX) const;
 	private:
-		std::reference_wrapper<Context> context_;
+		Context& context_;
+		VkFence fence_{ VK_NULL_HANDLE };
+	};
 
-#ifndef NDEBUG
-		bool signaled_;
-#endif
+	class Semaphore
+	{
+	public:
+		Semaphore(Context& context);
+		Semaphore(Semaphore&& other);
+		~Semaphore();
+
+		VkSemaphore& operator()();
+	private:
+		Context& context_;
+		VkSemaphore semaphore_{ VK_NULL_HANDLE };
 	};
 }
