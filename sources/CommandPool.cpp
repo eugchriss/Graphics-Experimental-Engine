@@ -68,13 +68,13 @@ void vkn::CommandPool::allocateCommandBuffer(const VkCommandBufferLevel level, c
 	allocInfo.commandPool = pool_;
 	allocInfo.level = level;
 	allocInfo.commandBufferCount = count;
-	
+
 	std::vector<VkCommandBuffer> cbs(count);
 	vkn::error_check(vkAllocateCommandBuffers(context_.device->device, &allocInfo, std::data(cbs)), "Unable to allocate command buffer");
-	
+
 	auto& levelCbs = commandBuffers_[level];
 	levelCbs.commandBuffers.reserve(std::size(levelCbs.commandBuffers) + count);
-	for (auto& cb: cbs)
+	for (auto& cb : cbs)
 	{
 		levelCbs.commandBuffers.emplace_back(context_, cb);
 		levelCbs.availableCommandBuffers.push(std::ref(levelCbs.commandBuffers.back()));
@@ -85,13 +85,16 @@ void vkn::CommandPool::sortCompletedCommandBuffers()
 {
 	for (auto& [level, cbs] : commandBuffers_)
 	{
-		for (const auto& cbRef : cbs.pendingCommandBuffers)
+		if (!std::empty(cbs.pendingCommandBuffers))
 		{
-			if (!cbRef.get().isPending())
+			for (const auto& cbRef : cbs.pendingCommandBuffers)
 			{
-				cbs.availableCommandBuffers.push(cbRef);
+				if (!cbRef.get().isPending())
+				{
+					cbs.availableCommandBuffers.push(cbRef);
+				}
 			}
+			cbs.pendingCommandBuffers.erase(std::remove_if(std::begin(cbs.pendingCommandBuffers), std::end(cbs.pendingCommandBuffers), [](const auto& cbRef) { return !cbRef.get().isPending(); }));
 		}
-		std::remove_if(std::begin(cbs.pendingCommandBuffers), std::end(cbs.pendingCommandBuffers), [](const auto& cbRef) { return !cbRef.get().isPending(); });
 	}
 }

@@ -43,11 +43,11 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
 		{
+			firstMouseUse_ = true;
 			window_.resize();
-			if (w != 0 && h != 0)
+			if (window_.isVisible())
 			{
 				context_->device->idle();
-				firstMouseUse_ = true;
 				swapchain_->resize(VkExtent2D{ w, h });
 				renderpass_->resize(glm::u32vec2{ w, h });
 			}			
