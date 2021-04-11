@@ -15,13 +15,15 @@ namespace vkn
 		~PipelineLayout();
 
 		VkPipelineLayout layout{ VK_NULL_HANDLE };
-		const std::vector<VkDescriptorSetLayout>& layouts() const;
+		const std::vector<VkDescriptorSet>& sets() const;
 
 	private:
 		vkn::Device& device_;
-		std::vector<VkDescriptorSetLayout> sets_;
+		VkDescriptorPool descriptorPool_{ VK_NULL_HANDLE };
+		std::vector<VkDescriptorSet> sets_;
 		std::vector<VkPushConstantRange> pushConstantRanges_;
-		void createSets(const std::vector<vkn::Shader>& shaders);
+		void create_descriptor_pool(const std::vector<Shader>& shaders);
+		const std::vector<VkDescriptorSetLayout> createSets(const std::vector<vkn::Shader>& shaders);
 		void createPushConstantRanges(const std::vector<vkn::Shader>& shaders);
 	};
 }

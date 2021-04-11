@@ -14,32 +14,14 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	std::cout << "The application has been launched.\n";
 
 	createContext();
+	materials_.emplace_back(*context_, "../assets/shaders/triangleShader.spv", "../assets/shaders/redColoredShader.spv");
+	materials_.emplace_back(*context_, "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv");
+
+	imageHolder_ = std::make_unique<ImageHolder>(vkn::TextureImageFactory{ *context_ });
 	commandPool_ = std::make_unique<vkn::CommandPool>(*context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	swapchain_ = std::make_unique<vkn::Swapchain>(*context_);
-	auto& colorTargets = swapchain_->renderTargets();
-	for (auto& target : colorTargets)
-	{
-		target.loadOperation = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		target.storeOperation = VK_ATTACHMENT_STORE_OP_STORE;
-	}
-
-	vkn::Pass colorPass{ "../assets/shaders/vert.spv", "../assets/shaders/frag.spv" };
-	colorPass.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
-	colorPass.addRaterizationStage(VK_POLYGON_MODE_FILL);
-	//colorPass.addDepthStage(VK_COMPARE_OP_LESS);
-	colorPass.addColorBlendStage();
-	colorPass.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
-	colorPass.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-	colorPass.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-	for (auto& colorTarget : colorTargets)
-	{
-		colorPass.usesColorTarget(colorTarget);
-	}
-
-	std::vector<vkn::Pass> passes;
-	passes.emplace_back(std::move(colorPass));
-
-	renderpass_ = std::make_unique<vkn::Renderpass>(*context_, VkExtent2D{width, height}, std::move(passes));
+	
+	create_renderpass(width, height);
 
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
 		{
@@ -49,7 +31,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 			{
 				context_->device->idle();
 				swapchain_->resize(VkExtent2D{ w, h });
-				renderpass_->resize(glm::u32vec2{ w, h });
+				colorRenderpass_->resize(glm::u32vec2{ w, h });
 			}			
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
@@ -94,12 +76,12 @@ void gee::Application::setSkybox(Drawable& skybox)
 
 void gee::Application::addDrawable(Drawable& drawable)
 {
-	auto& drawables = drawablesGeometries_[std::ref(drawable.mesh)];
-	auto result = std::find_if(std::begin(drawables), std::end(drawables), [&](const auto& drawableRef) { return drawableRef.get().name == drawable.name; });
-	if (result == std::end(drawables))
-	{
-		drawables.emplace_back(std::ref(drawable));
-	}
+	//auto& drawables = drawablesGeometries_[std::ref(drawable.mesh)];
+	//auto result = std::find_if(std::begin(drawables), std::end(drawables), [&](const auto& drawableRef) { return drawableRef.get().name == drawable.name; });
+	//if (result == std::end(drawables))
+	//{
+	//	drawables.emplace_back(std::ref(drawable));
+	//}
 }
 
 void gee::Application::addCamera(const Camera& camera)
@@ -233,7 +215,7 @@ void gee::Application::getTransforms()
 	modelMatrices_.clear();
 	normalMatrices_.clear();
 	pointLights_.clear();
-	for (auto& [mesh, drawableRefs] : drawablesGeometries_)
+	/*for (auto& [mesh, drawableRefs] : drawablesGeometries_)
 	{
 		for (const auto& drawableRef : drawableRefs)
 		{
@@ -253,8 +235,28 @@ void gee::Application::getTransforms()
 				shaderLight.quadratic = light.quadratic;
 			}
 		}
-	}
+	}*/
 }
+
+void gee::Application::create_renderpass(const uint32_t width, const uint32_t height)
+{
+	auto& colorTargets = swapchain_->renderTargets();
+	for (auto& target : colorTargets)
+	{
+		target.loadOperation = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		target.storeOperation = VK_ATTACHMENT_STORE_OP_STORE;
+	}
+
+	vkn::Pass colorPass;
+	for (auto& colorTarget : colorTargets)
+	{
+		colorPass.usesColorTarget(colorTarget);
+	}
+	std::vector<vkn::Pass> passes;
+	passes.emplace_back(std::move(colorPass));
+	colorRenderpass_ = std::make_unique<vkn::Renderpass>(*context_, VkExtent2D{ width, height }, std::move(passes));
+}
+
 
 bool gee::Application::isRunning()
 {
@@ -263,10 +265,14 @@ bool gee::Application::isRunning()
 		if (window_.isVisible())
 		{
 			auto& cb = commandPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-			cb.begin();
-			renderpass_->begin(cb, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
-			renderpass_->draw(cb, 3, 1, 0, 0);
-			renderpass_->end(cb);
+			cb.begin();			
+			colorRenderpass_->begin(cb, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
+			for (auto& material : materials_)
+			{
+				material.bind(cb, (*colorRenderpass_)());
+				material.draw(cb);
+			}
+			colorRenderpass_->end(cb);
 			cb.end();
 			context_->graphicsQueue->submit(cb);
 			swapchain_->swapBuffers();

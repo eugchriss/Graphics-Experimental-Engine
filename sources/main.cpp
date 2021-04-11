@@ -22,7 +22,7 @@ int main()
 											"../assets/skybox/space/bottom.png",
 											"../assets/skybox/space/front.png",
 											"../assets/skybox/space/back.png" };
-	auto& skyboxMesh = meshHolder.get("skybox", gee::getCubeMesh, gee::Material{ skyboxPaths });
+	auto& skyboxMesh = meshHolder.get("skybox", gee::getCubeMesh);
 	
 	gee::Application app{ "Graphics's Experimental Engine", 800, 800 };
 	
@@ -50,7 +50,7 @@ int main()
 	app.addDrawable(light);
 
 	gee::Drawable skybox{ "skybox", skyboxMesh };
-	auto& floorMesh = gee::getFloorMesh(gee::Material{ "../assets/textures/floor/diffuse.jpg", "../assets/textures/floor/normal.png" });
+	auto& floorMesh = gee::getFloorMesh();
 	gee::Drawable floor{ "floor", floorMesh };
 	floor.setSize(glm::vec3{ 10.0f });
 	app.addDrawable(floor);

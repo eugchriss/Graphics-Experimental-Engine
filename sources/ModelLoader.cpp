@@ -16,7 +16,7 @@ gee::Mesh gee::ModelLoader::load(const std::string& path)
 		throw std::runtime_error{ "Assimp loader failed: " + error };
 	}
 	processNode(scene, scene->mRootNode);
-	return Mesh{ scene->GetShortFilename(path.c_str()), std::move(vertices_), std::move(indices_), std::move(material_) };
+	return Mesh{ scene->GetShortFilename(path.c_str()), std::move(vertices_), std::move(indices_)};
 }
 
 gee::Mesh gee::ModelLoader::create(const std::string& path)
@@ -24,9 +24,9 @@ gee::Mesh gee::ModelLoader::create(const std::string& path)
 	return load(path);
 }
 
-gee::Mesh gee::ModelLoader::create(std::function<gee::Mesh(gee::Material&&)> customMesh, gee::Material material)
+gee::Mesh gee::ModelLoader::create(std::function<gee::Mesh()> customMesh)
 {
-	return customMesh(std::move(material));
+	return customMesh();
 }
 
 void gee::ModelLoader::processNode(const aiScene* scene, const aiNode* node)
@@ -85,7 +85,6 @@ void gee::ModelLoader::processMaterial(const aiMaterial* mat)
 	const auto& diffuseTexPath = getTexturePath(*mat, aiTextureType_DIFFUSE, "../assets/default_textures/diffuse.png");
 	const auto& normalTexPath = getTexturePath(*mat, aiTextureType_HEIGHT, "../assets/default_textures/normal.png");
 	const auto& specularTexPath = getTexturePath(*mat, aiTextureType_SPECULAR, "../assets/default_textures/specular.png");
-	material_ = gee::Material{ diffuseTexPath, normalTexPath, specularTexPath };
 }
 
 const std::string gee::ModelLoader::getTexturePath(const aiMaterial& material, const aiTextureType type, const std::string& defaultTexPath) const

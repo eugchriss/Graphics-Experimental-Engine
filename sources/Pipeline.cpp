@@ -22,7 +22,7 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 	};
 
 	VkDeviceSize size{ 0 };
-	const auto& layouts = layout_->layouts();
+	const auto& descriptorSets = layout_->sets();
 	for (const auto& shader : shaders_)
 	{
 		//uniforms
@@ -31,7 +31,7 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 		{
 			Uniform uniform{};
 			uniform.name = binding.name;
-			uniform.setLayout = layouts[binding.set];
+			uniform.set = descriptorSets[binding.set];
 			uniform.binding = binding.layoutBinding.binding;
 			uniform.offset = size;
 			uniform.size = binding.size;
@@ -47,7 +47,7 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 		{
 			Uniform uniform{};
 			uniform.name = binding.name;
-			uniform.setLayout = layouts[binding.set];
+			uniform.set = descriptorSets[binding.set];
 			uniform.binding = binding.layoutBinding.binding;
 			uniform.offset = size;
 			uniform.size = binding.size;
@@ -101,6 +101,11 @@ vkn::Pipeline::~Pipeline()
 
 void vkn::Pipeline::bind(vkn::CommandBuffer& cb)
 {
+	const auto& sets = layout_->sets();
+	if (!std::empty(sets))
+	{
+		vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_->layout, PER_MATERIAL_SET, 1, &sets[PER_MATERIAL_SET], 0, nullptr);
+	}
 	vkCmdBindPipeline(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
 }
 

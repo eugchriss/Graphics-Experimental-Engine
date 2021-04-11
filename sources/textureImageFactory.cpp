@@ -17,6 +17,7 @@ vkn::Image vkn::TextureImageFactory::create(const gee::Texture& texture) const
 	temp.bind(memory);
 	temp.add(datas);
 
+
 	VkFormat imageFormat{ VK_FORMAT_R8G8B8A8_SRGB };
 	if (texture.colorSpace() == gee::Texture::ColorSpace::LINEAR)
 	{

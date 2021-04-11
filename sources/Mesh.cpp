@@ -1,23 +1,23 @@
 #include <stdexcept>
 #include "../headers/Mesh.h"
 
-gee::Mesh::Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices, gee::Material&& material) :
-	name_{ name }, vertices_{ std::move(vertices) },
-	indices_{ std::move(indices) }, material_{std::move(material)}
+gee::Mesh::Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices) :
+	name_{ name }, geometry_{std::move(vertices), std::move(indices) }
 {
 }
-const gee::Material& gee::Mesh::material() const
+
+const gee::Geometry& gee::Mesh::geomtry() const
 {
-	return material_;
+	return geometry_;
 }
 const std::vector<gee::Vertex>& gee::Mesh::vertices() const
 {
-	return vertices_;
+	return geometry_.vertices;
 }
 
 const std::vector<uint32_t>& gee::Mesh::indices() const
 {
-	return indices_;
+	return geometry_.indices;
 }
 
 const std::string& gee::Mesh::name() const
@@ -34,5 +34,10 @@ const size_t gee::Mesh::hash() const
 gee::Vertex::Vertex(const glm::vec3& pos, const glm::vec3& col, const glm::vec2& tex, const glm::vec3& norm):
 	position{ pos }, color{col},
 	textureCoord{tex}, normal{norm}
+{
+}
+
+gee::Geometry::Geometry(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices):
+	vertices{std::move(vertices)}, indices{std::move(indices)}
 {
 }

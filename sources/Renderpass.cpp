@@ -16,10 +16,6 @@ vkn::Renderpass::Renderpass(Context& context, const VkExtent2D& extent, std::vec
 		clearValue.color = { renderTarget.clearColor.r, renderTarget.clearColor.g, renderTarget.clearColor.b, 1.0f };
 		clearValues_.emplace_back(clearValue);
 	}
-	for (auto i = 0u; i < std::size(passes_); ++i)
-	{
-		passes_[i].attachToRenderpass(context, renderpass_, i);
-	}
 }
 
 void vkn::Renderpass::begin(vkn::CommandBuffer& cb, const VkRect2D& renderArea, const VkSubpassContents subpassContent)
@@ -46,7 +42,6 @@ void vkn::Renderpass::begin(vkn::CommandBuffer& cb, const VkRect2D& renderArea, 
 	vkCmdSetScissor(cb.commandBuffer(), 0, 1, &renderArea);
 
 	assert(std::size(passes_) > 0 && "The renderpass has 0 passes");
-	passes_[0].bind(cb);
 }
 
 void vkn::Renderpass::end(vkn::CommandBuffer& cb)
@@ -54,11 +49,6 @@ void vkn::Renderpass::end(vkn::CommandBuffer& cb)
 	vkCmdEndRenderPass(cb.commandBuffer());
 	++currentFramebuffer;
 	currentFramebuffer %= std::size(framebuffers_);
-}
-
-void vkn::Renderpass::draw(vkn::CommandBuffer& cb, const uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
-{
-	vkCmdDraw(cb.commandBuffer(), vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
 std::vector<vkn::RenderTargetRef> vkn::Renderpass::getUniqueRenderTargets()

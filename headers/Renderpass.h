@@ -2,6 +2,7 @@
 #include "glm/glm.hpp"
 #include "vulkan/vulkan.hpp"
 #include "vulkanContext.h"
+#include "Image.h"
 #include "Pass.h"
 #include <vector>
 
@@ -25,14 +26,16 @@ namespace vkn
 		void resize(const glm::u32vec2& newSize);
 		void begin(vkn::CommandBuffer& cb, const VkRect2D& renderArea, const VkSubpassContents subpassContent = VK_SUBPASS_CONTENTS_INLINE);
 		void end(vkn::CommandBuffer& cb);
-		void draw(vkn::CommandBuffer& cb, const uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,	uint32_t firstInstance);
 	private:
 		Context& context_;
 		VkRenderPass renderpass_{ VK_NULL_HANDLE };
 		uint32_t currentFramebuffer{};
+		uint32_t currentPass_{};
 		std::vector<VkFramebuffer> framebuffers_;
 		std::vector<Pass> passes_;
 		std::vector<VkClearValue> clearValues_;
+		std::vector<VkWriteDescriptorSet> shaderWrites_;
+		
 		std::vector<RenderTargetRef> getUniqueRenderTargets();
 		void createRenderpass();
 		struct SubpassDatas

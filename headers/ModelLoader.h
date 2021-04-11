@@ -26,12 +26,11 @@ namespace gee
 		ModelLoader(ModelLoader&&) = default;
 		Mesh load(const std::string& path);
 		Mesh create(const std::string& path);
-		Mesh create(std::function<Mesh(gee::Material&&)> customMesh, gee::Material material = {});
+		Mesh create(std::function<Mesh()> customMesh);
 	private:
 		fs::path meshPath_;
 		std::vector<Vertex> vertices_;
 		std::vector<uint32_t> indices_;
-		Material material_{};
 		unsigned int flags_;
 
 		void processNode(const aiScene* scene, const aiNode* node);

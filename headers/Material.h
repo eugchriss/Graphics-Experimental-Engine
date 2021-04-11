@@ -1,18 +1,39 @@
 #pragma once
-#include "Texture.h"
+#include "vulkanContext.h"
+#include "PipelineBuilder.h"
+#include "Pipeline.h"
+#include "CommandBuffer.h"
+#include <string>
+#include <memory>
 
-namespace gee
+
+namespace vkn
 {
-	struct Material
+	enum RENDERPASS_USAGE
 	{
-		Material(const std::string& diffusePath = "../assets/default_textures/diffuse.png", const std::string& normalPath = "../assets/default_textures/normal.png", const std::string& specularPath = "../assets/default_textures/specular.png");
-		Material(const std::array<std::string, 6>& diffusePaths , const std::string& normalPath = "../assets/default_textures/normal.png", const std::string& specularPath = "../assets/default_textures/specular.png");
-		Material(Material&&) = default;
-		Material& operator=(Material&& other) = default;
+		COLOR_PASS = 0x0,
+		SKYBOX_PASS = 0x1,
+		UI_PASS = 0x02
+	};
+	class Material
+	{
+	public:
+		Material(Context& context, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const RENDERPASS_USAGE& passUsage = COLOR_PASS);
+		Material(Material&& other);
+		virtual ~Material() = default;
+		virtual void bind(CommandBuffer& cb, const VkRenderPass& renderpass);
+		virtual void draw(CommandBuffer& cb);
+		void set_sampler(const VkSamplerCreateInfo& samplerInfo);
+		RENDERPASS_USAGE pass_usage() const;
 
-		size_t hash{};
-		Texture diffuseTex;
-		Texture normalTex;
-		Texture specularTex;
+	protected:
+		virtual void build_pipeline(const VkRenderPass& renderpass);
+	private:
+		Context& context_;
+		const RENDERPASS_USAGE passUsage_;
+		vkn::PipelineBuilder builder_;
+		std::unique_ptr<Pipeline> pipeline_;
+		virtual void prepare_pipeline(Context& context, const RENDERPASS_USAGE& passUsage);
+		VkSampler sampler_{ VK_NULL_HANDLE };
 	};
 }

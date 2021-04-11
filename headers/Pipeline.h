@@ -15,12 +15,13 @@ namespace vkn
 {
 	class Pipeline
 	{
+		const uint32_t PER_MATERIAL_SET = 0;
 	public:
 		struct Uniform
 		{
 			std::string name;
 			VkDescriptorType type;
-			VkDescriptorSetLayout setLayout;
+			VkDescriptorSet set;
 			uint32_t binding;
 			VkDeviceSize offset;
 			VkDeviceSize size;

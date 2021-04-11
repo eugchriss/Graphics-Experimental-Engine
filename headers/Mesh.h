@@ -9,13 +9,20 @@
 namespace gee
 {
 
+	struct Geometry
+	{
+		Geometry(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices);
+		std::vector<Vertex> vertices;
+		std::vector<uint32_t> indices;
+	};
+
 	class Mesh
 	{
 	public:
-		Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices, gee::Material&& material);
+		Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices);
 		~Mesh() = default;
 		Mesh(Mesh&&) = default;
-		const Material& material() const;
+		const Geometry& geomtry() const;
 		const std::vector<gee::Vertex>& vertices() const;
 		const std::vector<uint32_t>& indices() const;
 		const std::string& name() const;
@@ -23,9 +30,7 @@ namespace gee
 
 	private:
 		std::string name_;
-		std::vector<Vertex> vertices_;
-		std::vector<uint32_t> indices_;
-		Material material_;
+		Geometry geometry_;
 		uint32_t rendererID_{};
 	};
 }
