@@ -80,6 +80,7 @@ namespace gee
 		std::unique_ptr<vkn::Pipeline> pixelPerfectPipeline_;
 		gee::EventDispatcher eventDispatcher_;
 		std::vector<DrawableRef> drawables_;
+		std::unordered_map<std::string, vkn::RenderTarget> renderTargets_;
 		Camera camera_;
 		std::vector<glm::mat4> modelMatrices_;
 		std::vector<glm::mat4> normalMatrices_;

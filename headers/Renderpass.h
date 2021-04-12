@@ -45,8 +45,10 @@ namespace vkn
 			std::vector<VkAttachmentReference> depthStencilAttachments;
 			std::vector<uint32_t> preservedAttachments;
 		};
-		const std::vector<VkAttachmentDescription> getAttachments(const std::vector<RenderTargetRef>& targets) const;
-		const std::vector<SubpassDatas> getSubpassesDatas(const std::vector<RenderTargetRef>& targets);
+		using AttachmentDescriptions = std::vector<VkAttachmentDescription>;
+		using RenderTargetAttachmentMap = std::unordered_map<size_t, size_t>;
+		const std::tuple<AttachmentDescriptions, RenderTargetAttachmentMap> getAttachments(const std::vector<RenderTargetRef>& targets) const;
+		const std::vector<SubpassDatas> getSubpassesDatas(const std::vector<RenderTargetRef>& targets, const RenderTargetAttachmentMap& renderTargetAttachmentMap, const uint32_t attachmentCount);
 		const std::vector<VkSubpassDependency> findDependencies(const std::vector<RenderTargetRef>& targets);
 		void createFramebuffers(const uint32_t framebufferCount, const VkExtent2D& extent);
 	};

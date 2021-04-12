@@ -14,7 +14,6 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	std::cout << "The application has been launched.\n";
 
 	createContext();
-	materials_.emplace_back(*context_, "../assets/shaders/triangleShader.spv", "../assets/shaders/redColoredShader.spv");
 	materials_.emplace_back(*context_, "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv");
 
 	imageHolder_ = std::make_unique<ImageHolder>(vkn::TextureImageFactory{ *context_ });
@@ -240,6 +239,7 @@ void gee::Application::getTransforms()
 
 void gee::Application::create_renderpass(const uint32_t width, const uint32_t height)
 {
+	VkExtent2D size{ width, height };
 	auto& colorTargets = swapchain_->renderTargets();
 	for (auto& target : colorTargets)
 	{
@@ -247,14 +247,25 @@ void gee::Application::create_renderpass(const uint32_t width, const uint32_t he
 		target.storeOperation = VK_ATTACHMENT_STORE_OP_STORE;
 	}
 
+	if (renderTargets_.find("depthTarget") == std::end(renderTargets_))
+	{
+		renderTargets_.emplace(std::piecewise_construct,
+			std::forward_as_tuple("depthTarget"),
+			std::forward_as_tuple(*context_, VK_FORMAT_D24_UNORM_S8_UINT, size, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
+		auto& depthTarget = renderTargets_.find("depthTarget")->second;
+		depthTarget.loadOperation = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depthTarget.clearDepthStencil = glm::vec2{ 1.0f };
+	}
+
 	vkn::Pass colorPass;
+	colorPass.usesDepthStencilTarget(renderTargets_.find("depthTarget")->second);
 	for (auto& colorTarget : colorTargets)
 	{
 		colorPass.usesColorTarget(colorTarget);
 	}
 	std::vector<vkn::Pass> passes;
 	passes.emplace_back(std::move(colorPass));
-	colorRenderpass_ = std::make_unique<vkn::Renderpass>(*context_, VkExtent2D{ width, height }, std::move(passes));
+	colorRenderpass_ = std::make_unique<vkn::Renderpass>(*context_, size, std::move(passes));
 }
 
 

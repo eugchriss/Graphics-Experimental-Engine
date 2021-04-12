@@ -21,6 +21,7 @@ namespace vkn
 		void clear(CommandBuffer& cb);
 		VkFormat format{ VK_FORMAT_UNDEFINED };
 		VkImageView view(const VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D, const uint32_t layerCount = 1);
+		const VkClearValue get_clear_value() const;
 		glm::vec3 clearColor{};
 		glm::vec2 clearDepthStencil{1.0f, 0};
 		VkImageLayout finalLayout{ VK_IMAGE_LAYOUT_UNDEFINED };

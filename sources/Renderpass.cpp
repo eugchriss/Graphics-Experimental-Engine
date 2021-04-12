@@ -9,12 +9,19 @@ vkn::Renderpass::Renderpass(Context& context, const VkExtent2D& extent, std::vec
 	createRenderpass();
 	createFramebuffers(framebufferCount, extent);
 	auto& uniqueRenderTargets = getUniqueRenderTargets();
+	bool presentClearInserted{ false };
 	for (const auto& renderTargetRef : uniqueRenderTargets)
 	{
 		const auto& renderTarget = renderTargetRef.get();
-		VkClearValue clearValue{};
-		clearValue.color = { renderTarget.clearColor.r, renderTarget.clearColor.g, renderTarget.clearColor.b, 1.0f };
-		clearValues_.emplace_back(clearValue);
+		if (renderTarget.finalLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && !presentClearInserted)
+		{
+			presentClearInserted = true;
+			clearValues_.emplace_back(renderTarget.get_clear_value());
+		}
+		else if (renderTarget.finalLayout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+		{
+			clearValues_.emplace_back(renderTarget.get_clear_value());
+		}
 	}
 }
 
@@ -80,8 +87,8 @@ std::vector<vkn::RenderTargetRef> vkn::Renderpass::getUniqueRenderTargets()
 void vkn::Renderpass::createRenderpass()
 {
 	auto& uniqueRenderTargets = getUniqueRenderTargets();
-	auto& attachments = getAttachments(uniqueRenderTargets);
-	auto subpassesDatas = getSubpassesDatas(uniqueRenderTargets);
+	auto& [attachments, renderTargetAttachmentMap] = getAttachments(uniqueRenderTargets);
+	auto subpassesDatas = getSubpassesDatas(uniqueRenderTargets, renderTargetAttachmentMap, std::size(attachments));
 	auto& dependencies = findDependencies(uniqueRenderTargets);
 
 	std::vector<VkSubpassDescription> subpasses;
@@ -116,9 +123,10 @@ void vkn::Renderpass::createRenderpass()
 	vkn::error_check(vkCreateRenderPass(context_.device->device, &info, nullptr, &renderpass_), "Failed to create the render pass");
 }
 
-const std::vector<VkAttachmentDescription> vkn::Renderpass::getAttachments(const std::vector<RenderTargetRef>& targets) const
+const std::tuple<vkn::Renderpass::AttachmentDescriptions, vkn::Renderpass::RenderTargetAttachmentMap> vkn::Renderpass::getAttachments(const std::vector<RenderTargetRef>& targets) const
 {
 	std::vector<VkAttachmentDescription> attachments;
+	std::unordered_map<size_t, size_t> renderTargetAttachmentMap;
 	for (const auto& targetRef : targets)
 	{
 		const auto& target = targetRef.get();
@@ -137,18 +145,24 @@ const std::vector<VkAttachmentDescription> vkn::Renderpass::getAttachments(const
 			auto result = std::find_if(std::begin(attachments), std::end(attachments), [](const auto& attachmentDesc) {return attachmentDesc.finalLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; });
 			if (result == std::end(attachments))
 			{
+				renderTargetAttachmentMap[target.id()] = std::size(attachments);
 				attachments.emplace_back(attachment);
+			}
+			else
+			{
+				renderTargetAttachmentMap[target.id()] = std::distance(std::begin(attachments), result);
 			}
 		}
 		else
 		{
+			renderTargetAttachmentMap[target.id()] = std::size(attachments);
 			attachments.emplace_back(attachment);
 		}
 	}
-	return attachments;
+	return { attachments, renderTargetAttachmentMap };
 }
 
-const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDatas(const std::vector<RenderTargetRef>& targets)
+const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDatas(const std::vector<RenderTargetRef>& targets, const RenderTargetAttachmentMap& renderTargetAttachmentMap, const uint32_t attachmentCount)
 {
 	std::vector<vkn::Renderpass::SubpassDatas> subpassesDatas;
 	for (auto& pass : passes_)
@@ -159,16 +173,16 @@ const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDa
 		auto& depthStencilAttachments = subpassData.depthStencilAttachments;
 		auto& preservedAttachments = subpassData.preservedAttachments;
 
-		preservedAttachments.resize(std::size(targets));
+		preservedAttachments.resize(attachmentCount);
 		std::iota(std::begin(preservedAttachments), std::end(preservedAttachments), 0);
 
 		for (const auto& inputTarget : pass.inputTargets())
 		{
-			auto result = std::find_if(std::begin(targets), std::end(targets), [&](const auto& targetRef) {return targetRef.get().id() == inputTarget.get().id(); });
-			assert(result != std::end(targets) && "missing an input attachment");
+			auto& attachmentIndex = renderTargetAttachmentMap.find(inputTarget.get().id());
+			assert(attachmentIndex != std::end(renderTargetAttachmentMap) && "missing match between render target and renderpass attachment");
 
 			VkAttachmentReference ref;
-			ref.attachment = std::distance(std::begin(targets), result);
+			ref.attachment = attachmentIndex->second;
 			ref.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			inputAttachments.emplace_back(ref);
 			auto it = std::remove(std::begin(preservedAttachments), std::end(preservedAttachments), ref.attachment);
@@ -177,11 +191,11 @@ const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDa
 		}
 		for (const auto& colorTarget : pass.colorTargets())
 		{
-			auto result = std::find_if(std::begin(targets), std::end(targets), [&](const auto& targetRef) {return targetRef.get().id() == colorTarget.get().id(); });
-			assert(result != std::end(targets)	&& "missing a color attachment");
+			auto& attachmentIndex = renderTargetAttachmentMap.find(colorTarget.get().id());
+			assert(attachmentIndex != std::end(renderTargetAttachmentMap) && "missing match between render target and renderpass attachment");
 
 			VkAttachmentReference ref;
-			ref.attachment = static_cast<uint32_t>(std::distance(std::begin(targets), result));
+			ref.attachment = attachmentIndex->second;
 			ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 			//Make sure there is only 1 present attachment used per pass
@@ -204,11 +218,11 @@ const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDa
 		}
 		for (const auto& depthStencilTarget : pass.depthStencilTargets())
 		{
-			auto result = std::find_if(std::begin(targets), std::end(targets), [&](const auto& targetRef) {return targetRef.get().id() == depthStencilTarget.get().id(); });
-			assert(result != std::end(targets) && "missing a depth-stencil attachment");
+			auto& attachmentIndex = renderTargetAttachmentMap.find(depthStencilTarget.get().id());
+			assert(attachmentIndex != std::end(renderTargetAttachmentMap) && "missing match between render target and renderpass attachment");
 
 			VkAttachmentReference ref;
-			ref.attachment = std::distance(std::begin(targets), result);
+			ref.attachment = attachmentIndex->second;
 			ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			depthStencilAttachments.emplace_back(ref);
 			auto it = std::remove(std::begin(preservedAttachments), std::end(preservedAttachments), ref.attachment);
@@ -245,7 +259,7 @@ void vkn::Renderpass::createFramebuffers(const uint32_t framebufferCount, const 
 	}
 
 	std::optional<size_t> presentAttachmentIndex{ std::nullopt };
-	const auto renderpassAttachments = getAttachments(renderTargets);
+	const auto& [renderpassAttachments, renderTargetAttachmentMap] = getAttachments(renderTargets);
 	auto result = std::find_if(std::begin(renderpassAttachments), std::end(renderpassAttachments), [&](const auto attachment) {return attachment.finalLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; });
 	if (result != std::end(renderpassAttachments))
 	{

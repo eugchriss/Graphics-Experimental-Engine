@@ -5,8 +5,8 @@ vkn::RenderTarget::RenderTarget(Context& context, const VkFormat fmt, const VkEx
 	usage_{usage}, finalLayout{finalLayout}
 {
 	
-	assert((usage_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) 
-		 ^ (usage_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+	assert(((usage_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) 
+		 ^ ((usage_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 		&& "Rendertarget usage must be VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT xor VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT");
 	image_ = std::make_unique<Image>(context_, usage_, format, VkExtent3D{ extent.width, extent.height, 1 });
 }
@@ -68,6 +68,20 @@ VkImageView vkn::RenderTarget::view(const VkImageViewType viewType, const uint32
 	}
 	assert(aspect != 0 && "Unabled to find the image's aspect");
 	return image_->getView(aspect, viewType, layerCount);
+}
+
+const VkClearValue vkn::RenderTarget::get_clear_value() const
+{
+	VkClearValue clearValue{};
+	if ((usage_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+	{
+		clearValue.color = { clearColor.r, clearColor.g, clearColor.b, 1.0f };
+	}
+	else if ((usage_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+	{
+		clearValue.depthStencil = { clearDepthStencil.x, static_cast<uint32_t>(clearDepthStencil.y) };
+	}
+	return clearValue;
 }
 
 const uint64_t vkn::RenderTarget::id() const
