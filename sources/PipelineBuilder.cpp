@@ -163,7 +163,7 @@ vkn::Pipeline vkn::PipelineBuilder::get(Context& context)
 		vkn::error_check(vkCreateGraphicsPipelines(context.device->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "Failed to create the pipeline");
 	}
 	shaderStages_.clear();
-	return vkn::Pipeline{ context, pipeline, std::move(shaders_) };
+	return vkn::Pipeline{ context, pipeline, std::move(pipelineLayout), std::move(shaders_) };
 }
 
 void vkn::PipelineBuilder::setShaderVertexStage(const std::string& path)

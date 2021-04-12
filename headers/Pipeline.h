@@ -27,23 +27,23 @@ namespace vkn
 			VkDeviceSize size;
 			VkDeviceSize range;
 		};
-		Pipeline(Context& context, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders);
+		Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders);
 		Pipeline(Pipeline&& other);
 		~Pipeline();
 		void bind(vkn::CommandBuffer& cb);
-		void updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view, const VkShaderStageFlagBits stage);
+		void updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view);
 		void updateTextures(const std::string& resourceName, const VkSampler sampler, const std::vector<VkImageView> views, const VkShaderStageFlagBits stage);
 		const std::vector<Uniform> uniforms() const;
 		template<class T>
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
 		template<class T>
 		void updateBuffer(const std::string& resourceName, const T& datas);
-		void updateUniforms(CommandBuffer& cb);
+		void updateUniforms();
 	private:
 
 		Context& context_;
 		VkPipeline pipeline_{ VK_NULL_HANDLE };
-		std::unique_ptr<vkn::PipelineLayout> layout_;
+		vkn::PipelineLayout layout_;
 		std::vector<vkn::Shader> shaders_;
 		std::vector<Uniform> uniforms_;
 		std::vector<vkn::Shader::PushConstant> pushConstants_;
@@ -77,6 +77,7 @@ namespace vkn
 		VkWriteDescriptorSet write{};
 		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write.pNext = nullptr;
+		write.dstSet = uniform->set;
 		write.dstBinding = uniform->binding;
 		write.descriptorType = uniform->type;
 		write.descriptorCount = uniform->size;
@@ -95,7 +96,7 @@ namespace vkn
 		}
 		else
 		{
-			vkCmdPushConstants(cb.commandBuffer(), layout_->layout, result->stageFlag, result->offsets[0], result->size, &datas);
+			vkCmdPushConstants(cb.commandBuffer(), layout_.layout, result->stageFlag, result->offsets[0], result->size, &datas);
 		}
 	}
 }

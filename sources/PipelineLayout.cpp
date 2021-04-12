@@ -5,9 +5,9 @@
 
 vkn::PipelineLayout::PipelineLayout(vkn::Device& device, const std::vector<vkn::Shader>& shaders) : device_{ device }
 {
-	auto setLayouts = createSets(shaders);
-	createPushConstantRanges(shaders);
 	create_descriptor_pool(shaders);
+	createSets(shaders);
+	createPushConstantRanges(shaders);
 
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -15,22 +15,15 @@ vkn::PipelineLayout::PipelineLayout(vkn::Device& device, const std::vector<vkn::
 	layoutInfo.flags = 0;
 	layoutInfo.pushConstantRangeCount = std::size(pushConstantRanges_);
 	layoutInfo.pPushConstantRanges = std::data(pushConstantRanges_);
-	layoutInfo.setLayoutCount = std::size(setLayouts);
-	layoutInfo.pSetLayouts = std::data(setLayouts);
+	layoutInfo.setLayoutCount = std::size(setLayouts_);
+	layoutInfo.pSetLayouts = std::data(setLayouts_);
 	vkn::error_check(vkCreatePipelineLayout(device.device, &layoutInfo, nullptr, &layout), "Failed to create the pipeline Layout");
-
-	if (!std::empty(setLayouts))
-	{
-		for (auto layout : setLayouts)
-		{
-			vkDestroyDescriptorSetLayout(device_.device, layout, nullptr);
-		}
-	}
 }
 
 vkn::PipelineLayout::PipelineLayout(PipelineLayout&& other) : device_{ other.device_ }
 {
 	layout = other.layout;
+	setLayouts_ = std::move(other.setLayouts_);
 	sets_ = std::move(other.sets_);
 	descriptorPool_ = other.descriptorPool_;
 	other.layout = VK_NULL_HANDLE;
@@ -42,6 +35,13 @@ vkn::PipelineLayout::~PipelineLayout()
 	if (layout != VK_NULL_HANDLE)
 	{
 		vkDestroyPipelineLayout(device_.device, layout, nullptr);
+	}
+	if (!std::empty(setLayouts_))
+	{
+		for (auto layout : setLayouts_)
+		{
+			vkDestroyDescriptorSetLayout(device_.device, layout, nullptr);
+		}
 	}
 	if (!std::empty(sets_))
 	{
@@ -72,10 +72,10 @@ void vkn::PipelineLayout::create_descriptor_pool(const std::vector<Shader>& shad
 	poolInfo.maxSets = 5;
 	poolInfo.poolSizeCount = std::size(poolSizes);
 	poolInfo.pPoolSizes = std::data(poolSizes);
-	vkCreateDescriptorPool(device_.device, &poolInfo, nullptr, &descriptorPool_);
+	vkn::error_check(vkCreateDescriptorPool(device_.device, &poolInfo, nullptr, &descriptorPool_), "Failed to create descriptor pool");
 }
 
-const std::vector<VkDescriptorSetLayout> vkn::PipelineLayout::createSets(const std::vector<vkn::Shader>& shaders)
+void vkn::PipelineLayout::createSets(const std::vector<vkn::Shader>& shaders)
 {
 	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> setBindings;
 	for (const auto& shader : shaders)
@@ -92,7 +92,6 @@ const std::vector<VkDescriptorSetLayout> vkn::PipelineLayout::createSets(const s
 		}
 	}
 
-	std::vector<VkDescriptorSetLayout> layouts;
 	for (const auto& setBinding : setBindings)
 	{
 		VkDescriptorSetLayout layout{ VK_NULL_HANDLE };
@@ -100,25 +99,24 @@ const std::vector<VkDescriptorSetLayout> vkn::PipelineLayout::createSets(const s
 		VkDescriptorSetLayoutCreateInfo setInfo{};
 		setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		setInfo.pNext = nullptr;
-		setInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+		setInfo.flags = 0;
 		setInfo.bindingCount = std::size(setBinding.second);
 		setInfo.pBindings = std::data(setBinding.second);
 		vkn::error_check(vkCreateDescriptorSetLayout(device_.device, &setInfo, nullptr, &layout), "Failed to create the set");
-		layouts.push_back(layout);
+		setLayouts_.push_back(layout);
 	}
 
-	if (!std::empty(layouts))
+	if (!std::empty(setLayouts_))
 	{
 		VkDescriptorSetAllocateInfo setInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
 		setInfo.pNext = nullptr;
 		setInfo.descriptorPool = descriptorPool_;
-		setInfo.descriptorSetCount = std::size(layouts);
-		setInfo.pSetLayouts = std::data(layouts);
+		setInfo.descriptorSetCount = std::size(setLayouts_);
+		setInfo.pSetLayouts = std::data(setLayouts_);
 
-		sets_.resize(std::size(layouts));
+		sets_.resize(std::size(setLayouts_));
 		vkn::error_check(vkAllocateDescriptorSets(device_.device, &setInfo, std::data(sets_)), "Failed to allocate pipeline's sets");
 	}
-	return layouts;
 }
 
 void vkn::PipelineLayout::createPushConstantRanges(const std::vector<vkn::Shader>& shaders)

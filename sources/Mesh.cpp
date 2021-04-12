@@ -6,7 +6,7 @@ gee::Mesh::Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::ve
 {
 }
 
-const gee::Geometry& gee::Mesh::geomtry() const
+const gee::Geometry& gee::Mesh::geometry() const
 {
 	return geometry_;
 }
@@ -38,6 +38,6 @@ gee::Vertex::Vertex(const glm::vec3& pos, const glm::vec3& col, const glm::vec2&
 }
 
 gee::Geometry::Geometry(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices):
-	vertices{std::move(vertices)}, indices{std::move(indices)}
+	vertices {std::move(vertices)}, indices{ std::move(indices) }
 {
 }

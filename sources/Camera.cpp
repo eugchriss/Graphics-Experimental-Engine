@@ -80,19 +80,6 @@ const glm::mat4 gee::Camera::orhtogonalProjection() const
 	return glm::ortho(-viewRange_, viewRange_, -viewRange_, viewRange_, 0.1f, viewRange_);
 }
 
-const glm::mat4& gee::Camera::viewProjMatrix(const float aspectRatio)
-{
-	if (shouldRecomputeViewProjMatrix)
-	{
-		viewProjMatrix_ = glm::identity<glm::mat4>();
-		auto proj = perspectiveProjection(aspectRatio);
-		proj[1][1] *= -1;
-		viewProjMatrix_ =  proj* pointOfView();
-		shouldRecomputeViewProjMatrix = false;
-	}
-	return viewProjMatrix_;
-}
-
 void gee::Camera::imguiDisplay()
 {
 	bool open{ true };
@@ -109,9 +96,22 @@ void gee::Camera::imguiDisplay()
 
 }
 
+const gee::Camera::ShaderInfo& gee::Camera::get_shader_info(const float aspectRatio)
+{
+	if (shouldRecreateShaderInfo_)
+	{
+		shaderInfo_.position = glm::vec4{ position_, 0.0f };
+		shaderInfo_.projection = perspectiveProjection(aspectRatio);
+		shaderInfo_.projection[1][1] *= -1;
+		shaderInfo_.view = pointOfView();
+		shouldRecreateShaderInfo_ = false;
+	}
+	return shaderInfo_;
+}
+
 const gee::ViewFrustum gee::Camera::getViewFrustum()
 {
-	shouldRecomputeViewProjMatrix = true;
+	shouldRecreateShaderInfo_ = true;
 	auto nearCenter = front_ * 0.1f + position_;
 	auto farCenter = position_ + front_ * viewRange_;
 	auto nearSide = std::tan(fov_ / 2.0f) * viewRange_;

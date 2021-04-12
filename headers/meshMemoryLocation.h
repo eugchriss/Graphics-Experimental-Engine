@@ -7,21 +7,21 @@
 
 namespace vkn
 {
-	struct MeshMemoryLocation
+	struct GeometryMemoryLocation
 	{
-		MeshMemoryLocation(vkn::DeviceMemory&& mem, vkn::Buffer&& vertexBuff, vkn::Buffer&& indexBuff, const uint32_t indicesSize);
-		MeshMemoryLocation(MeshMemoryLocation&&) = default;
+		GeometryMemoryLocation(vkn::DeviceMemory&& mem, vkn::Buffer&& vertexBuff, vkn::Buffer&& indexBuff, const uint32_t indicesSize);
+		GeometryMemoryLocation(GeometryMemoryLocation&&) = default;
 		vkn::DeviceMemory memory;
 		vkn::Buffer vertexBuffer;
 		vkn::Buffer indexBuffer;
 		const uint32_t indicesCount;
 	};
 
-	class MeshMemoryLocationFactory
+	class GeometryMemoryLocationFactory
 	{
 	public:
-		MeshMemoryLocationFactory(Context& context);
-		MeshMemoryLocation create(const gee::Mesh& mesh);
+		GeometryMemoryLocationFactory(Context& context);
+		GeometryMemoryLocation create(const gee::Geometry& geometry);
 	private:
 		Context& context_;
 		std::unique_ptr<vkn::Queue> transferQueue_;

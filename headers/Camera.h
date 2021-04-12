@@ -67,6 +67,12 @@ namespace gee
 	class Camera
 	{
 	public:
+		struct ShaderInfo
+		{
+			glm::vec4 position;
+			glm::mat4 view;
+			glm::mat4 projection;
+		};
 		Camera(const glm::vec3 target = glm::vec3{ 0.0f, 0.0f, 0.0f }, const glm::vec3 pos = glm::vec3{ 0.0f, 0.0f, 1.0_km }, const glm::vec3 woldUp = glm::vec3(0.0f, 1.0f, 0.0f));
 		~Camera();
 		void move(const DIRECTION d);
@@ -75,12 +81,12 @@ namespace gee
 		const glm::mat4 pointOfView() const;
 		const glm::mat4 perspectiveProjection(const float aspectRatio) const;
 		const glm::mat4 orhtogonalProjection() const;
-		const glm::mat4& viewProjMatrix(const float aspectRatio);
 		inline bool isViewable(const glm::vec3& pos) const
 		{
 			return viewFrustum_.isInside(pos);
 		}
 		void imguiDisplay();
+		const ShaderInfo& get_shader_info(const float aspectRatio);
 		glm::vec3 position_;
 		glm::vec3 front_;
 
@@ -101,12 +107,11 @@ namespace gee
 		float absolutePitch_{};
 		float absouluteYaw_{};
 		bool moved_{ false };
-		bool shouldRecomputeViewProjMatrix{ true };
-		glm::mat4 viewProjMatrix_{ 1.0f };
+		bool shouldRecreateShaderInfo_{ true };
 		ViewFrustum viewFrustum_;
 		void createCameraSpace();
 		const ViewFrustum getViewFrustum();
-
+		ShaderInfo shaderInfo_{};
 
 		//Gui elements
 		float speed{ 1.0_m };

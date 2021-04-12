@@ -34,14 +34,12 @@ inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key
 	auto result = resources_.find(key);
 	if (result != std::end(resources_))
 	{
-		occurences_.increase(key);
 		return result->second;
 	}
 	else
 	{
 		if constexpr (std::is_default_constructible<Resource>::value)
 		{
-			occurences_.increase(key);
 			auto resource = resources_.emplace(key, Resource{});
 			return resource.first->second;
 		}

@@ -14,9 +14,20 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	std::cout << "The application has been launched.\n";
 
 	createContext();
-	materials_.emplace_back(*context_, "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv");
-
 	imageHolder_ = std::make_unique<ImageHolder>(vkn::TextureImageFactory{ *context_ });
+	geometryHolder_ = std::make_unique<GeometryHolder>(gee::GeometryFactory{});
+	geometryMemoryHolder_ = std::make_unique<GeometryMemoryHolder>(vkn::GeometryMemoryLocationFactory{*context_});
+	
+	auto& cubeGeometryMemory = geometryMemoryHolder_->get("cube", geometryHolder_->get("cube", gee::getCubeMesh()));
+	
+	vkn::GeometyInstances cubeGeometryInstances{ cubeGeometryMemory};
+	cubeGeometryInstances.transformMatrices.push_back(glm::mat4{1.0f});
+
+	MaterialBatch materialBatch{ *context_, "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv" };
+	materialBatch.geometryInstances.emplace_back(std::move(cubeGeometryInstances));
+	materialBatch.material.set_base_color(imageHolder_->get("floor", Texture{ "../assets/textures/floor.jpg", Texture::ColorSpace::LINEAR }));
+	materialBatches_.emplace_back(std::move(materialBatch));
+
 	commandPool_ = std::make_unique<vkn::CommandPool>(*context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	swapchain_ = std::make_unique<vkn::Swapchain>(*context_);
 	
@@ -35,23 +46,13 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 		{
-		/*	ImGuiIO& io = ImGui::GetIO();
-			if (!io.WantCaptureMouse)
-			{
-				onMouseScrollEvent(x, y);
-			}*/
+			onMouseScrollEvent(x, y);
 		});
 	eventDispatcher_.addMouseButtonCallback([&](uint32_t button, uint32_t action, uint32_t mods)
 		{
-			ImGuiIO& io = ImGui::GetIO();
-			if (!io.WantCaptureMouse)
-			{
 				onMouseButtonEvent(button, action, mods);
-			}
-			else
-			{
 				firstMouseUse_ = true;
-			}
+		
 		});
 	eventDispatcher_.addMouseMoveCallback([&](double x, double y)
 		{
@@ -187,6 +188,24 @@ void gee::Application::onMouseScrollEvent(double x, double y)
 
 void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint32_t mods)
 {
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	{
+		leftButtonPressed_ = true;
+	}
+	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+	{
+		rightButtonPressed_ = true;
+	}
+
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	{
+		leftButtonPressed_ = false;
+		firstMouseUse_ = true;
+	}
+	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+	{
+		rightButtonPressed_ = false;
+	}
 }
 
 void gee::Application::createContext()
@@ -254,15 +273,14 @@ void gee::Application::create_renderpass(const uint32_t width, const uint32_t he
 			std::forward_as_tuple(*context_, VK_FORMAT_D24_UNORM_S8_UINT, size, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
 		auto& depthTarget = renderTargets_.find("depthTarget")->second;
 		depthTarget.loadOperation = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depthTarget.clearDepthStencil = glm::vec2{ 1.0f };
 	}
 
 	vkn::Pass colorPass;
-	colorPass.usesDepthStencilTarget(renderTargets_.find("depthTarget")->second);
 	for (auto& colorTarget : colorTargets)
 	{
 		colorPass.usesColorTarget(colorTarget);
 	}
+	colorPass.usesDepthStencilTarget(renderTargets_.find("depthTarget")->second);
 	std::vector<vkn::Pass> passes;
 	passes.emplace_back(std::move(colorPass));
 	colorRenderpass_ = std::make_unique<vkn::Renderpass>(*context_, size, std::move(passes));
@@ -278,10 +296,10 @@ bool gee::Application::isRunning()
 			auto& cb = commandPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 			cb.begin();			
 			colorRenderpass_->begin(cb, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
-			for (auto& material : materials_)
+			for (auto& batch : materialBatches_)
 			{
-				material.bind(cb, (*colorRenderpass_)());
-				material.draw(cb);
+				batch.material.bind((*colorRenderpass_)());
+				batch.material.draw(cb, camera_.get_shader_info(window_.aspectRatio()), batch.geometryInstances);
 			}
 			colorRenderpass_->end(cb);
 			cb.end();

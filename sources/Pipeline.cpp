@@ -2,14 +2,8 @@
 #include <cassert>
 
 
-vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector<vkn::Shader>&& shaders) : context_{ context }, pipeline_{ pipeline }, shaders_{ std::move(shaders) }
+vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders) : context_{ context }, pipeline_{ pipeline }, layout_{ std::move(pipelineLayout) }, shaders_{ std::move(shaders) }
 {
-	if (!context_.pushDescriptorEnabled())
-	{
-		throw std::runtime_error{"Push descriptor'device extension needs to be enabled" };
-	}
-	layout_ = std::make_unique<vkn::PipelineLayout>(*context.device, shaders_);
-
 	VkPhysicalDeviceProperties props;
 	vkGetPhysicalDeviceProperties(context.gpu->device, &props);
 	auto alignment = props.limits.minUniformBufferOffsetAlignment;
@@ -22,7 +16,7 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 	};
 
 	VkDeviceSize size{ 0 };
-	const auto& descriptorSets = layout_->sets();
+	const auto& descriptorSets = layout_.sets();
 	for (const auto& shader : shaders_)
 	{
 		//uniforms
@@ -76,10 +70,9 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, std::vector
 	vkCmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkGetInstanceProcAddr(context_.instance->instance, "vkCmdPushDescriptorSetKHR"));
 }
 
-vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{other.context_}
+vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{ other.context_ }, layout_{ std::move(other.layout_) }
 {
 	pipeline_ = other.pipeline_;
-	layout_ = std::move(other.layout_);
 	memory_ = std::move(other.memory_);
 	buffer_ = std::move(other.buffer_);
 
@@ -101,16 +94,16 @@ vkn::Pipeline::~Pipeline()
 
 void vkn::Pipeline::bind(vkn::CommandBuffer& cb)
 {
-	const auto& sets = layout_->sets();
+	const auto& sets = layout_.sets();
 	if (!std::empty(sets))
 	{
-		vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_->layout, PER_MATERIAL_SET, 1, &sets[PER_MATERIAL_SET], 0, nullptr);
+		updateUniforms();
+		vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.layout, PER_MATERIAL_SET, 1, &sets[PER_MATERIAL_SET], 0, nullptr);
 	}
 	vkCmdBindPipeline(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
 }
 
-
-void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view, const VkShaderStageFlagBits stage)
+void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view)
 {
 	auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == resourceName; });
 	if (uniform == std::end(uniforms_))
@@ -126,6 +119,7 @@ void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampl
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.pNext = nullptr;
+	write.dstSet = uniform->set;
 	write.dstBinding = uniform->binding;
 	write.descriptorType = uniform->type;
 	write.pImageInfo = imageInfo.get();
@@ -165,10 +159,9 @@ const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const
 	return uniforms_;
 }
 
-void vkn::Pipeline::updateUniforms(CommandBuffer& cb)
+void vkn::Pipeline::updateUniforms()
 {
-	//need to sort uniform write to make a push per set
-	vkCmdPushDescriptorSetKHR(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_->layout, 0, std::size(uniformsWrites_), std::data(uniformsWrites_));
+	vkUpdateDescriptorSets(context_.device->device, std::size(uniformsWrites_), std::data(uniformsWrites_), 0, nullptr);
 	uniformsWrites_.clear();
 	imageInfos_.clear();
 	imagesInfos_.clear();

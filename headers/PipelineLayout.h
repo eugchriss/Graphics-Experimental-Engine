@@ -20,10 +20,11 @@ namespace vkn
 	private:
 		vkn::Device& device_;
 		VkDescriptorPool descriptorPool_{ VK_NULL_HANDLE };
+		std::vector<VkDescriptorSetLayout> setLayouts_;
 		std::vector<VkDescriptorSet> sets_;
 		std::vector<VkPushConstantRange> pushConstantRanges_;
 		void create_descriptor_pool(const std::vector<Shader>& shaders);
-		const std::vector<VkDescriptorSetLayout> createSets(const std::vector<vkn::Shader>& shaders);
+		void createSets(const std::vector<vkn::Shader>& shaders);
 		void createPushConstantRanges(const std::vector<vkn::Shader>& shaders);
 	};
 }

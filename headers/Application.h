@@ -16,6 +16,8 @@
 #include "CommandPool.h"
 #include "ResourceHolder.h"
 #include "textureImageFactory.h"
+#include "meshMemoryLocation.h"
+#include "Material.h"
 
 struct ShaderCamera
 {
@@ -109,7 +111,23 @@ namespace gee
 		using ImageHolder = ResourceHolder<vkn::TextureImageFactory, vkn::Image>;
 		std::unique_ptr<ImageHolder> imageHolder_;
 
-		std::vector<vkn::Material> materials_;
+		using GeometryHolder = ResourceHolder<gee::GeometryFactory, const gee::Geometry>;
+		std::unique_ptr<GeometryHolder> geometryHolder_;
+		using GeometryMemoryHolder = ResourceHolder<vkn::GeometryMemoryLocationFactory, vkn::GeometryMemoryLocation>;
+		std::unique_ptr<GeometryMemoryHolder> geometryMemoryHolder_;
+
+		struct MaterialBatch
+		{
+			template<class ...Args>
+			MaterialBatch(Args& ...args) : material{std::forward<Args>(args)...}
+			{}
+			MaterialBatch() = delete;
+			MaterialBatch(const MaterialBatch&) = delete;
+			MaterialBatch(MaterialBatch&&) = default;
+			vkn::Material material;
+			std::vector<vkn::GeometyInstances> geometryInstances;
+		};
+		std::vector<MaterialBatch> materialBatches_;
 
 		//functions only
 	private:
