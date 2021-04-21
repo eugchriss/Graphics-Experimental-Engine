@@ -13,9 +13,10 @@
 
 namespace vkn
 {
+	const uint32_t PER_MATERIAL_SET = 0;
+	class Image;
 	class Pipeline
 	{
-		const uint32_t PER_MATERIAL_SET = 0;
 	public:
 		struct Uniform
 		{
@@ -31,8 +32,9 @@ namespace vkn
 		Pipeline(Pipeline&& other);
 		~Pipeline();
 		void bind(vkn::CommandBuffer& cb);
+		void bind_set(CommandBuffer& cb, const uint32_t firstSet, const size_t setCount, const std::vector<uint32_t>& dynamicOffset = {});
 		void updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view);
-		void updateTextures(const std::string& resourceName, const VkSampler sampler, const std::vector<VkImageView> views, const VkShaderStageFlagBits stage);
+		void updateTextures(const std::string& resourceName, const VkSampler sampler, std::vector<VkImageView>& views);
 		const std::vector<Uniform> uniforms() const;
 		template<class T>
 		void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
@@ -44,6 +46,7 @@ namespace vkn
 		Context& context_;
 		VkPipeline pipeline_{ VK_NULL_HANDLE };
 		vkn::PipelineLayout layout_;
+		std::vector<VkDescriptorSet> boundSets_;
 		std::vector<vkn::Shader> shaders_;
 		std::vector<Uniform> uniforms_;
 		std::vector<vkn::Shader::PushConstant> pushConstants_;
@@ -53,7 +56,7 @@ namespace vkn
 		std::vector<std::shared_ptr<VkDescriptorImageInfo>> imageInfos_;
 		std::vector<std::shared_ptr<std::vector<VkDescriptorImageInfo>>> imagesInfos_;
 		std::vector<std::shared_ptr<VkDescriptorBufferInfo>> bufferInfos_;
-		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR;
+		std::unique_ptr<Image> dummyImage_;
 	};
 
 	template<class T>

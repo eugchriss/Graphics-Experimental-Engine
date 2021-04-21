@@ -72,7 +72,7 @@ const std::vector<VkDescriptorPoolSize> vkn::Shader::poolSize() const
 {
 	auto& resources = spirv_->get_shader_resources();
 	std::vector<VkDescriptorPoolSize> poolSizes;
-	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , static_cast<uint32_t>(std::size(resources.uniform_buffers)) + 1 });
+	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , static_cast<uint32_t>(std::size(resources.uniform_buffers)) + 1 });
 	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , static_cast<uint32_t>(std::size(resources.sampled_images)) + 10000 });
 	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT , static_cast<uint32_t>(std::size(resources.subpass_inputs)) + 10000 });
 
@@ -139,7 +139,7 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 
 	for (const auto& resource : resources.uniform_buffers)
 	{
-		bindings_.push_back(parseBinding(resource, stage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER));
+		bindings_.push_back(parseBinding(resource, stage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC));
 	}
 	for (const auto& resource : resources.sampled_images)
 	{

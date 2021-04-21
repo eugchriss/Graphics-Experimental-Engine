@@ -16,21 +16,32 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	createContext();
 	imageHolder_ = std::make_unique<ImageHolder>(vkn::TextureImageFactory{ *context_ });
 	geometryHolder_ = std::make_unique<GeometryHolder>(gee::GeometryFactory{});
-	geometryMemoryHolder_ = std::make_unique<GeometryMemoryHolder>(vkn::GeometryMemoryLocationFactory{*context_});
-	
+	geometryMemoryHolder_ = std::make_unique<GeometryMemoryHolder>(vkn::GeometryMemoryLocationFactory{ *context_ });
+
 	auto& cubeGeometryMemory = geometryMemoryHolder_->get("cube", geometryHolder_->get("cube", gee::getCubeMesh()));
-	
-	vkn::GeometyInstances cubeGeometryInstances{ cubeGeometryMemory};
-	cubeGeometryInstances.transformMatrices.push_back(glm::mat4{1.0f});
+
+	GeometryInstances cubeGeometryInstances{ cubeGeometryMemory };
+	auto transform = glm::mat4{ 1.0f };
+	transform = glm::scale(transform, glm::vec3{ 0.2f, 0.2f, 0.2f });
+	transform = glm::translate(transform, glm::vec3{ 0.0f, 10.0f, 0.0f });
+
+	transform = glm::scale(transform, glm::vec3{ 0.5f, 0.5f, 0.5f });
+	auto transform2 = glm::translate(transform, glm::vec3{ 0.0f, -10.0f, 0.0f });
+
+	cubeGeometryInstances.transformMatrices.push_back(transform);
+	cubeGeometryInstances.transformMatrices.push_back(transform2);
+
+	MaterialInstance materialInstance;
+	materialInstance.set_property(TEXTURE_SLOT::COLOR, imageHolder_->get("floor", Texture{ "../assets/textures/floor.jpg", Texture::ColorSpace::LINEAR }));
+	materialInstance.add_geometry(std::move(cubeGeometryInstances));
 
 	MaterialBatch materialBatch{ *context_, "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv" };
-	materialBatch.geometryInstances.emplace_back(std::move(cubeGeometryInstances));
-	materialBatch.material.set_base_color(imageHolder_->get("floor", Texture{ "../assets/textures/floor.jpg", Texture::ColorSpace::LINEAR }));
+	materialBatch.materialInstances.emplace_back(std::move(materialInstance));
 	materialBatches_.emplace_back(std::move(materialBatch));
 
 	commandPool_ = std::make_unique<vkn::CommandPool>(*context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	swapchain_ = std::make_unique<vkn::Swapchain>(*context_);
-	
+
 	create_renderpass(width, height);
 
 	eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
@@ -42,7 +53,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 				context_->device->idle();
 				swapchain_->resize(VkExtent2D{ w, h });
 				colorRenderpass_->resize(glm::u32vec2{ w, h });
-			}			
+			}
 		});
 	eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 		{
@@ -50,9 +61,9 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 		});
 	eventDispatcher_.addMouseButtonCallback([&](uint32_t button, uint32_t action, uint32_t mods)
 		{
-				onMouseButtonEvent(button, action, mods);
-				firstMouseUse_ = true;
-		
+			onMouseButtonEvent(button, action, mods);
+			firstMouseUse_ = true;
+
 		});
 	eventDispatcher_.addMouseMoveCallback([&](double x, double y)
 		{
@@ -114,7 +125,7 @@ void gee::Application::updateGui()
 		ImGui::SliderFloat("scale factor", &drawable.scaleFactor, 0.0f, 10.0f, "%.1f");
 
 		auto size = drawable.getSize();
-		auto sizeStr = std::string{ "x = " } + std::to_string(size.x) + std::string{ " y = " } + std::to_string(size.y) + std::string{ " z = " } + std::to_string(size.z);
+		auto sizeStr = std::string{ "x = " } +std::to_string(size.x) + std::string{ " y = " } +std::to_string(size.y) + std::string{ " z = " } +std::to_string(size.z);
 		ImGui::LabelText("size", sizeStr.c_str());
 		if (drawable.hasLightComponent())
 		{
@@ -286,7 +297,6 @@ void gee::Application::create_renderpass(const uint32_t width, const uint32_t he
 	colorRenderpass_ = std::make_unique<vkn::Renderpass>(*context_, size, std::move(passes));
 }
 
-
 bool gee::Application::isRunning()
 {
 	if ((renderingtimer_.ellapsedMs() >= 100 / 6.0f))
@@ -294,12 +304,12 @@ bool gee::Application::isRunning()
 		if (window_.isVisible())
 		{
 			auto& cb = commandPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-			cb.begin();			
+			cb.begin();
 			colorRenderpass_->begin(cb, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
 			for (auto& batch : materialBatches_)
 			{
-				batch.material.bind((*colorRenderpass_)());
-				batch.material.draw(cb, camera_.get_shader_info(window_.aspectRatio()), batch.geometryInstances);
+				batch.bind((*colorRenderpass_)());
+				batch.draw(cb, camera_.get_shader_info(window_.aspectRatio()));
 			}
 			colorRenderpass_->end(cb);
 			cb.end();

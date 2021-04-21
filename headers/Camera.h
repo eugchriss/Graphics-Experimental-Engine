@@ -70,8 +70,7 @@ namespace gee
 		struct ShaderInfo
 		{
 			glm::vec4 position;
-			glm::mat4 view;
-			glm::mat4 projection;
+			glm::mat4 projectionView;
 		};
 		Camera(const glm::vec3 target = glm::vec3{ 0.0f, 0.0f, 0.0f }, const glm::vec3 pos = glm::vec3{ 0.0f, 0.0f, 1.0_km }, const glm::vec3 woldUp = glm::vec3(0.0f, 1.0f, 0.0f));
 		~Camera();

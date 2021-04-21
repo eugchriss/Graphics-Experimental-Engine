@@ -1,9 +1,22 @@
 #include "../headers/Pipeline.h"
+#include "../headers/Image.h"
+#include "../headers/CommandPool.h"
 #include <cassert>
 
 
 vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders) : context_{ context }, pipeline_{ pipeline }, layout_{ std::move(pipelineLayout) }, shaders_{ std::move(shaders) }
 {
+	dummyImage_ = std::make_unique<vkn::Image>(context_, VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R16_SFLOAT, VkExtent3D{ 1,1,1 });
+	{
+		vkn::CommandPool pool{context, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
+		auto& cb = pool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+		cb.begin();
+		dummyImage_->transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		cb.end();
+		auto transitionFinished = context_.transferQueue->submit(cb);
+		transitionFinished->wait();		
+	}
 	VkPhysicalDeviceProperties props;
 	vkGetPhysicalDeviceProperties(context.gpu->device, &props);
 	auto alignment = props.limits.minUniformBufferOffsetAlignment;
@@ -66,8 +79,6 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::Pipeli
 	memory_ = std::make_unique<vkn::DeviceMemory>(*context_.gpu, *context_.device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits, requirements.size);
 
 	buffer_->bind(*memory_);
-
-	vkCmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkGetInstanceProcAddr(context_.instance->instance, "vkCmdPushDescriptorSetKHR"));
 }
 
 vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{ other.context_ }, layout_{ std::move(other.layout_) }
@@ -79,9 +90,9 @@ vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{ other.context_ }, lay
 	shaders_ = std::move(other.shaders_);
 	uniforms_ = std::move(other.uniforms_);
 	pushConstants_ = std::move(other.pushConstants_);
+	dummyImage_ = std::move(other.dummyImage_);
 
 	other.pipeline_ = VK_NULL_HANDLE;
-	vkCmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkGetInstanceProcAddr(context_.instance->instance, "vkCmdPushDescriptorSetKHR"));
 }
 
 vkn::Pipeline::~Pipeline()
@@ -94,13 +105,24 @@ vkn::Pipeline::~Pipeline()
 
 void vkn::Pipeline::bind(vkn::CommandBuffer& cb)
 {
-	const auto& sets = layout_.sets();
+	auto& sets = layout_.sets();
 	if (!std::empty(sets))
 	{
 		updateUniforms();
-		vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.layout, PER_MATERIAL_SET, 1, &sets[PER_MATERIAL_SET], 0, nullptr);
 	}
 	vkCmdBindPipeline(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
+}
+
+void vkn::Pipeline::bind_set(CommandBuffer& cb, const uint32_t firstSet, const size_t setCount, const std::vector<uint32_t>& dynamicOffset)
+{
+	auto& sets = layout_.sets();
+	assert(std::size(sets) >= (firstSet + setCount));
+	boundSets_.clear();
+	for (auto i = firstSet; i < setCount; ++i)
+	{
+		boundSets_.emplace_back(sets[i]);
+	}
+	vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.layout, firstSet, setCount, std::data(boundSets_), std::size(dynamicOffset), std::data(dynamicOffset));
 }
 
 void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view)
@@ -128,7 +150,7 @@ void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampl
 	uniformsWrites_.emplace_back(write);
 }
 
-void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSampler sampler, const std::vector<VkImageView> views, const VkShaderStageFlagBits stage)
+void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSampler sampler, std::vector<VkImageView>& views)
 {
 	auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == resourceName; });
 	if (uniform == std::end(uniforms_))
@@ -137,19 +159,34 @@ void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSamp
 	}
 
 	auto imagesInfos = std::make_shared<std::vector<VkDescriptorImageInfo>>();
-	imagesInfos->reserve(std::size(views));
+	imagesInfos->reserve(uniform->size);
+
+	/* nullDescriptor feature isn t available on macOs so we fill in views with non VK_NULL_HANDLE (aka dummyImage_)*/
+	auto viewsSize = std::size(views);
+	if (viewsSize < uniform->size)
+	{
+		auto view = dummyImage_->getView(VK_IMAGE_ASPECT_COLOR_BIT);
+		for (auto i = viewsSize; i < uniform->size; ++i)
+		{
+			views.emplace_back(view);
+		}
+	}
+
 	for (const auto view : views)
 	{
 		imagesInfos->emplace_back(VkDescriptorImageInfo{ sampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 	}
+	auto infoSize = std::size(*imagesInfos);
+
 	imagesInfos_.emplace_back(imagesInfos);
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.pNext = nullptr;
+	write.dstSet = uniform->set;
 	write.dstBinding = uniform->binding;
 	write.descriptorType = uniform->type;
 	write.pImageInfo = std::data(*imagesInfos);
-	write.descriptorCount = std::size(views);
+	write.descriptorCount = std::size(*imagesInfos);
 
 	uniformsWrites_.emplace_back(write);
 }

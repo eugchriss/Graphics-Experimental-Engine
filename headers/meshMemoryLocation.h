@@ -16,6 +16,7 @@ namespace vkn
 		vkn::Buffer indexBuffer;
 		const uint32_t indicesCount;
 	};
+	MAKE_REFERENCE(GeometryMemoryLocation);
 
 	class GeometryMemoryLocationFactory
 	{

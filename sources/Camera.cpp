@@ -101,9 +101,9 @@ const gee::Camera::ShaderInfo& gee::Camera::get_shader_info(const float aspectRa
 	if (shouldRecreateShaderInfo_)
 	{
 		shaderInfo_.position = glm::vec4{ position_, 0.0f };
-		shaderInfo_.projection = perspectiveProjection(aspectRatio);
-		shaderInfo_.projection[1][1] *= -1;
-		shaderInfo_.view = pointOfView();
+		shaderInfo_.projectionView = perspectiveProjection(aspectRatio);
+		shaderInfo_.projectionView[1][1] *= -1;
+		shaderInfo_.projectionView *= pointOfView();
 		shouldRecreateShaderInfo_ = false;
 	}
 	return shaderInfo_;

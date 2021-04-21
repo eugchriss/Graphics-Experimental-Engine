@@ -5,9 +5,13 @@ layout(location = 0) in vec2 texCoord;
 
 layout(location = 0) out vec4 outColor;
 
+layout(push_constant) uniform PushConsts
+{
+   layout(offset = 80) uint value;
+} material_index;
 
-layout(binding = 1) uniform sampler2D color;
+layout(binding = 1) uniform sampler2D colors[15];
 
 void main() {
-    outColor = texture(color, texCoord);
+    outColor = texture(colors[material_index.value], texCoord);
 }

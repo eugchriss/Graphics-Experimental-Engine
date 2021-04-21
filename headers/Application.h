@@ -120,12 +120,21 @@ namespace gee
 		{
 			template<class ...Args>
 			MaterialBatch(Args& ...args) : material{std::forward<Args>(args)...}
-			{}
-			MaterialBatch() = delete;
-			MaterialBatch(const MaterialBatch&) = delete;
+			{
+				int i = 10;
+			}
+			MaterialBatch() = delete;;
 			MaterialBatch(MaterialBatch&&) = default;
+			void bind(const VkRenderPass& renderpass)
+			{
+				material.bind(renderpass);
+			}
+			void draw(vkn::CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo)
+			{
+				material.draw(cb, cameraShaderInfo, materialInstances);
+			}
 			vkn::Material material;
-			std::vector<vkn::GeometyInstances> geometryInstances;
+			std::vector<MaterialInstance> materialInstances;
 		};
 		std::vector<MaterialBatch> materialBatches_;
 

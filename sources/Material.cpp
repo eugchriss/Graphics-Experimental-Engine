@@ -29,8 +29,7 @@ vkn::Material::Material(Material&& other) : context_{ other.context_ }, builder_
 	pipeline_ = std::move(other.pipeline_);
 	sampler_ = other.sampler_;
 	other.sampler_ = VK_NULL_HANDLE;
-	colorView_ = other.colorView_;
-	other.colorView_ = VK_NULL_HANDLE;
+	textureSlots_ = std::move(other.textureSlots_);
 }
 
 vkn::Material::~Material()
@@ -40,36 +39,35 @@ vkn::Material::~Material()
 		vkDestroySampler(context_.device->device, sampler_, nullptr);
 	}
 }
-void vkn::Material::set_base_color(vkn::Image& image)
-{
-	colorView_ = image.getView(VK_IMAGE_ASPECT_COLOR_BIT);
-}
 
 void vkn::Material::bind(const VkRenderPass& renderpass)
 {
 	build_pipeline(renderpass);
 }
 
-void vkn::Material::draw(CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<GeometyInstances>& geometryInstances)
+void vkn::Material::draw(CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<MaterialInstance>& materialInstances)
 {
-	transformMatrices_.clear();
-	for (const auto& geometryInstance : geometryInstances)
-	{
-		std::copy(std::begin(geometryInstance.transformMatrices), std::end(geometryInstance.transformMatrices), std::back_inserter(transformMatrices_));
-	}
+	assert(std::size(materialInstances) <= 15); //maxDescriptorSetDynamicUniformBuffer
+	getPackedTextures_and_transforms(const_cast<std::vector<MaterialInstance>&>(materialInstances));
 
 	pipeline_->updateBuffer("transform_matrices", transformMatrices_);
-	pipeline_->updateTexture("color", sampler_, colorView_);
-	pipeline_->bind(cb);
+	pipeline_->updateTextures("colors", sampler_, textureSlots_[TEXTURE_SLOT::COLOR]);
+
 	VkDeviceSize offset{ 0 };
-	size_t firstInstance{ 0 };
+	pipeline_->bind(cb);
 	pipeline_->pushConstant(cb, "camera", cameraShaderInfo);
-	for (auto& geometryInstance : geometryInstances)
+	for (auto i = 0u; i < std::size(materialInstances); ++i)
 	{
-		vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &geometryInstance.geometryMemory.vertexBuffer.buffer, &offset);
-		vkCmdBindIndexBuffer(cb.commandBuffer(), geometryInstance.geometryMemory.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(cb.commandBuffer(), geometryInstance.geometryMemory.indicesCount, std::size(geometryInstance.transformMatrices), 0, 0, firstInstance);		
-		firstInstance += std::size(geometryInstance.transformMatrices);
+		pipeline_->pushConstant(cb, "material_index", i);
+		for (auto& geometry : materialInstances[i].geometries)
+		{
+			assert(std::size(geometry.transformMatrices) < 1024); //maxUniformBufferRange / sizeof(mat4)
+			vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &geometry.geometryMemoryRef.get().vertexBuffer.buffer, &offset);
+			vkCmdBindIndexBuffer(cb.commandBuffer(), geometry.geometryMemoryRef.get().indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+			pipeline_->bind_set(cb, PER_MATERIAL_SET, 1, {0 * 1024 * sizeof(glm::mat4)});
+			vkCmdDrawIndexed(cb.commandBuffer(), geometry.geometryMemoryRef.get().indicesCount, std::size(geometry.transformMatrices), 0, 0, 0);
+		}
 	}
 }
 
@@ -82,6 +80,7 @@ vkn::RENDERPASS_USAGE vkn::Material::pass_usage() const
 {
 	return passUsage_;
 }
+
 
 void vkn::Material::build_pipeline(const VkRenderPass& renderpass)
 {
@@ -102,4 +101,18 @@ void vkn::Material::prepare_pipeline(Context& context, const RENDERPASS_USAGE& p
 	builder_.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 	builder_.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 	builder_.subpass = passUsage;
+}
+
+void vkn::Material::getPackedTextures_and_transforms(std::vector<MaterialInstance>& materialInstances)
+{
+	transformMatrices_.clear();
+	textureSlots_.clear();
+	for (auto& materialInstance : materialInstances)
+	{
+		textureSlots_[TEXTURE_SLOT::COLOR].emplace_back(materialInstance.textureSlots[TEXTURE_SLOT::COLOR]);
+		for (const auto& geometry : materialInstance.geometries)
+		{
+			std::copy(std::begin(geometry.transformMatrices), std::end(geometry.transformMatrices), std::back_inserter(transformMatrices_));
+		}
+	}
 }

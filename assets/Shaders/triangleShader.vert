@@ -12,16 +12,15 @@ layout(location = 5) in vec3 inBitangent;
 layout(push_constant) uniform Camera
 {
     vec4 pos;
-    mat4 view;
-    mat4 proj;
+    mat4 projView;
 }camera;
 
 layout(binding = 0) uniform transform_matrices
 {
-    mat4[100] matrices;
+    mat4[1024] matrices;
 }transforms;
 
 void main() {
-    gl_Position = camera.proj * camera.view * transforms.matrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
+    gl_Position = camera.projView * transforms.matrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
     texCoord = inTexCoord;
 }
