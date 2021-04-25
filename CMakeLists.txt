@@ -59,7 +59,8 @@ set(SOURCES	"sources/main.cpp"
 			"sources/vulkanContextBuilder.cpp"
 			"sources/renderTarget.cpp"
 			"sources/vulkanImGuiContext.cpp"
-			"sources/pass.cpp")
+			"sources/pass.cpp"
+			"sources/SpatialTransformation.cpp")
 
 set(HEADERS	"headers/gpu.h"
 			"headers/imgui.h"
@@ -113,7 +114,8 @@ set(HEADERS	"headers/gpu.h"
 			"headers/renderTarget.h"
 			"headers/vulkanImGuiContext.h"
 			"headers/pass.h"
-			"headers/materialInstance.h")
+			"headers/materialInstance.h"
+			"headers/SpatialTransformation.h")
 add_executable(gee ${SOURCES} ${HEADERS})
 
 target_include_directories(gee PRIVATE ${LIBS_DIR}/assimp)

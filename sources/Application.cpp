@@ -111,7 +111,7 @@ void gee::Application::updateGui()
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-
+	/*
 	if (activeDrawable_)
 	{
 		auto& drawable = activeDrawable_.value().get();
@@ -143,7 +143,7 @@ void gee::Application::updateGui()
 		}
 		drawable.setSize(drawable.getSize() * drawable.scaleFactor / lastScaleFactor);
 	}
-
+	*/
 	ImGui::Begin("Loop time");
 	ImGui::LabelText("cpu time (ms)", std::to_string(cpuTime_).c_str(), "0.3f");
 	ImGui::LabelText("gpu time (ms)", std::to_string(gpuTime_).c_str(), "0.3f");

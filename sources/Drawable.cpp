@@ -10,85 +10,38 @@ gee::Drawable::Drawable(const gee::Geometry& geometry, gee::MaterialInstance& ma
 }
 
 gee::Drawable::Drawable(const std::string& name, const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos, const glm::vec3& rot) 
- : geometry{geometry}, materialInstance{ materialInstance }
+ : geometry{geometry}, materialInstance{ materialInstance }, position{pos}, rotation(rot)
 {
-	setPosition(pos);
-	setRotation(rot);
+
 	//scaleFactor = normalizedScaleFactor(mesh);
 	if (scaleFactor == 0.0f)
 	{
 		scaleFactor = 1.0f;
 	}
-	size_ /= scaleFactor;
-}
-
-void gee::Drawable::setPosition(const glm::vec3& pos)
-{
-	if (position_ != pos)
-	{
-		shouldRecomputeTransform_ = true;
-		position_ = pos;
-	}
-}
-
-void gee::Drawable::setRotation(const glm::vec3& rot)
-{
-	if (rotation_ != rot)
-	{
-		shouldRecomputeTransform_ = true;
-		rotation_ = rot;
-	}
-}
-
-void gee::Drawable::setSize(const glm::vec3& size)
-{
-	if (size_ != size)
-	{
-		shouldRecomputeTransform_ = true;
-		size_ = size;
-	}	
-}
-
-const glm::vec3& gee::Drawable::getPosition() const
-{
-	return position_;
-}
-
-const glm::vec3& gee::Drawable::getSize() const
-{
-	return size_;
-}
-
-const glm::vec3& gee::Drawable::getRotation() const
-{
-	return rotation_;
+	size /= scaleFactor;
 }
 
 const glm::mat4& gee::Drawable::getTransform()
 {
-	if (shouldRecomputeTransform_)
+	if (position != lastPosition_)
 	{
-		transform_ = glm::mat4{ 1.0f };
-		transform_ = glm::translate(transform_, position_);
-		transform_ = glm::scale(transform_, size_);
-		transform_ = glm::rotate(transform_, rotation_.x, glm::vec3{ 1.0, 0.0f, 0.0f });
-		transform_ = glm::rotate(transform_, rotation_.y, glm::vec3{ 0.0, 1.0f, 0.0f });
-		transform_ = glm::rotate(transform_, rotation_.z, glm::vec3{ 0.0, 0.0f, 1.0f });
-
-		normalMatrix_ = glm::transpose(glm::inverse(transform_));
-		shouldRecomputeTransform_ = false;
+		transform_.translate(position);
+		lastPosition_ = position;
 	}
-	return transform_;
-}
+	if (size != lastSize_)
+	{
+		transform_.scale(size);
+		lastSize_ = size;
+	}
+	if (rotation != lastRotation_)
+	{
+		transform_.rotate(rotation.x, glm::vec3{ 1.0, 0.0f, 0.0f });
+		transform_.rotate(rotation.y, glm::vec3{ 0.0, 1.0f, 0.0f });
+		transform_.rotate(rotation.z, glm::vec3{ 0.0, 0.0f, 1.0f });
 
-const glm::mat4& gee::Drawable::getNormalMatrix() const
-{
-	return normalMatrix_;
-}
-
-const size_t gee::Drawable::hash() const
-{
-	return std::hash<std::string>{}(name);
+		lastRotation_ = rotation;
+	}
+	return transform_.value();
 }
 
 const float gee::Drawable::normalizedScaleFactor(const gee::Mesh& mesh)
@@ -112,6 +65,6 @@ const float gee::Drawable::normalizedScaleFactor(const gee::Mesh& mesh)
 	const auto z = maxZ - minZ;
 
 	const auto volume = x * y * z;
-	size_ = glm::vec3{ x, y, z };
+	size = glm::vec3{ x, y, z };
 	return glm::pow(volume, 1 / 3.0f);
 }
