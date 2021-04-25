@@ -4,18 +4,10 @@
 
 namespace gee
 {
-	enum class Light
+	struct PointLight
 	{
-		PointLight,
-		SpotLight,
-		DirectionalLight
-	};
-
-	struct Optics
-	{
-		Optics(const Light type_, const glm::vec3& pos = {});
-		Optics(const Optics&) = default;
-		Light type;
+		PointLight(const glm::vec3& pos = {});
+		PointLight(const PointLight&) = default;
 		
 		glm::vec3 position{};
 		glm::vec3 direction{ 0.0f, 0.f, 1.0f };

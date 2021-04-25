@@ -15,46 +15,15 @@
 #include "RenderTarget.h"
 #include "CommandPool.h"
 #include "ResourceHolder.h"
-#include "textureImageFactory.h"
-#include "meshMemoryLocation.h"
 #include "Material.h"
+#include "MaterialInstance.h"
 
 struct ShaderCamera
 {
 	glm::vec4 position;
 	glm::mat4 viewProj;
 };
-using MeshRef = std::reference_wrapper<const gee::Mesh>;
-using DrawableRef = std::reference_wrapper<gee::Drawable>;
 
-namespace std
-{
-	template<>
-	struct hash<const MeshRef>
-	{
-		size_t operator()(const MeshRef& meshRef) const
-		{
-			return meshRef.get().hash();
-		}
-	};
-
-	template<>
-	struct hash<MeshRef>
-	{
-		size_t operator()(const MeshRef& meshRef) const
-		{
-			return meshRef.get().hash();
-		}
-	};
-	template<>
-	struct equal_to<MeshRef>
-	{
-		bool operator()(const MeshRef& lhs, const MeshRef& rhs) const
-		{
-			return lhs.get().hash() == rhs.get().hash();
-		}
-	};
-}
 namespace gee
 {
 	class Application
@@ -65,8 +34,13 @@ namespace gee
 		bool isRunning();
 		void setCameraPosition(const glm::vec3& position);
 		void setSkybox(Drawable& skybox);
-		void addDrawable(Drawable& drawable);
+		void add_drawable(Drawable& drawable);
+		void add_drawable_without_duplicate(Drawable& drawable);
 		void addCamera(const Camera& camera);
+		vkn::Material& get_material(const std::string& name, const std::string vertexPath, const std::string& fragmentPath);
+		const gee::Geometry& get_geometry(const std::string& name, gee::Mesh& mesh);
+		const gee::Texture& load_texture(const std::string& name, const std::string& path, const gee::Texture::ColorSpace colorSpace = gee::Texture::ColorSpace::LINEAR);
+		MaterialInstance& get_materialInstance(vkn::Material& material);
 
 	private:
 
@@ -108,35 +82,15 @@ namespace gee
 		float cpuTime_;
 		float gpuTime_;
 
-		using ImageHolder = ResourceHolder<vkn::TextureImageFactory, vkn::Image>;
-		std::unique_ptr<ImageHolder> imageHolder_;
+		std::unordered_map<std::string, gee::Texture> textures_;
+		std::unique_ptr<vkn::TextureMemoryHolder> textureMemoryHolder_;
 
-		using GeometryHolder = ResourceHolder<gee::GeometryFactory, const gee::Geometry>;
+		using GeometryHolder = ResourceHolder<gee::GeometryFactory, gee::Geometry>;
 		std::unique_ptr<GeometryHolder> geometryHolder_;
-		using GeometryMemoryHolder = ResourceHolder<vkn::GeometryMemoryLocationFactory, vkn::GeometryMemoryLocation>;
-		std::unique_ptr<GeometryMemoryHolder> geometryMemoryHolder_;
+		std::unique_ptr<vkn::GeometryMemoryHolder> geometryMemoryHolder_;
 
-		struct MaterialBatch
-		{
-			template<class ...Args>
-			MaterialBatch(Args& ...args) : material{std::forward<Args>(args)...}
-			{
-				int i = 10;
-			}
-			MaterialBatch() = delete;;
-			MaterialBatch(MaterialBatch&&) = default;
-			void bind(const VkRenderPass& renderpass)
-			{
-				material.bind(renderpass);
-			}
-			void draw(vkn::CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo)
-			{
-				material.draw(cb, cameraShaderInfo, materialInstances);
-			}
-			vkn::Material material;
-			std::vector<MaterialInstance> materialInstances;
-		};
-		std::vector<MaterialBatch> materialBatches_;
+		std::unordered_map<std::string, vkn::Material> materials_;
+		std::unordered_map<vkn::MaterialRef, std::vector<MaterialInstance>> materialBatches_;
 
 		//functions only
 	private:
@@ -150,5 +104,6 @@ namespace gee
 		void getTransforms();
 		void initPixelPerfect();
 		void create_renderpass(const uint32_t width, const uint32_t height);
+		void batch_material_instances();
 	};
 }

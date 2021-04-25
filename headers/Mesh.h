@@ -4,15 +4,21 @@
 #include "glm/glm.hpp"
 #include "Vertex.h"
 #include "assimp/material.h"
+#include "vulkan_utils.h"
 
 namespace gee
 {
 	struct Geometry
 	{
 		Geometry(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices);
+		Geometry(const Geometry&) = delete;
+		Geometry(Geometry&&) = default;
 		std::vector<Vertex> vertices;
 		std::vector<uint32_t> indices;
+		size_t hash{};
 	};
+	using GeometryRef = std::reference_wrapper<gee::Geometry>;
+	using GeometryConstRef = std::reference_wrapper<const gee::Geometry>;
 
 	class Mesh
 	{
@@ -20,7 +26,7 @@ namespace gee
 		Mesh(const std::string& name, std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices);
 		~Mesh() = default;
 		Mesh(Mesh&&) = default;
-		const Geometry& geometry() const;
+		Geometry& geometry();
 		const std::vector<gee::Vertex>& vertices() const;
 		const std::vector<uint32_t>& indices() const;
 		const std::string& name() const;
@@ -35,9 +41,30 @@ namespace gee
 	struct GeometryFactory
 	{
 		GeometryFactory() = default;
-		const Geometry& create(Mesh& mesh)
+		Geometry& create(Mesh& mesh)
 		{
 			return mesh.geometry();
+		}
+	};
+}
+
+namespace std
+{
+	template<>
+	struct hash<gee::GeometryConstRef>
+	{
+		size_t operator()(const gee::GeometryConstRef& geometry) const
+		{
+			return geometry.get().hash;
+		}
+	};
+
+	template<>
+	struct equal_to<gee::GeometryConstRef>
+	{
+		bool operator()(const gee::GeometryConstRef& lhs, const gee::GeometryConstRef& rhs) const
+		{
+			return lhs.get().hash == rhs.get().hash;
 		}
 	};
 }

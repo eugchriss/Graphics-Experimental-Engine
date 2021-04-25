@@ -31,7 +31,7 @@ inline gee::ResourceHolder<Factory, Resource, Key>::ResourceHolder(Factory& f) :
 template<class Factory, class Resource, class Key>
 inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key)
 {
-	auto result = resources_.find(key);
+	auto& result = resources_.find(key);
 	if (result != std::end(resources_))
 	{
 		return result->second;
@@ -40,7 +40,7 @@ inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key
 	{
 		if constexpr (std::is_default_constructible<Resource>::value)
 		{
-			auto resource = resources_.emplace(key, Resource{});
+			auto& resource = resources_.emplace(key, Resource{});
 			return resource.first->second;
 		}
 		else
@@ -54,11 +54,19 @@ template<class Factory, class Resource, class Key>
 template< class ...Args>
 inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key, Args& ...args)
 {
-	auto result = resources_.find(key);
+	auto& result = resources_.find(key);
 	if (result == std::end(resources_))
 	{
-		auto resource = resources_.emplace(key, factory_.create(std::forward<Args>(args)...));
-		return resource.first->second;
+		if constexpr (std::is_copy_constructible<Resource>::value)
+		{
+			auto& resource = resources_.emplace(key, factory_.create(std::forward<Args>(args)...));
+			return resource.first->second;
+		}
+		else
+		{
+			auto& resource = resources_.emplace(key, std::move(factory_.create(std::forward<Args>(args)...)));
+			return resource.first->second;
+		}
 	}
 	else
 	{

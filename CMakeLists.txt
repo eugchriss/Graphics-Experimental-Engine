@@ -112,7 +112,8 @@ set(HEADERS	"headers/gpu.h"
 			"headers/vulkanContextBuilder.h"
 			"headers/renderTarget.h"
 			"headers/vulkanImGuiContext.h"
-			"headers/pass.h")
+			"headers/pass.h"
+			"headers/materialInstance.h")
 add_executable(gee ${SOURCES} ${HEADERS})
 
 target_include_directories(gee PRIVATE ${LIBS_DIR}/assimp)

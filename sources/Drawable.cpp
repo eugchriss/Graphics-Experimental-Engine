@@ -4,66 +4,22 @@
 
 uint32_t gee::Drawable::count{};
 
-gee::Drawable::Drawable(const gee::Mesh& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
-	mesh{ mesh },
-	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
+gee::Drawable::Drawable(const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos, const glm::vec3& rot)
+	: Drawable{ std::string{ "Drawable : " } + std::to_string(count), geometry, materialInstance, pos, rot }
 {
-	name = std::string{ "Drawable : " } + std::to_string(count);
-	setPosition(pos);
-	setRotation(rot);
-	scaleFactor = normalizedScaleFactor(mesh);
-	if (scaleFactor == 0.0f)
-	{
-		scaleFactor = 1.0f;
-	}
-	size_ /= scaleFactor;
-	count++;
 }
 
-gee::Drawable::Drawable(const gee::Mesh& mesh, const Optics& optics, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
-	mesh{ mesh }, light_{ optics },
-	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
+gee::Drawable::Drawable(const std::string& name, const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos, const glm::vec3& rot) 
+ : geometry{geometry}, materialInstance{ materialInstance }
 {
 	setPosition(pos);
 	setRotation(rot);
-	light_->position = position_;
-	light_->diffuse = color;
-}
-
-gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
-	name{ noun }, mesh{ mesh },
-	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
-{
-	setPosition(pos);
-	setRotation(rot);
-	scaleFactor = normalizedScaleFactor(mesh);
+	//scaleFactor = normalizedScaleFactor(mesh);
 	if (scaleFactor == 0.0f)
 	{
 		scaleFactor = 1.0f;
 	}
 	size_ /= scaleFactor;
-}
-gee::Drawable::Drawable(const std::string& noun, gee::Mesh&& mesh, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
-	name{ noun }, mesh{ std::move(mesh) },
-	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
-{
-	setPosition(pos);
-	setRotation(rot);
-	scaleFactor = normalizedScaleFactor(mesh);
-	if (scaleFactor == 0.0f)
-	{
-		scaleFactor = 1.0f;
-	}
-	size_ /= scaleFactor;
-}
-gee::Drawable::Drawable(const std::string& noun, const gee::Mesh& mesh, const Optics& optics, const glm::vec3& pos, const glm::vec3& col, const glm::vec3& rot) :
-	name{ noun }, mesh{ mesh }, light_{ optics },
-	color{ col, 1.0f }, boundingBox_{ mesh.vertices() }
-{
-	setPosition(pos);
-	setRotation(rot);
-	light_->position = position_;
-	light_->diffuse = color;
 }
 
 void gee::Drawable::setPosition(const glm::vec3& pos)
@@ -72,30 +28,6 @@ void gee::Drawable::setPosition(const glm::vec3& pos)
 	{
 		shouldRecomputeTransform_ = true;
 		position_ = pos;
-		if (light_)
-		{
-			light_->position = position_;
-		}
-	}
-}
-
-void gee::Drawable::setColor(const glm::vec3& col)
-{
-	color = glm::vec4{ col, 1.0f };
-	if (light_)
-	{
-		light_->ambient = 0.2f * col;
-		light_->diffuse = col;
-	}
-}
-
-void gee::Drawable::setColor(const glm::vec4& col)
-{
-	color = col;
-	if (light_)
-	{
-		light_->ambient = 0.2f * col;
-		light_->diffuse = col;
 	}
 }
 
@@ -152,33 +84,6 @@ const glm::mat4& gee::Drawable::getTransform()
 const glm::mat4& gee::Drawable::getNormalMatrix() const
 {
 	return normalMatrix_;
-}
-
-const glm::vec4& gee::Drawable::getColor() const
-{
-	return color;
-}
-
-bool gee::Drawable::hasLightComponent() const
-{
-	return light_.has_value();
-}
-
-const gee::BoundingBox& gee::Drawable::boundingBox() const
-{
-	return boundingBox_;
-}
-
-gee::Optics& gee::Drawable::light()
-{
-	assert(light_.has_value() && "This drawable is not a light source");
-	return light_.value();
-}
-
-const gee::Optics& gee::Drawable::light() const
-{
-	assert(light_.has_value() && "This drawable is not a light source");
-	return light_.value();
 }
 
 const size_t gee::Drawable::hash() const

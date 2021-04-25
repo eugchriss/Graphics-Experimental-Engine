@@ -4,7 +4,7 @@
 #include "../headers/Texture.h"
 #include "../headers/vulkan_utils.h"
 
-gee::Texture::Texture(const std::string& path, const ColorSpace colorSpace): paths_{path}, colorSpace_{colorSpace}
+gee::Texture::Texture(const std::string& name, const std::string& path, const ColorSpace colorSpace) : name_{ name }, paths_ { path }, colorSpace_{ colorSpace }
 {
 	int channel{};
 	int width, height;
@@ -18,7 +18,6 @@ gee::Texture::Texture(const std::string& path, const ColorSpace colorSpace): pat
 	std::copy_n(pixels, textureSize, std::begin(pixels_));
 	stbi_image_free(pixels);
 
-	hash_ = gee::hash_combine(paths_);
 	offsets_.emplace_back(0);
 }
 
@@ -53,7 +52,6 @@ gee::Texture::Texture(const std::array<std::string, 6>& paths, const ColorSpace 
 		stbi_image_free(pixels[i]);
 	}
 
-	hash_ = gee::hash_combine(paths_);
 }
 
 const std::vector<unsigned char>& gee::Texture::pixels() const
@@ -61,9 +59,9 @@ const std::vector<unsigned char>& gee::Texture::pixels() const
 	return pixels_;
 }
 
-const size_t gee::Texture::hash() const
+const std::string& gee::Texture::name() const
 {
-	return hash_;
+	return name_;
 }
 
 const uint32_t gee::Texture::width() const

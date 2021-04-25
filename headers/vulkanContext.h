@@ -8,6 +8,7 @@
 #include "Queue.h"
 
 #define MAKE_REFERENCE(object) using object##Ref = std::reference_wrapper<object>;
+#define MAKE_CONST_REFERENCE(object) using object##ConstRef = std::reference_wrapper<const object>;
 
 namespace vkn
 {

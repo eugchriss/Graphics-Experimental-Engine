@@ -1,12 +1,15 @@
 #pragma once
+#include "ResourceHolder.h"
 #include "vulkanContext.h"
 #include "PipelineBuilder.h"
 #include "Pipeline.h"
 #include "Image.h"
-#include "Mesh.h"
 #include "CommandBuffer.h"
 #include "meshMemoryLocation.h"
+#include "textureImageFactory.h"
 #include "camera.h"
+#include "Optics.h"
+
 #include <string>
 #include <memory>
 #include <vector>
@@ -18,31 +21,12 @@ enum class TEXTURE_SLOT
 	NORMAL,
 	SPECULAR
 };
-class gee::Mesh;
 
-struct GeometryInstances
+namespace gee
 {
-	GeometryInstances(vkn::GeometryMemoryLocation& geometryMemory) : geometryMemoryRef{ std::ref(geometryMemory) } {}
-	GeometryInstances(GeometryInstances&& other) = default;
-	vkn::GeometryMemoryLocationRef geometryMemoryRef;
-	std::vector<glm::mat4> transformMatrices;
-};
+	class MaterialInstance;
+}
 
-struct MaterialInstance
-{
-	MaterialInstance() = default;
-	MaterialInstance(MaterialInstance&& other) = default;
-	void set_property(const TEXTURE_SLOT slot, vkn::Image& image)
-	{
-		textureSlots[slot] = image.getView(VK_IMAGE_ASPECT_COLOR_BIT);
-	}
-	void add_geometry(GeometryInstances&& geometry)
-	{
-		geometries.emplace_back(std::move(geometry));
-	}
-	std::unordered_map<TEXTURE_SLOT, VkImageView> textureSlots;
-	std::vector<GeometryInstances> geometries;
-};
 namespace vkn
 {
 	enum RENDERPASS_USAGE
@@ -51,6 +35,8 @@ namespace vkn
 		SKYBOX_PASS = 0x1,
 		UI_PASS = 0x02
 	};
+	using GeometryMemoryHolder = gee::ResourceHolder<vkn::GeometryMemoryLocationFactory, vkn::GeometryMemoryLocation, size_t>;
+	using TextureMemoryHolder = gee::ResourceHolder<vkn::TextureImageFactory, vkn::Image>;
 	class Material
 	{
 	public:
@@ -58,14 +44,14 @@ namespace vkn
 		Material(Material&& other);
 		virtual ~Material();
 		void bind(const VkRenderPass& renderpass);
-		virtual void draw(CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<MaterialInstance>& materialInstances);
+		virtual void draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstance>& materialInstances);
 		void set_sampler(const VkSamplerCreateInfo& samplerInfo);
+		void use_light(const gee::PointLight& light);
 		RENDERPASS_USAGE pass_usage() const;
-	
-	protected:
-		virtual void build_pipeline(const VkRenderPass& renderpass);
+		const size_t hash() const;
 	private:
 		Context& context_;
+		size_t hash_{};
 		const RENDERPASS_USAGE passUsage_;
 		vkn::PipelineBuilder builder_;
 		std::unique_ptr<Pipeline> pipeline_;
@@ -73,6 +59,30 @@ namespace vkn
 		VkSampler sampler_{ VK_NULL_HANDLE };
 		std::unordered_map<TEXTURE_SLOT, std::vector<VkImageView>> textureSlots_;
 		std::vector<glm::mat4> transformMatrices_;
-		void getPackedTextures_and_transforms(std::vector<MaterialInstance>&);
+		void getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstance>&);
+
+		std::vector<gee::ShaderPointLight> pointLights_;
+		virtual void build_pipeline(const VkRenderPass& renderpass);
+		virtual void set_pointLights();
+	};
+	MAKE_REFERENCE(Material)	
+}
+namespace std
+{
+	template<>
+	struct hash<vkn::MaterialRef>
+	{
+		size_t operator()(const vkn::MaterialRef& material) const
+		{
+			return material.get().hash();
+		}
+	};
+	template<>
+	struct equal_to<vkn::MaterialRef>
+	{
+		bool operator()(const vkn::MaterialRef& lhs, const vkn::MaterialRef& rhs) const
+		{
+			return lhs.get().hash() == rhs.get().hash();
+		}
 	};
 }
