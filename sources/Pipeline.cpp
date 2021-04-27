@@ -8,27 +8,18 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::Pipeli
 {
 	dummyImage_ = std::make_unique<vkn::Image>(context_, VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R16_SFLOAT, VkExtent3D{ 1,1,1 });
 	{
-		vkn::CommandPool pool{context, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
+		vkn::CommandPool pool{ context, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
 		auto& cb = pool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 		cb.begin();
 		dummyImage_->transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		cb.end();
 		auto transitionFinished = context_.transferQueue->submit(cb);
-		transitionFinished->wait();		
+		transitionFinished->wait();
 	}
-	VkPhysicalDeviceProperties props;
-	vkGetPhysicalDeviceProperties(context.gpu->device, &props);
-	auto alignment = props.limits.minUniformBufferOffsetAlignment;
-	auto align = [&alignment](VkDeviceSize offset) {
-		if (offset % alignment != 0)
-		{
-			offset += alignment - (offset % alignment);
-		}
-		return offset;
-	};
 
 	VkDeviceSize size{ 0 };
+	VkDeviceSize dynamicSize{ 0 };
 	const auto& descriptorSets = layout_.sets();
 	for (const auto& shader : shaders_)
 	{
@@ -44,10 +35,17 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::Pipeli
 			uniform.size = binding.size;
 			uniform.range = binding.range;
 			uniform.type = binding.layoutBinding.descriptorType;
+			uniform.dynamicType = ((uniform.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) || (uniform.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)) ? UNIFORM_TYPE::DYNAMIC : UNIFORM_TYPE::NON_DYNAMIC;
 
+			if (uniform.dynamicType == UNIFORM_TYPE::DYNAMIC)
+			{
+				dynamicSize += uniform.range;
+			}
+			else
+			{
+				size += uniform.range;
+			}
 			uniforms_.push_back(uniform);
-			size += uniform.range;
-			size = align(size);
 		}
 		const auto& subpassInputBindings = shader.subpassInputBindings();
 		for (const auto& binding : subpassInputBindings)
@@ -67,18 +65,8 @@ vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::Pipeli
 		const auto& pushConstants = shader.pushConstants();
 		std::copy(std::begin(pushConstants), std::end(pushConstants), std::back_inserter(pushConstants_));
 	}
-	//create the buffer and the memory, then bind both
-	if (size == 0)
-	{
-		size = 1;
-	}
-	buffer_ = std::make_unique<vkn::Buffer>(context_, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, size);
 
-	VkMemoryRequirements requirements;
-	vkGetBufferMemoryRequirements(context_.device->device, buffer_->buffer, &requirements);
-	memory_ = std::make_unique<vkn::DeviceMemory>(*context_.gpu, *context_.device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits, requirements.size);
-
-	buffer_->bind(*memory_);
+	createBuffers(size, dynamicSize);
 }
 
 vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{ other.context_ }, layout_{ std::move(other.layout_) }
@@ -86,6 +74,7 @@ vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{ other.context_ }, lay
 	pipeline_ = other.pipeline_;
 	memory_ = std::move(other.memory_);
 	buffer_ = std::move(other.buffer_);
+	uniformTypeBufferOffsets_ = std::move(other.uniformTypeBufferOffsets_);
 
 	shaders_ = std::move(other.shaders_);
 	uniforms_ = std::move(other.uniforms_);
@@ -203,4 +192,36 @@ void vkn::Pipeline::updateUniforms()
 	imageInfos_.clear();
 	imagesInfos_.clear();
 	bufferInfos_.clear();
+}
+
+void vkn::Pipeline::createBuffers(const VkDeviceSize nonDynamicSize, const VkDeviceSize dynamicSize)
+{
+	auto align = [](VkDeviceSize alignment, VkDeviceSize offset) {
+		if (offset % alignment != 0)
+		{
+			offset += alignment - (offset % alignment);
+		}
+		return offset;
+	};
+
+	const auto props = context_.gpu->properties();
+	const auto minUniformOffsetAlignment = props.limits.minUniformBufferOffsetAlignment;
+	const auto maxDynamicUniformBuffer = props.limits.maxDescriptorSetUniformBuffersDynamic;
+
+	auto dynamic = maxDynamicUniformBuffer * align(minUniformOffsetAlignment, dynamicSize);
+	auto nonDynamic = align(minUniformOffsetAlignment, nonDynamicSize);
+	uniformTypeBufferOffsets_[UNIFORM_TYPE::NON_DYNAMIC] = 0;
+	uniformTypeBufferOffsets_[UNIFORM_TYPE::DYNAMIC] = nonDynamic;
+
+	auto totalSize = dynamic + nonDynamic;
+	if (totalSize != 0)
+	{
+		buffer_ = std::make_unique<vkn::Buffer>(context_, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, totalSize);
+
+		VkMemoryRequirements requirements;
+		vkGetBufferMemoryRequirements(context_.device->device, buffer_->buffer, &requirements);
+		memory_ = std::make_unique<vkn::DeviceMemory>(*context_.gpu, *context_.device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, requirements.memoryTypeBits, requirements.size);
+
+		buffer_->bind(*memory_);
+	}
 }

@@ -14,5 +14,5 @@ layout(binding = 1) uniform sampler2D colors[15];
 layout(binding = 2) uniform sampler2D normals[15];
 
 void main() {
-    outColor = texture(normals[material_index.value], texCoord);
+    outColor = texture(colors[material_index.value], texCoord);
 }

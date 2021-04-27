@@ -61,20 +61,20 @@ void vkn::Renderpass::end(vkn::CommandBuffer& cb)
 std::vector<vkn::RenderTargetRef> vkn::Renderpass::getUniqueRenderTargets()
 {
 	std::vector<RenderTargetRef> uniqueTargets;
-	std::unordered_map<uint64_t, RenderTargetRef> targets;
+	std::vector<std::pair<uint64_t, RenderTargetRef>> targets;
 	for (auto& pass : passes_)
 	{
 		for (const auto& target : pass.colorTargets())
 		{
-			targets.emplace(target.get().id(), std::ref(target));
+			targets.emplace_back(target.get().id(), std::ref(target));
 		}
 		for (const auto& target : pass.depthStencilTargets())
 		{
-			targets.emplace(target.get().id(), std::ref(target));
+			targets.emplace_back(target.get().id(), std::ref(target));
 		}
 		for (const auto& target : pass.inputTargets())
 		{
-			targets.emplace(target.get().id(), std::ref(target));
+			targets.emplace_back(target.get().id(), std::ref(target));
 		}
 	}
 	for (const auto& [id, target] : targets)
@@ -244,6 +244,7 @@ const std::vector<VkSubpassDependency> vkn::Renderpass::findDependencies(const s
 void vkn::Renderpass::createFramebuffers(const uint32_t framebufferCount, const VkExtent2D& extent)
 {
 	auto& renderTargets = getUniqueRenderTargets();
+
 	std::vector<RenderTargetRef> presentableTargets;
 	std::vector<RenderTargetRef> nonPresentableTargets;
 	for (auto& target : renderTargets)
@@ -263,7 +264,7 @@ void vkn::Renderpass::createFramebuffers(const uint32_t framebufferCount, const 
 	auto result = std::find_if(std::begin(renderpassAttachments), std::end(renderpassAttachments), [&](const auto attachment) {return attachment.finalLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; });
 	if (result != std::end(renderpassAttachments))
 	{
-		presentAttachmentIndex.emplace(std::distance(result, std::begin(renderpassAttachments)));
+		presentAttachmentIndex.emplace(std::distance(std::begin(renderpassAttachments), result));
 	}
 	
 	VkFramebufferCreateInfo fbInfo{};

@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-vkn::Shader::Shader(vkn::Device& device, const VkShaderStageFlagBits stage, const std::string& path) : device_{ device }, stage_{ stage }
+vkn::Shader::Shader(vkn::Device& device, const VkShaderStageFlagBits stage, const std::string& path, bool allowDynamicUniform) : device_{ device }, stage_{ stage }, allowDynamicUniform_{allowDynamicUniform}
 {
 	auto spirv = readFile(path);
 
@@ -23,6 +23,7 @@ vkn::Shader::Shader(Shader&& other) : device_{ other.device_ }
 {
 	module_ = other.module_;
 	stage_ = other.stage_;
+	allowDynamicUniform_ = other.allowDynamicUniform_;
 	/*not neccesary but for rigor	*/
 	bindings_ = std::move(other.bindings_);
 	subpassInputBindings_ = std::move(other.subpassInputBindings_);
@@ -139,7 +140,7 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 
 	for (const auto& resource : resources.uniform_buffers)
 	{
-		bindings_.push_back(parseBinding(resource, stage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC));
+		bindings_.push_back(parseBinding(resource, stage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER));
 	}
 	for (const auto& resource : resources.sampled_images)
 	{
@@ -164,6 +165,7 @@ void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 		subpassInputBindings_.push_back(parseBinding(resource, stage, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
 	}
 }
+
 const std::vector<vkn::Shader::Attachment>& vkn::Shader::outputAttachments() const
 {
 	return outputAttachments_;
@@ -193,16 +195,24 @@ const vkn::Shader::Binding vkn::Shader::parseBinding(const spirv_cross::Resource
 		}
 	}
 
+	auto resourceSet = spirv_->get_decoration(resource.id, spv::DecorationDescriptorSet);
 	VkDescriptorSetLayoutBinding descriptorBinding;
 	descriptorBinding.binding = spirv_->get_decoration(resource.id, spv::DecorationBinding);
 	descriptorBinding.stageFlags = stage;
-	descriptorBinding.descriptorType = type;
+	if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER && resourceSet == PER_MATERIAL_SET && allowDynamicUniform_)
+	{
+		descriptorBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	}
+	else
+	{
+		descriptorBinding.descriptorType = type;
+	}
 	descriptorBinding.descriptorCount = size;
 	descriptorBinding.pImmutableSamplers = nullptr;
 
 	Binding binding;
 	binding.name = resource.name;
-	binding.set = spirv_->get_decoration(resource.id, spv::DecorationDescriptorSet);
+	binding.set = resourceSet;
 	binding.layoutBinding = descriptorBinding;
 	binding.size = size;
 	if ((spirvType.basetype != spirv_cross::SPIRType::Struct) && (spirvType.basetype != spirv_cross::SPIRType::SampledImage) && (type != VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT))

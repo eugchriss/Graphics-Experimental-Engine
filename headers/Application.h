@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <functional>
 #include <vector>
+#include <memory>
 #include "Window.h"
 #include "Swapchain.h"
 #include "Drawable.h"
@@ -90,8 +91,9 @@ namespace gee
 		std::unique_ptr<vkn::GeometryMemoryHolder> geometryMemoryHolder_;
 
 		std::unordered_map<std::string, vkn::Material> materials_;
-		std::unordered_map<vkn::MaterialRef, std::vector<MaterialInstance>> materialBatches_;
+		std::unordered_map<vkn::MaterialRef, std::vector<MaterialInstancePtr>> materialBatches_;
 
+		std::shared_ptr<vkn::CommandBufferRef> lastRecordedDrawsCommandBuffer_;
 		//functions only
 	private:
 		void updateGui();

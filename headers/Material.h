@@ -25,6 +25,7 @@ enum class TEXTURE_SLOT
 namespace gee
 {
 	class MaterialInstance;
+	MAKE_UNIQUE_PTR(MaterialInstance);
 }
 
 namespace vkn
@@ -44,22 +45,24 @@ namespace vkn
 		Material(Material&& other);
 		virtual ~Material();
 		void bind(const VkRenderPass& renderpass);
-		virtual void draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstance>& materialInstances);
+		virtual void draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstancePtr>& materialInstances);
 		void set_sampler(const VkSamplerCreateInfo& samplerInfo);
 		void use_light(const gee::PointLight& light);
 		RENDERPASS_USAGE pass_usage() const;
 		const size_t hash() const;
+		static const uint32_t max_object_per_instance();
 	private:
 		Context& context_;
 		size_t hash_{};
 		const RENDERPASS_USAGE passUsage_;
 		vkn::PipelineBuilder builder_;
 		std::unique_ptr<Pipeline> pipeline_;
+		static uint32_t dynamicAlignment_;
 		virtual void prepare_pipeline(Context& context, const RENDERPASS_USAGE& passUsage);
 		VkSampler sampler_{ VK_NULL_HANDLE };
 		std::unordered_map<TEXTURE_SLOT, std::vector<VkImageView>> textureSlots_;
 		std::vector<glm::mat4> transformMatrices_;
-		void getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstance>&);
+		void getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstancePtr>&);
 
 		std::vector<gee::ShaderPointLight> pointLights_;
 		virtual void build_pipeline(const VkRenderPass& renderpass);

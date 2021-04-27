@@ -11,10 +11,11 @@
 
 namespace vkn
 {
+	const uint32_t PER_MATERIAL_SET = 0;
 	class Shader
 	{
 	public:
-		Shader(vkn::Device& device, const VkShaderStageFlagBits stage, const std::string& path);
+		Shader(vkn::Device& device, const VkShaderStageFlagBits stage, const std::string& path, bool allowDynamicUniform = true);
 		Shader(Shader&& other);
 		~Shader();
 
@@ -61,6 +62,7 @@ namespace vkn
 		std::vector<PushConstant> pushConstants_;
 		std::vector<Attachment> outputAttachments_;
 		std::unique_ptr<spirv_cross::CompilerGLSL> spirv_;
+		bool allowDynamicUniform_;
 		const std::vector<char> readFile(const std::string& path);
 		void getShaderResources(const std::string& path);
 		void introspect(const VkShaderStageFlagBits stage);

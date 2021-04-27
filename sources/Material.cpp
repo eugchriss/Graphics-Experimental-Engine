@@ -3,6 +3,8 @@
 #include "../headers/vulkan_utils.h"
 #include <string>
 
+uint32_t vkn::Material::dynamicAlignment_{};
+
 vkn::Material::Material(Context& context, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const RENDERPASS_USAGE& passUsage) :
 	context_{ context }, builder_{ vertexShaderPath, fragmentShaderPath }, passUsage_{ passUsage }
 {
@@ -25,6 +27,10 @@ vkn::Material::Material(Context& context, const std::string& vertexShaderPath, c
 	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	set_sampler(samplerInfo);
+
+	const auto limits = context_.gpu->properties().limits;
+    dynamicAlignment_ = limits.maxUniformBufferRange;
+	transformMatrices_.resize(max_object_per_instance()* limits.maxDescriptorSetUniformBuffersDynamic);
 }
 
 vkn::Material::Material(Material&& other) : context_{ other.context_ }, builder_{ std::move(other.builder_) }, passUsage_{ other.passUsage_ }
@@ -34,6 +40,7 @@ vkn::Material::Material(Material&& other) : context_{ other.context_ }, builder_
 	other.sampler_ = VK_NULL_HANDLE;
 	textureSlots_ = std::move(other.textureSlots_);
 	hash_ = other.hash_;
+	dynamicAlignment_ = other.dynamicAlignment_;
 }
 
 vkn::Material::~Material()
@@ -49,10 +56,10 @@ void vkn::Material::bind(const VkRenderPass& renderpass)
 	build_pipeline(renderpass);
 }
 
-void vkn::Material::draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstance>& materialInstances)
+void vkn::Material::draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstancePtr>& materialInstances)
 {
 	assert(std::size(materialInstances) <= 15); //maxDescriptorSetDynamicUniformBuffer
-	getPackedTextures_and_transforms(imageHolder, const_cast<std::vector<gee::MaterialInstance>&>(materialInstances));
+	getPackedTextures_and_transforms(imageHolder, const_cast<std::vector<gee::MaterialInstancePtr>&>(materialInstances));
 
 	pipeline_->updateBuffer("transform_matrices", transformMatrices_);
 	pipeline_->updateTextures("colors", sampler_, textureSlots_[TEXTURE_SLOT::COLOR]);
@@ -64,15 +71,15 @@ void vkn::Material::draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder
 	for (auto i = 0u; i < std::size(materialInstances); ++i)
 	{
 		pipeline_->pushConstant(cb, "material_index", i);
-		for (auto& [geometryRef, transforms] : materialInstances[i].geometries)
+		for (auto& [geometryRef, transforms] : materialInstances[i]->geometries)
 		{
-			assert(std::size(transforms) < 1024); //maxUniformBufferRange / sizeof(mat4)
+			assert(std::size(transforms) == max_object_per_instance()); 
 			auto& geometryMemory = memoryHolder.get(geometryRef.get().hash, geometryRef.get());
 
 			vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &geometryMemory.vertexBuffer.buffer, &offset);
 			vkCmdBindIndexBuffer(cb.commandBuffer(), geometryMemory.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-			pipeline_->bind_set(cb, PER_MATERIAL_SET, 1, { 0 * 1024 * sizeof(glm::mat4) });
+			pipeline_->bind_set(cb, PER_MATERIAL_SET, 1, { i *	dynamicAlignment_});
 			vkCmdDrawIndexed(cb.commandBuffer(), geometryMemory.indicesCount, std::size(transforms), 0, 0, 0);
 		}
 	}
@@ -110,6 +117,11 @@ void vkn::Material::set_pointLights()
 	}
 }
 
+const uint32_t vkn::Material::max_object_per_instance()
+{
+	return dynamicAlignment_ / sizeof(glm::mat4);
+}
+
 void vkn::Material::prepare_pipeline(Context& context, const RENDERPASS_USAGE& passUsage)
 {
 	builder_.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
@@ -122,12 +134,14 @@ void vkn::Material::prepare_pipeline(Context& context, const RENDERPASS_USAGE& p
 	builder_.subpass = passUsage;
 }
 
-void vkn::Material::getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstance > & materialInstances)
+void vkn::Material::getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstancePtr> & materialInstances)
 {
-	transformMatrices_.clear();
 	textureSlots_.clear();
-	for (auto& materialInstance : materialInstances)
+	auto offset = 0u;
+	for (auto& materialInstanceRef : materialInstances)
 	{
+		auto& materialInstance = *materialInstanceRef;
+
 		auto& color = materialInstance.textureSlots.find(TEXTURE_SLOT::COLOR);
 		if (color != std::end(materialInstance.textureSlots))
 		{
@@ -138,10 +152,12 @@ void vkn::Material::getPackedTextures_and_transforms(TextureMemoryHolder& imageH
 		{
 			textureSlots_[TEXTURE_SLOT::NORMAL].emplace_back(imageHolder.get(normal->second.get().name(), normal->second.get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
 		}
-		for (const auto& [geometryRef, transforms] : materialInstance.geometries)
+
+		offset += materialInstance.copy_geometries_to(std::begin(transformMatrices_) + offset);
+		if (offset > std::size(transformMatrices_))
 		{
-			transformMatrices_.reserve(std::size(transformMatrices_) + std::size(transforms));
-			std::copy(std::begin(transforms), std::end(transforms), std::back_inserter(transformMatrices_));
+			//TODO: handle cases where 1 pipeline dynamic uniform isn t enough.
+			throw std::runtime_error{ "A new pipeline is required. Too many transforms" };
 		}
 	}
 }

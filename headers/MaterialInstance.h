@@ -18,19 +18,46 @@ namespace gee
 		}
 		void add_geometry(const gee::Geometry& geometry, const glm::mat4& transform)
 		{
-			geometries[std::ref(geometry)].emplace_back(transform);
+			auto result = geometries.find(geometry);
+			if (result == std::end(geometries))
+			{
+				geometries[geometry].resize(vkn::Material::max_object_per_instance());
+				geometries[geometry][0] = transform;
+				geomtriesNextTransformIndex_[geometry] = 1;
+			}
+			else
+			{
+				auto& index = geomtriesNextTransformIndex_[geometry];
+				result->second[index]= transform;
+				++index;
+			}
 		}
 		void reset_transforms()
 		{
-			for (auto& [geometryRef, transforms] : geometries)
+			for (auto& [geometryRef, index] : geomtriesNextTransformIndex_)
 			{
-				transforms.clear();
+				index = 0;
 			}
 		}
+
+		template<class Iterator>
+		size_t copy_geometries_to(Iterator& dst)
+		{
+			auto geometryOffset = 0u;
+			const auto transformSize = vkn::Material::max_object_per_instance();
+			for (const auto& [geometry, transforms] : geometries)
+			{
+				std::copy_n(std::begin(transforms), geomtriesNextTransformIndex_[geometry], dst + geometryOffset * transformSize);
+				++geometryOffset;
+			}
+			return geometryOffset * transformSize;
+		}
 		std::unordered_map<gee::GeometryConstRef, std::vector<glm::mat4>> geometries;
+		std::unordered_map<gee::GeometryConstRef, size_t> geomtriesNextTransformIndex_;
 		std::unordered_map<TEXTURE_SLOT, gee::TextureConstRef> textureSlots;
 		vkn::MaterialRef materialRef_;
 		size_t hash{};
 	};
 	MAKE_REFERENCE(MaterialInstance)
+	MAKE_UNIQUE_PTR(MaterialInstance)
 }

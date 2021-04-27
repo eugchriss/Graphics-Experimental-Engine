@@ -92,9 +92,9 @@ void vkn::CommandPool::sortCompletedCommandBuffers()
 				if (!cbRef.get().isPending())
 				{
 					cbs.availableCommandBuffers.push(cbRef);
+					cbs.pendingCommandBuffers.erase(std::remove_if(std::begin(cbs.pendingCommandBuffers), std::end(cbs.pendingCommandBuffers), [](const auto& cbRef) { return !cbRef.get().isPending(); }));
 				}
 			}
-			cbs.pendingCommandBuffers.erase(std::remove_if(std::begin(cbs.pendingCommandBuffers), std::end(cbs.pendingCommandBuffers), [](const auto& cbRef) { return !cbRef.get().isPending(); }));
 		}
 	}
 }

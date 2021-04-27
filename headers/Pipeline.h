@@ -8,16 +8,23 @@
 #include "CommandBuffer.h"
 
 #include <vector>
+#include <unordered_map>
 #include <memory>
 #include <algorithm>
 
 namespace vkn
 {
-	const uint32_t PER_MATERIAL_SET = 0;
 	class Image;
 	class Pipeline
 	{
 	public:
+
+		enum UNIFORM_TYPE
+		{
+			NON_DYNAMIC,
+			DYNAMIC
+		};
+
 		struct Uniform
 		{
 			std::string name;
@@ -27,7 +34,9 @@ namespace vkn
 			VkDeviceSize offset;
 			VkDeviceSize size;
 			VkDeviceSize range;
+			UNIFORM_TYPE dynamicType;
 		};
+
 		Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders);
 		Pipeline(Pipeline&& other);
 		~Pipeline();
@@ -52,11 +61,14 @@ namespace vkn
 		std::vector<vkn::Shader::PushConstant> pushConstants_;
 		std::unique_ptr<vkn::DeviceMemory> memory_;
 		std::unique_ptr<vkn::Buffer> buffer_;
+		std::unordered_map<UNIFORM_TYPE, VkDeviceSize> uniformTypeBufferOffsets_;
 		std::vector<VkWriteDescriptorSet> uniformsWrites_;
 		std::vector<std::shared_ptr<VkDescriptorImageInfo>> imageInfos_;
 		std::vector<std::shared_ptr<std::vector<VkDescriptorImageInfo>>> imagesInfos_;
 		std::vector<std::shared_ptr<VkDescriptorBufferInfo>> bufferInfos_;
 		std::unique_ptr<Image> dummyImage_;
+
+		void createBuffers(const VkDeviceSize nonDynamicSize, const VkDeviceSize dynamicSize);
 	};
 
 	template<class T>
@@ -67,16 +79,25 @@ namespace vkn
 		{
 			throw std::runtime_error{ "There is no such uniform name within this pipeline" };
 		}
-		//update the memory
-		buffer_->update(uniform->offset, datas);
-
-		//update the descriptor
+	
 		auto bufferInfo = std::make_shared<VkDescriptorBufferInfo>();
 		bufferInfo->buffer = buffer_->buffer;
-		bufferInfo->offset = uniform->offset;
-		bufferInfo->range = uniform->range;
-		bufferInfos_.emplace_back(bufferInfo);
+		//update the memory
+		if (uniform->dynamicType == UNIFORM_TYPE::DYNAMIC)
+		{
+			buffer_->update(uniformTypeBufferOffsets_[DYNAMIC] + uniform->offset, datas);
+		
+			//update the descriptor
+			bufferInfo->offset = uniform->offset;
+			bufferInfo->range = uniform->range;
+		}
+		else
+		{
+			buffer_->update(uniformTypeBufferOffsets_[uniform->dynamicType] + uniform->offset, datas);
+		}
 
+
+		bufferInfos_.emplace_back(bufferInfo);
 		VkWriteDescriptorSet write{};
 		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write.pNext = nullptr;

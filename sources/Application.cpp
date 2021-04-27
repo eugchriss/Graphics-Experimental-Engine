@@ -14,11 +14,13 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	std::cout << "The application has been launched.\n";
 
 	createContext();
+	auto props = context_->gpu->properties();
 	textureMemoryHolder_ = std::make_unique<vkn::TextureMemoryHolder>(vkn::TextureImageFactory{ *context_ });
 	geometryHolder_ = std::make_unique<GeometryHolder>(gee::GeometryFactory{});
 	geometryMemoryHolder_ = std::make_unique<vkn::GeometryMemoryHolder>(vkn::GeometryMemoryLocationFactory{ *context_ });
 
 	commandPool_ = std::make_unique<vkn::CommandPool>(*context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	lastRecordedDrawsCommandBuffer_ = std::make_shared<vkn::CommandBufferRef>(std::ref(commandPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY)));
 	swapchain_ = std::make_unique<vkn::Swapchain>(*context_);
 
 	create_renderpass(width, height);
@@ -29,8 +31,14 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 			window_.resize();
 			if (window_.isVisible())
 			{
-				context_->device->idle();
+				while (lastRecordedDrawsCommandBuffer_ && lastRecordedDrawsCommandBuffer_->get().isPending())
+				{
+				}
 				swapchain_->resize(VkExtent2D{ w, h });
+				if (renderTargets_.find("depthTarget") != std::end(renderTargets_))
+				{
+					renderTargets_.at("depthTarget").resize(VkExtent2D{ w, h });
+				}
 				colorRenderpass_->resize(glm::u32vec2{ w, h });
 			}
 		});
@@ -103,7 +111,15 @@ const gee::Texture& gee::Application::load_texture(const std::string& name, cons
 
 gee::MaterialInstance& gee::Application::get_materialInstance(vkn::Material& material)
 {
-	return materialBatches_[material].emplace_back(material);
+	auto& batch = materialBatches_.find(material);
+	if (batch == std::end(materialBatches_))
+	{
+		return *materialBatches_[material].emplace_back(std::make_unique<gee::MaterialInstance>(material));
+	}
+	else
+	{
+		return *batch->second.emplace_back(std::make_unique<gee::MaterialInstance>(material));
+	}
 }
 
 void gee::Application::updateGui()
@@ -295,9 +311,9 @@ void gee::Application::batch_material_instances()
 {
 	for (auto& [materialRef, materialInstances] : materialBatches_)
 	{
-		for (auto& materialInstance : materialInstances)
+		for (auto& materialInstanceRef : materialInstances)
 		{
-			materialInstance.reset_transforms();
+			materialInstanceRef->reset_transforms();
 		}
 	}
 	for (auto& drawableRef : drawables_)
@@ -313,21 +329,28 @@ bool gee::Application::isRunning()
 	{
 		if (window_.isVisible())
 		{
-			auto& cb = commandPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-			cb.begin();
-			colorRenderpass_->begin(cb, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
-			batch_material_instances();
-			for (auto& [materialRef, materialInstances] : materialBatches_)
+			if (!lastRecordedDrawsCommandBuffer_->get().isPending())
 			{
-				materialRef.get().bind((*colorRenderpass_)());
-				materialRef.get().draw(*geometryMemoryHolder_, *textureMemoryHolder_, cb, camera_.get_shader_info(window_.aspectRatio()), materialInstances);
+				lastRecordedDrawsCommandBuffer_ = std::make_shared<vkn::CommandBufferRef>(std::ref(commandPool_->getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY)));
+				auto& cb = lastRecordedDrawsCommandBuffer_->get();
+				cb.begin();
+				colorRenderpass_->begin(cb, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
+				batch_material_instances();
+				for (auto& [materialRef, materialInstances] : materialBatches_)
+				{
+					materialRef.get().bind((*colorRenderpass_)());
+					materialRef.get().draw(*geometryMemoryHolder_, *textureMemoryHolder_, cb, camera_.get_shader_info(window_.aspectRatio()), materialInstances);
+				}
+				colorRenderpass_->end(cb);
+				cb.end();
+				context_->graphicsQueue->submit(cb);
+
+				swapchain_->swapBuffers();
+				context_->graphicsQueue->present(cb, *swapchain_);
+
 			}
-			colorRenderpass_->end(cb);
-			cb.end();
-			context_->graphicsQueue->submit(cb);
-			swapchain_->swapBuffers();
-			context_->graphicsQueue->present(cb, *swapchain_);
 		}
+
 	}
 	return window_.isOpen();
 }
