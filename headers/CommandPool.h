@@ -10,7 +10,7 @@ namespace vkn
 	class CommandPool
 	{
 	public:
-		CommandPool(Context& _context, const VkCommandPoolCreateFlagBits type);
+		CommandPool(Context& _context, const VkCommandPoolCreateFlagBits type, const uint32_t minCommandBufferCount = 10);
 		CommandPool(CommandPool&& other);
 		~CommandPool();
 		CommandBuffer& getCommandBuffer(const VkCommandBufferLevel level);

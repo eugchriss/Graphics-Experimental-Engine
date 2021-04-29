@@ -10,7 +10,7 @@ const uint32_t& vkn::Queue::familyIndex() const
 	return familyIndex_;
 }
 
-std::shared_ptr<vkn::Fence> vkn::Queue::submit(CommandBuffer& cb)
+std::shared_ptr<vkn::Fence> vkn::Queue::submit(CommandBuffer& cb, const bool signalSemaphore)
 {
 	auto cmdBuffer = cb.commandBuffer();
 	VkSubmitInfo submitInfo{};
@@ -19,9 +19,12 @@ std::shared_ptr<vkn::Fence> vkn::Queue::submit(CommandBuffer& cb)
 	submitInfo.waitSemaphoreCount = 0;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &cmdBuffer;
-	submitInfo.signalSemaphoreCount = 1;
-	auto semaphore = cb.completedSemaphore();
-	submitInfo.pSignalSemaphores = &semaphore;
+	if (signalSemaphore)
+	{
+		submitInfo.signalSemaphoreCount = 1;
+		auto semaphore = cb.completedSemaphore();
+		submitInfo.pSignalSemaphores = &semaphore;
+	}
 
 	auto fence = std::make_shared<Fence>(cb.context(), false);
 	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, (*fence)()), "Unabled to command buffer");

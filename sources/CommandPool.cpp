@@ -1,7 +1,7 @@
 #include "../headers/CommandPool.h"
 #include "../headers/vulkan_utils.h"
 
-vkn::CommandPool::CommandPool(Context& _context, const VkCommandPoolCreateFlagBits type) : context_{ _context }
+vkn::CommandPool::CommandPool(Context& _context, const VkCommandPoolCreateFlagBits type, const uint32_t minCommandBufferCount) : context_{ _context }
 {
 	VkCommandPoolCreateInfo commandPoolCI{};
 	commandPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -14,7 +14,7 @@ vkn::CommandPool::CommandPool(Context& _context, const VkCommandPoolCreateFlagBi
 	commandBuffers_[VK_COMMAND_BUFFER_LEVEL_SECONDARY];
 	for (auto& [level, cbs] : commandBuffers_)
 	{
-		allocateCommandBuffer(level, 10);
+		allocateCommandBuffer(level, minCommandBufferCount);
 	}
 }
 

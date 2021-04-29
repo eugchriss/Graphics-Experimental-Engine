@@ -84,6 +84,12 @@ const VkClearValue vkn::RenderTarget::get_clear_value() const
 	return clearValue;
 }
 
+void vkn::RenderTarget::transition_layout(vkn::CommandBuffer& cb, const VkImageAspectFlags aspect, const VkImageLayout newLayout)
+{
+	assert(image_);
+	image_->transitionLayout(cb, aspect, newLayout);
+}
+
 const uint64_t vkn::RenderTarget::id() const
 {
 	return reinterpret_cast<uint64_t>(image_->image);

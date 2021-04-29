@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cassert>
 
-vkn::Swapchain::Swapchain(Context& context): context_{context}
+vkn::Swapchain::Swapchain(Context& context): context_{context}, commandPool_{context, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, 1}
 {
 	VkSurfaceCapabilitiesKHR surfaceCapabilities{};
 	vkn::error_check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context_.gpu->device, context_.surface, &surfaceCapabilities), "Failed to get surface capabilities");
@@ -46,6 +46,15 @@ void vkn::Swapchain::resize(const VkExtent2D& extent)
 	swapchainInfo_.oldSwapchain = swapchain_;
 	vkn::error_check(vkCreateSwapchainKHR(context_.device->device, &swapchainInfo_, nullptr, &swapchain_), "Unable to REcreate the swapchain");
 	retrieveTargets();
+	auto& cb = commandPool_.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	cb.begin();
+	for (auto& target : renderTargets_)
+	{
+		target.transition_layout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	}
+	cb.end();
+	auto transitionFinished = context_.transferQueue->submit(cb, false);
+	transitionFinished->wait();
 }
 
 const VkExtent2D vkn::Swapchain::extent() const

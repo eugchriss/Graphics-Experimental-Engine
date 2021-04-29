@@ -4,6 +4,7 @@
 #include "vulkanContext.h"
 #include "Signal.h"
 #include "RenderTarget.h"
+#include "commandPool.h"
 #include <vector>
 
 namespace vkn
@@ -21,6 +22,7 @@ namespace vkn
 		const VkFormat imageFormat() const;
 	private:
 		Context& context_;
+		vkn::CommandPool commandPool_;
 		VkSwapchainCreateInfoKHR swapchainInfo_{};
 		VkSwapchainKHR swapchain_{ VK_NULL_HANDLE };
 		std::vector<RenderTarget> renderTargets_;

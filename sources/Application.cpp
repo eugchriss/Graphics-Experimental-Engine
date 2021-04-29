@@ -34,6 +34,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 				while (lastRecordedDrawsCommandBuffer_ && lastRecordedDrawsCommandBuffer_->get().isPending())
 				{
 				}
+				context_->graphicsQueue->idle();
 				swapchain_->resize(VkExtent2D{ w, h });
 				if (renderTargets_.find("depthTarget") != std::end(renderTargets_))
 				{
@@ -347,7 +348,6 @@ bool gee::Application::isRunning()
 
 				swapchain_->swapBuffers();
 				context_->graphicsQueue->present(cb, *swapchain_);
-
 			}
 		}
 
