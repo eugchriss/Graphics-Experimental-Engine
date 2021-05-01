@@ -43,7 +43,7 @@ void gee::processTangentSpace(std::vector<gee::Vertex>& vertices, std::vector<ui
 	}
 }
 
-gee::Mesh gee::getCubeMesh()
+gee::Geometry gee::getCubeGeometry()
 {
 	std::vector<gee::Vertex> vertices
 	{
@@ -66,10 +66,10 @@ gee::Mesh gee::getCubeMesh()
 	};
 
 	gee::processTangentSpace(vertices, indices);
-	return gee::Mesh{ "custom gee cube" , std::move(vertices), std::move(indices) };
+	return {std::move(vertices), std::move(indices) };
 }
 
-gee::Mesh gee::getQuadMesh()
+gee::Geometry gee::getQuadGeometry()
 {
 	std::vector<gee::Vertex> vertices
 	{
@@ -81,10 +81,10 @@ gee::Mesh gee::getQuadMesh()
 	std::vector<uint32_t> indices{ 0, 1, 3, 1, 2, 3 };
 	gee::processTangentSpace(vertices, indices);
 
-	return gee::Mesh{ "custom gee quad" , std::move(vertices), std::move(indices)};
+	return {std::move(vertices), std::move(indices)};
 }
 
-gee::Mesh gee::getFloorMesh()
+gee::Geometry gee::getFloorGeometry()
 {
 	std::vector<gee::Vertex> vertices
 	{
@@ -96,5 +96,5 @@ gee::Mesh gee::getFloorMesh()
 	std::vector<uint32_t> indices{ 0, 1, 3, 1, 2, 3 };
 	gee::processTangentSpace(vertices, indices);
 
-	return gee::Mesh{ "custom gee floor" , std::move(vertices), std::move(indices)};
+	return {std::move(vertices), std::move(indices)};
 }

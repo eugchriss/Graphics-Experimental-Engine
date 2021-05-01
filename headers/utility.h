@@ -6,8 +6,8 @@
 namespace gee
 {
 	void processTangentSpace(std::vector<gee::Vertex>& vertices, std::vector<uint32_t>& indices);
-	gee::Mesh getCubeMesh();
-	gee::Mesh getQuadMesh();
-	gee::Mesh getFloorMesh();
+	gee::Geometry getCubeGeometry(); 
+	gee::Geometry getQuadGeometry();
+	gee::Geometry getFloorGeometry();
 }
 

@@ -12,6 +12,7 @@ namespace gee
 	{
 		Geometry(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices);
 		Geometry(const Geometry&) = delete;
+		Geometry& operator = (const Geometry&) = delete;
 		Geometry(Geometry&&) = default;
 		std::vector<Vertex> vertices;
 		std::vector<uint32_t> indices;
@@ -41,9 +42,9 @@ namespace gee
 	struct GeometryFactory
 	{
 		GeometryFactory() = default;
-		Geometry& create(Mesh& mesh)
+		Geometry& create(Geometry& geometry)
 		{
-			return mesh.geometry();
+			return geometry;
 		}
 	};
 }

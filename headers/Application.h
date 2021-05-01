@@ -39,7 +39,7 @@ namespace gee
 		void add_drawable_without_duplicate(Drawable& drawable);
 		void addCamera(const Camera& camera);
 		vkn::Material& get_material(const std::string& name, const std::string vertexPath, const std::string& fragmentPath);
-		const gee::Geometry& get_geometry(const std::string& name, gee::Mesh& mesh);
+		const gee::Geometry& get_geometry(const std::string& name, gee::Geometry& mesh);
 		const gee::Texture& load_texture(const std::string& name, const std::string& path, const gee::Texture::ColorSpace colorSpace = gee::Texture::ColorSpace::LINEAR);
 		MaterialInstance& get_materialInstance(vkn::Material& material);
 

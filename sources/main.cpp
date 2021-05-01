@@ -13,7 +13,7 @@ int main()
 	auto& floorColorTex = app.load_texture("floor_color", "../assets/textures/floor.jpg");
 	auto& floorNormalTex = app.load_texture("floor_normal", "../assets/textures/Floor/normal.png");
 	auto& floorSpecTex = app.load_texture("floor_spec", "../assets/textures/Floor/specular.jpg");
-	auto& cubeGeometry = app.get_geometry("cube", gee::getCubeMesh());
+	auto& cubeGeometry = app.get_geometry("cube", gee::getCubeGeometry());
 	
 	auto& materialInstance = app.get_materialInstance(phongMaterial);
 	materialInstance.set_property(TEXTURE_SLOT::COLOR, floorNormalTex);

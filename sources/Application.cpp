@@ -98,7 +98,7 @@ vkn::Material& gee::Application::get_material(const std::string& name, const std
 		std::forward_as_tuple(*context_, vertexPath, fragmentPath)).first->second;
 }
 
-const gee::Geometry& gee::Application::get_geometry(const std::string& name, gee::Mesh& mesh)
+const gee::Geometry& gee::Application::get_geometry(const std::string& name, gee::Geometry& mesh)
 {
 	return geometryHolder_->get(name, mesh);
 }
