@@ -1,5 +1,6 @@
-#include "../headers/units.h"
 #include <cmath>
+
+#include "../headers/units.h"
 
 float gee::units::length::operator""_m(long double x)
 {

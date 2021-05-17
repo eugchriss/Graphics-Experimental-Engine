@@ -1,7 +1,8 @@
 #pragma once
 #include <vector>
-#include "glm/glm.hpp"
+
 #include "Mesh.h"
+#include "glm/glm.hpp"
 
 namespace gee
 {

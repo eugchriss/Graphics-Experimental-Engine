@@ -1,17 +1,17 @@
 #pragma once
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "Texture.h"
+#include "Mesh.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-#include "Mesh.h"
-#include "Texture.h"
-#include "Material.h"
+#include "impl/vulkan/Material.h"
 
-#include <vector>
-#include <memory>
-#include <string>
-#include <filesystem>
-#include <vector>
-#include <functional>
 
 namespace fs = std::filesystem;
 namespace gee

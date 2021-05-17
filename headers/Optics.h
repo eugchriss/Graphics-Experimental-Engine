@@ -1,6 +1,7 @@
 #pragma once
-#include "glm/glm.hpp"
 #include <variant>
+
+#include "glm/glm.hpp"
 
 namespace gee
 {

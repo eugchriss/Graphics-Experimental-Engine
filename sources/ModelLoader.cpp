@@ -1,5 +1,6 @@
-#include "../headers/ModelLoader.h"
 #include <cassert>
+
+#include "../headers/ModelLoader.h"
 
 gee::ModelLoader::ModelLoader(unsigned int flags) : flags_{ flags }
 {

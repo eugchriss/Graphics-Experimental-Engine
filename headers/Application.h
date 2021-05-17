@@ -1,23 +1,24 @@
 #pragma once
-#include <memory>
-#include <utility>
-#include <unordered_map>
 #include <functional>
-#include <vector>
 #include <memory>
-#include "Window.h"
-#include "Swapchain.h"
-#include "Drawable.h"
-#include "Timer.h"
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "Camera.h"
+#include "impl/vulkan/CommandPool.h"
+#include "Drawable.h"
 #include "EventDispatcher.h"
-#include "vulkanContext.h"
-#include "VulkanImGuiContext.h"
-#include "RenderTarget.h"
-#include "CommandPool.h"
-#include "ResourceHolder.h"
-#include "Material.h"
 #include "MaterialInstance.h"
+#include "ResourceHolder.h"
+#include "Timer.h"
+#include "Window.h"
+
+#include "impl/vulkan/Material.h"
+#include "impl/vulkan/RenderTarget.h"
+#include "impl/vulkan/Swapchain.h"
+#include "impl/vulkan/vulkanContext.h"
+#include "impl/vulkan/VulkanImGuiContext.h"
 
 struct ShaderCamera
 {

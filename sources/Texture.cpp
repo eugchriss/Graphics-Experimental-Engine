@@ -1,8 +1,8 @@
 #include <cassert>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include "../headers/Texture.h"
-#include "../headers/vulkan_utils.h"
+#include "../../headers/Texture.h"
 
 gee::Texture::Texture(const std::string& name, const std::string& path, const ColorSpace colorSpace) : name_{ name }, paths_ { path }, colorSpace_{ colorSpace }
 {

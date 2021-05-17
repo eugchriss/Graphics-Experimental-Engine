@@ -1,13 +1,13 @@
 #pragma once
 #include <functional>
-#include <string>
-#include "SpatialTransformation.h"
-#include "Mesh.h"
-#include "Units.h"
-#include "Optics.h"
-#include "BoundingBox.h"
 #include <optional>
+#include <string>
+
 #include "MaterialInstance.h"
+#include "Mesh.h"
+#include "Optics.h"
+#include "SpatialTransformation.h"
+#include "Units.h"
 
 namespace gee
 {

@@ -1,6 +1,6 @@
-#include "..\headers\Drawable.h"
-#include "glm/gtx/transform.hpp"
 #include <stdexcept>
+#include "../headers/Drawable.h"
+#include "glm/gtx/transform.hpp"
 
 uint32_t gee::Drawable::count{};
 

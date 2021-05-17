@@ -1,7 +1,7 @@
 #pragma once
-#include <vector>
 #include <array>
 #include <string>
+#include <vector>
 
 #define MAKE_CONST_REFERENCE(object) using object##ConstRef = std::reference_wrapper<const object>;
 namespace gee

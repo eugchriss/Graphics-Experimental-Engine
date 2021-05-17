@@ -1,6 +1,6 @@
 #pragma once
-#include "Material.h"
 #include "Mesh.h"
+#include "impl/vulkan/Material.h"
 
 namespace gee
 {

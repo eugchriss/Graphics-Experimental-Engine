@@ -1,9 +1,9 @@
-#define GLM_ENABLE_EXPERIMENTAL
-#include "../headers/Camera.h"
-#include "glm/gtx/rotate_vector.hpp"
 #include <iostream>
-#include "../headers/imgui_impl_glfw.h"
+#include "../headers/Camera.h"
+#include "../../headers/impl/vulkan/imgui_impl_glfw.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/rotate_vector.hpp"
 void gee::Camera::createCameraSpace()
 {
 	front_ = glm::normalize(target_ - position_);

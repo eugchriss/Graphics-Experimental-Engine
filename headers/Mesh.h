@@ -1,10 +1,11 @@
 #pragma once
-#include <vector>
 #include <string>
-#include "glm/glm.hpp"
+#include <vector>
+
 #include "Vertex.h"
 #include "assimp/material.h"
-#include "vulkan_utils.h"
+#include "glm/glm.hpp"
+#include "impl/vulkan/vulkan_utils.h"
 
 namespace gee
 {

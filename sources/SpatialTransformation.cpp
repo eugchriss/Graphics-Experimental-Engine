@@ -1,4 +1,4 @@
-#include "..\headers\SpatialTransformation.h"
+#include "../headers/SpatialTransformation.h"
 
 const glm::mat4& gee::SpatialTransformation::translate(const glm::vec3& offset)
 {

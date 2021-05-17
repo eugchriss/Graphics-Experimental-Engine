@@ -1,5 +1,5 @@
-#include "../headers/EventDispatcher.h"
 #include <assert.h>
+#include "../headers/EventDispatcher.h"
 
 #ifndef NDEBUG
 uint8_t gee::EventDispatcher::count_{ 0 };

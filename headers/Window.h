@@ -1,7 +1,8 @@
 #pragma once
+#include <string>
+
 #include <GLFW/glfw3.h>
 #include "glm/glm.hpp"
-#include <string>
 
 namespace gee
 {

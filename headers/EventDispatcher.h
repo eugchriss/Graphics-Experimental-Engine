@@ -1,7 +1,8 @@
 #pragma once
 #include <functional>
-#include "GLFW/glfw3.h"
+
 #include "eventpp/callbacklist.h"
+#include "GLFW/glfw3.h"
 
 namespace gee
 {

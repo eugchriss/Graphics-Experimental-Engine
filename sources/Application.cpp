@@ -1,12 +1,13 @@
-#include "../headers/Application.h"
+#include <algorithm>
 #include <iostream>
-#include <sstream>
 #include <future>
 #include <numeric>
-#include <algorithm>
-#include "../headers/imgui_impl_glfw.h"
-#include "../headers/imgui_impl_vulkan.h"
-#include "../headers/vulkanContextBuilder.h"
+#include <sstream>
+
+#include "../headers/Application.h"
+#include "../headers/impl/vulkan/imgui_impl_glfw.h"
+#include "../headers/impl/vulkan/imgui_impl_vulkan.h"
+#include "../headers/impl/vulkan/vulkanContextBuilder.h"
 
 gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : window_{ name, width, height }, eventDispatcher_{ window_.window() }
 {
