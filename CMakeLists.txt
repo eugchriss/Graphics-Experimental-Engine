@@ -1,6 +1,7 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.8)
 
 project(gee LANGUAGES CXX)
+set_property(GLOBAL PROPERTY USE_FOLDERS YES)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${CMAKEBUILD_TYPE})	
 set(LIBS_DIR "${gee_SOURCE_DIR}/libs")
@@ -8,22 +9,7 @@ add_subdirectory(${LIBS_DIR})
 
 find_package(Vulkan REQUIRED FATAL_ERROR)
 
-set(SOURCES	"sources/application.cpp"
-			"sources/camera.cpp"
-			"sources/eventDispatcher.cpp"
-			"sources/drawable.cpp"
-			"sources/main.cpp"
-			"sources/mesh.cpp"
-			"sources/modelLoader.cpp"
-			"sources/optics.cpp"
-			"sources/resourceHolder.cpp"
-			"sources/SpatialTransformation.cpp"
-			"sources/timer.cpp"
-			"sources/texture.cpp"
-			"sources/units.cpp"
-			"sources/utility.cpp"
-			"sources/window.cpp"
-			
+set(sources_impl_vulkan_files
 			"sources/impl/vulkan/buffer.cpp"
 			"sources/impl/vulkan/commandbuffer.cpp"
 			"sources/impl/vulkan/commandpool.cpp"
@@ -60,30 +46,11 @@ set(SOURCES	"sources/application.cpp"
 			"sources/impl/vulkan/vulkanContextBuilder.cpp"
 			"sources/impl/vulkan/vulkan_utils.cpp"
 			"sources/impl/vulkan/vulkanImGuiContext.cpp"
+
 			)
 
-set(HEADERS "headers/application.h"
-			"headers/camera.h"
-			"headers/eventDispatcher.h"
-			"headers/drawable.h"
-			"headers/materialInstance.h"
-			"headers/mesh.h"
-			"headers/modelLoader.h"
-			"headers/optics.h"
-			"headers/resourceHolder.h"
-			"headers/SpatialTransformation.h"
-			"headers/texture.h"
-			"headers/timer.h" 
-			"headers/units.h"
-			"headers/utility.h"
-			"headers/vertex.h"
-			"headers/window.h"
-			
-			"headers/impl/imstb_rectpack.h"
-			"headers/impl/imstb_textedit.h"
-			"headers/impl/imstb_truetype.h"
-
-			"headers/impl/vulkan/buffer.h"
+set(headers_impl_vulkan_files 
+		"headers/impl/vulkan/buffer.h"
 			"headers/impl/vulkan/commandbuffer.h"
 			"headers/impl/vulkan/commandpool.h"
 			"headers/impl/vulkan/debugMessenger.h"
@@ -115,8 +82,57 @@ set(HEADERS "headers/application.h"
 			"headers/impl/vulkan/vulkan_utils.h"
 			"headers/impl/vulkan/vulkanContext.h"
 			"headers/impl/vulkan/vulkanContextBuilder.h"
-			"headers/impl/vulkan/vulkanImGuiContext.h"
-			)
+			"headers/impl/vulkan/vulkanImGuiContext.h")
+
+set(headers_impl_files
+		"headers/impl/imstb_rectpack.h"
+		"headers/impl/imstb_textedit.h"
+		"headers/impl/imstb_truetype.h"	
+
+		)
+
+set(SOURCES 
+			"sources/application.cpp"
+			"sources/camera.cpp"
+			"sources/eventDispatcher.cpp"
+			"sources/drawable.cpp"
+			"sources/main.cpp"		   
+			"sources/mesh.cpp"
+			"sources/modelLoader.cpp"
+			"sources/optics.cpp"
+			"sources/resourceHolder.cpp"
+			"sources/SpatialTransformation.cpp"
+			"sources/timer.cpp"
+			"sources/texture.cpp"
+			"sources/units.cpp"
+			"sources/utility.cpp"
+			"sources/window.cpp"
+
+			${sources_impl_vulkan_files}
+		)
+
+set(HEADERS
+			"headers/application.h"
+			"headers/camera.h"
+			"headers/eventDispatcher.h"
+			"headers/drawable.h"
+			"headers/materialInstance.h"
+			"headers/mesh.h"
+			"headers/modelLoader.h"
+			"headers/optics.h"
+			"headers/resourceHolder.h"
+			"headers/SpatialTransformation.h"
+			"headers/texture.h"
+			"headers/timer.h" 
+			"headers/units.h"
+			"headers/utility.h"
+			"headers/vertex.h"
+			"headers/window.h"	
+
+			${headers_impl_files}
+			${headers_impl_vulkan_files}
+
+		)
 add_executable(gee ${SOURCES} ${HEADERS})
 
 target_include_directories(gee PRIVATE ${LIBS_DIR}/assimp)
@@ -133,3 +149,11 @@ target_link_libraries(gee ${Vulkan_LIBRARY})
 target_link_libraries(gee spirv-cross-cpp)
 
 set_target_properties(gee PROPERTIES CXX_STANDARD 17)
+
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sources_impl_vulkan_files})
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADERS})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${headers_impl_files})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${headers_impl_vulkan_files})
