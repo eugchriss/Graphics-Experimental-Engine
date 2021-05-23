@@ -1,5 +1,6 @@
 #include "../../headers/impl/vulkan/vulkanContext.h"
 
+using namespace gee;
 vkn::Context::Context(std::shared_ptr<vkn::Instance>& _instance, std::unique_ptr<vkn::DebugMessenger>& _debugMessenger, const VkSurfaceKHR _surface, std::shared_ptr<vkn::Gpu>& _gpu, std::shared_ptr<vkn::QueueFamily>& _queueFamily, std::unique_ptr<vkn::Device>& _device) :
 	instance{ _instance },
 	debugMessenger{std::move(_debugMessenger) },

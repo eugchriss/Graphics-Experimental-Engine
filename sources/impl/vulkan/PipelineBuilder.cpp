@@ -4,6 +4,7 @@
 #include "../../headers/impl/vulkan/PipelineBuilder.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 vkn::PipelineBuilder::PipelineBuilder(const std::string& vertexShaderPath, const std::string& fragmentShaderPath) : lineWidth{ 1.0f }, frontFace{ VK_FRONT_FACE_CLOCKWISE }, cullMode{ VK_CULL_MODE_NONE }
 {
 	shaderStages_[VK_SHADER_STAGE_VERTEX_BIT] = vertexShaderPath;

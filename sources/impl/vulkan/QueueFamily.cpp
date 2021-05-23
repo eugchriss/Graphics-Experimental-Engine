@@ -5,6 +5,7 @@
 #include "../../headers/impl/vulkan/QueueFamily.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 vkn::QueueFamily::QueueFamily(const vkn::Gpu& gpu, const VkQueueFlags queueType, const uint32_t queueCount) : familyType_{ queueType }
 {
 	for (auto i = 0u; i < queueCount; ++i)

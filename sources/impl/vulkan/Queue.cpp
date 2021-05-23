@@ -6,6 +6,7 @@
 #include "../../headers/impl/vulkan/Signal.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 const uint32_t& vkn::Queue::familyIndex() const
 {
 	return familyIndex_;

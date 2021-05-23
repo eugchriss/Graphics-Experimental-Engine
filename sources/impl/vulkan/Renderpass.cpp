@@ -4,6 +4,7 @@
 
 #include "../../headers/impl/vulkan/Renderpass.h"
 
+using namespace gee;
 vkn::Renderpass::Renderpass(Context& context, const VkExtent2D& extent, std::vector<Pass>&& passes, const uint32_t framebufferCount) : 
 	context_{ context }, passes_{std::move(passes)}
 {

@@ -3,6 +3,7 @@
 #include "../../headers/impl/vulkan/imgui_impl_glfw.h"
 #include "../../headers/impl/vulkan/VulkanImGuiContext.h"
 
+using namespace gee;
 vkn::ImGuiContext::ImGuiContext(gee::Window& window, Context& context, const Renderpass& renderpass) : context_{ context }
 {
 	// Setup Dear ImGui context

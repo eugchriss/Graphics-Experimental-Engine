@@ -1,6 +1,7 @@
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 #include "../../headers/impl/vulkan/vulkanContextBuilder.h"
 
+using namespace gee;
 vkn::ContextBuilder::ContextBuilder(const VkDebugUtilsMessageSeverityFlagsEXT severity, const VkDebugUtilsMessageTypeFlagsEXT type): 
     severity_{severity},
     messageType_{type}

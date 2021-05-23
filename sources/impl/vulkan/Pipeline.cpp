@@ -4,6 +4,7 @@
 #include "../../headers/impl/vulkan/Image.h"
 #include "../../headers/impl/vulkan/Pipeline.h"
 
+using namespace gee;
 vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders) : context_{ context }, pipeline_{ pipeline }, layout_{ std::move(pipelineLayout) }, shaders_{ std::move(shaders) }
 {
 	dummyImage_ = std::make_unique<vkn::Image>(context_, VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R16_SFLOAT, VkExtent3D{ 1,1,1 });

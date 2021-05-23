@@ -5,6 +5,7 @@
 #include "../../headers/impl/vulkan/QueueFamily.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 vkn::Image::Image(Context& context, VkImageUsageFlags usage, VkFormat format, VkExtent3D extent, const uint32_t layerCount) : context_{ context }, extent_{ extent }, format_{ format }, layerCount_{ layerCount }
 {
 	VkImageCreateInfo imageInfo{};

@@ -2,6 +2,8 @@
 #include "../../headers/impl/vulkan/vulkan_utils.h"	
 
 #ifndef NDEBUG
+
+using namespace gee;
 void vkn::CommandBuffer::setDebugName(const std::string& name)
 {
 	VkDebugUtilsObjectNameInfoEXT nameInfo{};

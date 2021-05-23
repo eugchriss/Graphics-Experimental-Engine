@@ -2,6 +2,7 @@
 #include "../../headers/impl/vulkan/Query.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 vkn::QueryPool::QueryPool(vkn::Context& context, const VkQueryType type, const uint32_t queryCount, const VkQueryPipelineStatisticFlags pipelineStatisticFlags) : context_{ context }, queryCount_{ queryCount }
 {
 	VkQueryPoolCreateInfo poolInfo{};

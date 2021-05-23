@@ -3,6 +3,7 @@
 #include "../../headers/impl/vulkan/Material.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 uint32_t vkn::Material::dynamicAlignment_{};
 
 vkn::Material::Material(Context& context, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const RENDERPASS_USAGE& passUsage) :

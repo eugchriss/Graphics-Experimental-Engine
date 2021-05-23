@@ -2,6 +2,7 @@
 #include "../../headers/impl/vulkan/QueueFamily.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 vkn::Device::Device(vkn::Gpu& gpu,const std::vector<std::string>& requestedExtensions, const vkn::QueueFamily& queueFamily)
 {
 	std::vector<const char*> extensions;

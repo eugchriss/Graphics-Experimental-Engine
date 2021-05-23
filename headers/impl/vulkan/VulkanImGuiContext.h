@@ -2,19 +2,22 @@
 #include "../../Window.h"
 #include "Renderpass.h"
 #include "vulkanContext.h"
-namespace vkn
+namespace gee
 {
-	class ImGuiContext
+	namespace vkn
 	{
-	public:
-		ImGuiContext(gee::Window& window, Context& context, const Renderpass& renderpass);
-		~ImGuiContext();
-		void render(CommandBuffer& cb);
-	private:
-		Context& context_;
-		VkDescriptorPool descriptorPool_{ VK_NULL_HANDLE };
+		class ImGuiContext
+		{
+		public:
+			ImGuiContext(gee::Window& window, Context& context, const Renderpass& renderpass);
+			~ImGuiContext();
+			void render(CommandBuffer& cb);
+		private:
+			Context& context_;
+			VkDescriptorPool descriptorPool_{ VK_NULL_HANDLE };
 
-		void loadFontsTextures();
-	};
+			void loadFontsTextures();
+		};
 
+	}
 }

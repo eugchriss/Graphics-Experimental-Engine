@@ -1,5 +1,6 @@
 #include "../../headers/impl/vulkan/Gpu.h"
 
+using namespace gee;
 vkn::Gpu::Gpu(const VkPhysicalDevice device_) : device{ device_ }
 {
 	descriptorIndexingFeatures_.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;

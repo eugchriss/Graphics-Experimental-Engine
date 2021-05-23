@@ -5,6 +5,7 @@
 #include "../../headers/impl/vulkan/Swapchain.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 vkn::Swapchain::Swapchain(Context& context): context_{context}, commandPool_{context, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, 1}
 {
 	VkSurfaceCapabilitiesKHR surfaceCapabilities{};

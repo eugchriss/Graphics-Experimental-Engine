@@ -6,6 +6,7 @@
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 #include "GLFW/glfw3.h"
 
+using namespace gee;
 vkn::Instance::Instance(const std::vector<std::string>& requestedLayers)
 {
 	uint32_t count{};

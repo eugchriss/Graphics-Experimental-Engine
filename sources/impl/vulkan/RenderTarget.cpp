@@ -1,5 +1,6 @@
 #include "../../headers/impl/vulkan/RenderTarget.h"
 
+using namespace gee;
 vkn::RenderTarget::RenderTarget(Context& context, const VkFormat fmt, const VkExtent2D& extent, const VkImageUsageFlags usage, const VkImageLayout finalLayout):
 	context_{context}, format{fmt},
 	usage_{usage}, finalLayout{finalLayout}

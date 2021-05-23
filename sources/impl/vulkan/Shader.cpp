@@ -2,6 +2,7 @@
 
 #include "../../headers/impl/vulkan/Shader.h"
 
+using namespace gee;
 vkn::Shader::Shader(vkn::Device& device, const VkShaderStageFlagBits stage, const std::string& path, bool allowDynamicUniform) : device_{ device }, stage_{ stage }, allowDynamicUniform_{allowDynamicUniform}
 {
 	auto spirv = readFile(path);

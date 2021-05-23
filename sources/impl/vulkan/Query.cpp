@@ -1,5 +1,6 @@
 #include "../../headers/impl/vulkan/Query.h"
 
+using namespace gee;
 vkn::Query::Query(vkn::QueryPool& pool, const uint32_t queryIndex) : pool_{ pool }, queryIndex_ { queryIndex }
 {
 }

@@ -1,6 +1,8 @@
 #include "../../headers/impl/vulkan/Buffer.h"
 #include "../../headers/impl/vulkan/CommandPool.h"
 
+using namespace gee;
+
 vkn::Buffer::Buffer(Context& context, const VkBufferUsageFlags usage, const VkDeviceSize size) : context_{ context }, size_{size}, usage_{usage}
 {
 	VkBufferCreateInfo bufferInfo{};

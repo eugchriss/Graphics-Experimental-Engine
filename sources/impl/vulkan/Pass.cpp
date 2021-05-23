@@ -6,7 +6,7 @@
 #include "../../headers/impl/vulkan/Renderpass.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
-
+using namespace gee;
 void vkn::Pass::usesColorTarget(RenderTarget& target)
 {
 	colorTargets_.emplace_back(std::ref(target));

@@ -2,6 +2,7 @@
 
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 void vkn::error_check(const VkResult result, const std::string& msg)
 {
 	if(result != VK_SUCCESS)

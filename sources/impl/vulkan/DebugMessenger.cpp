@@ -3,6 +3,7 @@
 #include "../../headers/impl/vulkan/DebugMessenger.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 vkn::DebugMessenger::DebugMessenger(std::shared_ptr<vkn::Instance>& instance, const VkDebugUtilsMessageSeverityFlagsEXT severity, const VkDebugUtilsMessageTypeFlagsEXT type):
 	instance_{instance}
 {

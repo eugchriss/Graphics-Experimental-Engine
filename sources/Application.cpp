@@ -92,7 +92,7 @@ void gee::Application::addCamera(const Camera& camera)
 {
 }
 
-vkn::Material& gee::Application::get_material(const std::string& name, const std::string vertexPath, const std::string& fragmentPath)
+gee::vkn::Material& gee::Application::get_material(const std::string& name, const std::string vertexPath, const std::string& fragmentPath)
 {
 	return materials_.emplace(std::piecewise_construct,
 		std::forward_as_tuple(name),

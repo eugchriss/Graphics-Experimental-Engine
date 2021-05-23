@@ -5,6 +5,7 @@
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
 
+using namespace gee;
 uint32_t vkn::DeviceMemory::allocationCount = 0;
 
 vkn::DeviceMemory::DeviceMemory(const vkn::Gpu& gpu, const vkn::Device& device, const VkMemoryPropertyFlagBits property, const VkDeviceSize size) : device_{ device }, size_{ size }, location_{ static_cast<VkMemoryPropertyFlags>(property)}

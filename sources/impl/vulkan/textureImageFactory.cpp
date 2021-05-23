@@ -3,6 +3,7 @@
 #include "../../headers/impl/vulkan/Signal.h"
 #include "../../headers/impl/vulkan/textureImageFactory.h"
 
+using namespace gee;
 vkn::TextureImageFactory::TextureImageFactory(Context& context): context_{context}
 {
 	cbPool_ = std::make_unique<vkn::CommandPool>(context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );

@@ -1,7 +1,7 @@
 #include "../../headers/impl/vulkan/signal.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
-
+using namespace gee;
 vkn::Fence::Fence(Context& context, const bool signaled): context_{context}
 {
 	VkFenceCreateInfo fenceCI{};

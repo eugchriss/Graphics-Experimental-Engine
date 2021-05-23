@@ -1,6 +1,7 @@
 #include "../../headers/impl/vulkan/CommandPool.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 
+using namespace gee;
 vkn::CommandPool::CommandPool(Context& _context, const VkCommandPoolCreateFlagBits type, const uint32_t minCommandBufferCount) : context_{ _context }
 {
 	VkCommandPoolCreateInfo commandPoolCI{};
