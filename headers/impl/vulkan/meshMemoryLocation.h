@@ -1,5 +1,6 @@
 #pragma once
 #include "../../Mesh.h"
+#include "../../utility.h"
 
 #include "Buffer.h"
 #include "DeviceMemory.h"

@@ -74,54 +74,17 @@ void gee::Application::setSkybox(Drawable& skybox)
 {
 }
 
-void gee::Application::add_drawable(Drawable& drawable)
+void gee::Application::draw(Drawable& drawable)
 {
-	drawables_.emplace_back(std::ref(drawable));
-}
-
-void gee::Application::add_drawable_without_duplicate(Drawable& drawable)
-{
-	auto result = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& drawableRef) { return drawableRef.get().name == drawable.name; });
+	/*auto result = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& drawableRef) { return drawableRef.get().name == drawable.name; });
 	if (result == std::end(drawables_))
-	{
+	{*/
 		drawables_.emplace_back(std::ref(drawable));
-	}
+	//}
 }
 
 void gee::Application::addCamera(const Camera& camera)
 {
-}
-
-gee::vkn::Material& gee::Application::get_material(const std::string& name, const std::string vertexPath, const std::string& fragmentPath)
-{
-	return materials_.emplace(std::piecewise_construct,
-		std::forward_as_tuple(name),
-		std::forward_as_tuple(*context_, vertexPath, fragmentPath)).first->second;
-}
-
-const gee::Geometry& gee::Application::get_geometry(const std::string& name, gee::Geometry& mesh)
-{
-	return geometryHolder_->get(name, mesh);
-}
-
-const gee::Texture& gee::Application::load_texture(const std::string& name, const std::string& path, const gee::Texture::ColorSpace colorSpace)
-{
-	return textures_.emplace(std::piecewise_construct,
-		std::forward_as_tuple(name),
-		std::forward_as_tuple(name, path, colorSpace)).first->second;
-}
-
-gee::MaterialInstance& gee::Application::get_materialInstance(vkn::Material& material)
-{
-	auto& batch = materialBatches_.find(material);
-	if (batch == std::end(materialBatches_))
-	{
-		return *materialBatches_[material].emplace_back(std::make_unique<gee::MaterialInstance>(material));
-	}
-	else
-	{
-		return *batch->second.emplace_back(std::make_unique<gee::MaterialInstance>(material));
-	}
 }
 
 void gee::Application::updateGui()
@@ -309,19 +272,41 @@ void gee::Application::create_renderpass(const uint32_t width, const uint32_t he
 	colorRenderpass_ = std::make_unique<vkn::Renderpass>(*context_, size, std::move(passes));
 }
 
+void gee::Application::batch_materials()
+{
+	for (auto& [materialID, batch] : materialBatches_)
+	{
+		batch.clear();
+	}
+	for (const auto& drawable : drawables_)
+	{
+		auto& materialInstance = drawable.get().materialInstance.get();
+		auto& material = materialInstance.materialRef_.get();
+		auto& mat = materials_.try_emplace(ID<Material>::get(material), *context_, material.vertexShaderPath(), material.fragmentShaderPath());
+
+		auto& batch = materialBatches_.try_emplace(ID<Material>::get(material));
+		batch.first->second.emplace_back(std::ref(materialInstance));
+	}
+}
+
 void gee::Application::batch_material_instances()
 {
-	for (auto& [materialRef, materialInstances] : materialBatches_)
+	for (auto& [materialID, batch] : materialBatches_)
 	{
-		for (auto& materialInstanceRef : materialInstances)
+		for (auto& materialInstanceRef : batch)
 		{
-			materialInstanceRef->reset_transforms();
+			materialInstanceRef.get().reset_transforms();
 		}
 	}
 	for (auto& drawableRef : drawables_)
 	{
 		auto& drawable = drawableRef.get();
-		drawable.materialInstance.get().add_geometry(drawable.geometry, drawable.getTransform());
+		auto& materialInstance = drawable.materialInstance.get();
+		for (auto& [geometryRef, batch] : materialInstance.geometries)
+		{
+			batch.resize(vkn::Material::max_object_per_instance());
+		}
+		materialInstance.add_geometry(drawable.geometry, drawable.getTransform());
 	}
 }
 
@@ -337,11 +322,19 @@ bool gee::Application::isRunning()
 				auto& cb = lastRecordedDrawsCommandBuffer_->get();
 				cb.begin();
 				colorRenderpass_->begin(cb, VkRect2D{ {0, 0}, {window_.size().x, window_.size().y} });
+				batch_materials();
 				batch_material_instances();
-				for (auto& [materialRef, materialInstances] : materialBatches_)
+				for (auto& [materialID, materialInstances] : materialBatches_)
 				{
-					materialRef.get().bind((*colorRenderpass_)());
-					materialRef.get().draw(*geometryMemoryHolder_, *textureMemoryHolder_, cb, camera_.get_shader_info(window_.aspectRatio()), materialInstances);
+					auto& materialIt = materials_.find(materialID);
+					if (materialIt == std::end(materials_))
+					{
+						//this should never happen
+						throw std::runtime_error{""};
+					}
+					auto& material = materialIt->second;
+					material.bind((*colorRenderpass_)());
+					material.draw(*geometryMemoryHolder_, *textureMemoryHolder_, cb, camera_.get_shader_info(window_.aspectRatio()), materialInstances);
 				}
 				colorRenderpass_->end(cb);
 				cb.end();
@@ -351,7 +344,6 @@ bool gee::Application::isRunning()
 				context_->graphicsQueue->present(cb, *swapchain_);
 			}
 		}
-
 	}
 	return window_.isOpen();
 }

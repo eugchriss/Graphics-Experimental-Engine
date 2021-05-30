@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include "../../utility.h"
 #include "Signal.h"
 #include "vulkanContext.h"
 #include "vulkan/vulkan.hpp"

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../../camera.h"
+#include "../../materialInstance.h"
 #include "../../Optics.h"
 #include "../../ResourceHolder.h"
 
@@ -16,17 +17,8 @@
 #include "meshMemoryLocation.h"
 #include "textureImageFactory.h"
 
-
-enum class TEXTURE_SLOT
-{
-	COLOR,
-	NORMAL,
-	SPECULAR
-};
-
 namespace gee
 {
-	class MaterialInstance;
 	MAKE_UNIQUE_PTR(MaterialInstance);
 
 	namespace vkn
@@ -38,7 +30,7 @@ namespace gee
 			UI_PASS = 0x02
 		};
 		using GeometryMemoryHolder = gee::ResourceHolder<vkn::GeometryMemoryLocationFactory, vkn::GeometryMemoryLocation, size_t>;
-		using TextureMemoryHolder = gee::ResourceHolder<vkn::TextureImageFactory, vkn::Image>;
+		using TextureMemoryHolder = gee::ResourceHolder<vkn::TextureImageFactory, vkn::Image, ID<gee::Texture>::Type>;
 		class Material
 		{
 		public:
@@ -46,7 +38,7 @@ namespace gee
 			Material(Material&& other);
 			virtual ~Material();
 			void bind(const VkRenderPass& renderpass);
-			virtual void draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstancePtr>& materialInstances);
+			virtual void draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstanceRef>& materialInstances);
 			void set_sampler(const VkSamplerCreateInfo& samplerInfo);
 			void use_light(const gee::PointLight& light);
 			RENDERPASS_USAGE pass_usage() const;
@@ -61,9 +53,9 @@ namespace gee
 			static uint32_t dynamicAlignment_;
 			virtual void prepare_pipeline(Context& context, const RENDERPASS_USAGE& passUsage);
 			VkSampler sampler_{ VK_NULL_HANDLE };
-			std::unordered_map<TEXTURE_SLOT, std::vector<VkImageView>> textureSlots_;
+			std::unordered_map<gee::TEXTURE_SLOT, std::vector<VkImageView>> textureSlots_;
 			std::vector<glm::mat4> transformMatrices_;
-			void getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstancePtr>&);
+			void getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstanceRef>&);
 
 			std::vector<gee::ShaderPointLight> pointLights_;
 			virtual void build_pipeline(const VkRenderPass& renderpass);

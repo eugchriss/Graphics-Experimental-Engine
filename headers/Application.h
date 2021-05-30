@@ -36,13 +36,8 @@ namespace gee
 		bool isRunning();
 		void setCameraPosition(const glm::vec3& position);
 		void setSkybox(Drawable& skybox);
-		void add_drawable(Drawable& drawable);
-		void add_drawable_without_duplicate(Drawable& drawable);
+		void draw(Drawable& drawable);
 		void addCamera(const Camera& camera);
-		vkn::Material& get_material(const std::string& name, const std::string vertexPath, const std::string& fragmentPath);
-		const gee::Geometry& get_geometry(const std::string& name, gee::Geometry& mesh);
-		const gee::Texture& load_texture(const std::string& name, const std::string& path, const gee::Texture::ColorSpace colorSpace = gee::Texture::ColorSpace::LINEAR);
-		MaterialInstance& get_materialInstance(vkn::Material& material);
 
 	private:
 
@@ -84,15 +79,14 @@ namespace gee
 		float cpuTime_;
 		float gpuTime_;
 
-		std::unordered_map<std::string, gee::Texture> textures_;
 		std::unique_ptr<vkn::TextureMemoryHolder> textureMemoryHolder_;
 
 		using GeometryHolder = ResourceHolder<gee::GeometryFactory, gee::Geometry>;
 		std::unique_ptr<GeometryHolder> geometryHolder_;
 		std::unique_ptr<vkn::GeometryMemoryHolder> geometryMemoryHolder_;
 
-		std::unordered_map<std::string, vkn::Material> materials_;
-		std::unordered_map<vkn::MaterialRef, std::vector<MaterialInstancePtr>> materialBatches_;
+		std::unordered_map<ID<Material>::Type, vkn::Material> materials_;
+		std::unordered_map<ID<Material>::Type, std::vector<MaterialInstanceRef>> materialBatches_;
 
 		std::shared_ptr<vkn::CommandBufferRef> lastRecordedDrawsCommandBuffer_;
 		//functions only
@@ -107,6 +101,7 @@ namespace gee
 		void getTransforms();
 		void initPixelPerfect();
 		void create_renderpass(const uint32_t width, const uint32_t height);
+		void batch_materials();
 		void batch_material_instances();
 	};
 }

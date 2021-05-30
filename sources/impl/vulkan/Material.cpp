@@ -57,10 +57,10 @@ void vkn::Material::bind(const VkRenderPass& renderpass)
 	build_pipeline(renderpass);
 }
 
-void vkn::Material::draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstancePtr>& materialInstances)
+void vkn::Material::draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder& imageHolder, CommandBuffer& cb, const gee::Camera::ShaderInfo& cameraShaderInfo, const std::vector<gee::MaterialInstanceRef>& materialInstances)
 {
 	assert(std::size(materialInstances) <= 15); //maxDescriptorSetDynamicUniformBuffer
-	getPackedTextures_and_transforms(imageHolder, const_cast<std::vector<gee::MaterialInstancePtr>&>(materialInstances));
+	getPackedTextures_and_transforms(imageHolder, const_cast<std::vector<gee::MaterialInstanceRef>&>(materialInstances));
 
 	pipeline_->updateBuffer("transform_matrices", transformMatrices_);
 	pipeline_->updateTextures("colors", sampler_, textureSlots_[TEXTURE_SLOT::COLOR]);
@@ -72,7 +72,7 @@ void vkn::Material::draw(GeometryMemoryHolder& memoryHolder, TextureMemoryHolder
 	for (auto i = 0u; i < std::size(materialInstances); ++i)
 	{
 		pipeline_->pushConstant(cb, "material_index", i);
-		for (auto& [geometryRef, transforms] : materialInstances[i]->geometries)
+		for (auto& [geometryRef, transforms] : materialInstances[i].get().geometries)
 		{
 			assert(std::size(transforms) == max_object_per_instance()); 
 			auto& geometryMemory = memoryHolder.get(geometryRef.get().hash, geometryRef.get());
@@ -135,23 +135,23 @@ void vkn::Material::prepare_pipeline(Context& context, const RENDERPASS_USAGE& p
 	builder_.subpass = passUsage;
 }
 
-void vkn::Material::getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstancePtr> & materialInstances)
+void vkn::Material::getPackedTextures_and_transforms(TextureMemoryHolder& imageHolder, std::vector<gee::MaterialInstanceRef> & materialInstances)
 {
 	textureSlots_.clear();
 	auto offset = 0u;
 	for (auto& materialInstanceRef : materialInstances)
 	{
-		auto& materialInstance = *materialInstanceRef;
+		auto& materialInstance = materialInstanceRef.get();
 
 		auto& color = materialInstance.textureSlots.find(TEXTURE_SLOT::COLOR);
 		if (color != std::end(materialInstance.textureSlots))
 		{
-			textureSlots_[TEXTURE_SLOT::COLOR].emplace_back(imageHolder.get(color->second.get().name(), color->second.get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
+			textureSlots_[TEXTURE_SLOT::COLOR].emplace_back(imageHolder.get(gee::ID<gee::Texture>::get(color->second.get()), color->second.get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
 		}
 		auto& normal = materialInstance.textureSlots.find(TEXTURE_SLOT::NORMAL);
 		if (normal != std::end(materialInstance.textureSlots))
 		{
-			textureSlots_[TEXTURE_SLOT::NORMAL].emplace_back(imageHolder.get(normal->second.get().name(), normal->second.get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
+			textureSlots_[TEXTURE_SLOT::NORMAL].emplace_back(imageHolder.get(gee::ID<gee::Texture>::get(normal->second.get()), normal->second.get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
 		}
 
 		offset += materialInstance.copy_geometries_to(std::begin(transformMatrices_) + offset);

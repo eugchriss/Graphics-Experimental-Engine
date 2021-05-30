@@ -48,6 +48,11 @@ namespace gee
 			return geometry;
 		}
 	};
+
+
+	gee::Geometry getCubeGeometry();
+	gee::Geometry getQuadGeometry();
+	gee::Geometry getFloorGeometry();
 }
 
 namespace std

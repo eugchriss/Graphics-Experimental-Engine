@@ -12,7 +12,6 @@ gee::Drawable::Drawable(const gee::Geometry& geometry, gee::MaterialInstance& ma
 gee::Drawable::Drawable(const std::string& name, const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos, const glm::vec3& rot) 
  : geometry{geometry}, materialInstance{ materialInstance }, position{pos}, rotation(rot)
 {
-
 	//scaleFactor = normalizedScaleFactor(mesh);
 	if (scaleFactor == 0.0f)
 	{

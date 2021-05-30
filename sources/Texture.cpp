@@ -4,7 +4,7 @@
 #include "stb_image.h"
 #include "../../headers/Texture.h"
 
-gee::Texture::Texture(const std::string& name, const std::string& path, const ColorSpace colorSpace) : name_{ name }, paths_ { path }, colorSpace_{ colorSpace }
+gee::Texture::Texture( const std::string& path, const ColorSpace colorSpace) : paths_ { path }, colorSpace_{ colorSpace }
 {
 	int channel{};
 	int width, height;
@@ -57,11 +57,6 @@ gee::Texture::Texture(const std::array<std::string, 6>& paths, const ColorSpace 
 const std::vector<unsigned char>& gee::Texture::pixels() const
 {
 	return pixels_;
-}
-
-const std::string& gee::Texture::name() const
-{
-	return name_;
 }
 
 const uint32_t gee::Texture::width() const
