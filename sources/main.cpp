@@ -38,6 +38,7 @@ int main()
 	gee::Application app{ "Graphics's Experimental Engine", 800, 800 };
 	app.setCameraPosition(glm::vec3{ 0.0f, 1.0f, 5.0f });
 	app.draw(cube);
+	app.draw(cube);
 	app.draw(cube2);
 	app.draw(cube3);
 

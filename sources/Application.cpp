@@ -76,11 +76,11 @@ void gee::Application::setSkybox(Drawable& skybox)
 
 void gee::Application::draw(Drawable& drawable)
 {
-	/*auto result = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& drawableRef) { return drawableRef.get().name == drawable.name; });
+	auto result = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& drawableRef) { return ID<Drawable>::get(drawableRef.get()) ==  ID<Drawable>::get(drawable); });
 	if (result == std::end(drawables_))
-	{*/
+	{
 		drawables_.emplace_back(std::ref(drawable));
-	//}
+	}
 }
 
 void gee::Application::addCamera(const Camera& camera)
@@ -282,9 +282,10 @@ void gee::Application::batch_materials()
 	{
 		auto& materialInstance = drawable.get().materialInstance.get();
 		auto& material = materialInstance.materialRef_.get();
-		auto& mat = materials_.try_emplace(ID<Material>::get(material), *context_, material.vertexShaderPath(), material.fragmentShaderPath());
+		auto materialID = ID<Material>::get(material);
+		materials_.try_emplace(materialID, *context_, material.vertexShaderPath(), material.fragmentShaderPath());
 
-		auto& batch = materialBatches_.try_emplace(ID<Material>::get(material));
+		auto& batch = materialBatches_.try_emplace(materialID);
 		batch.first->second.emplace_back(std::ref(materialInstance));
 	}
 }

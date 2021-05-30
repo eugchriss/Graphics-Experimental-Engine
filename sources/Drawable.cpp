@@ -2,22 +2,24 @@
 #include "../headers/Drawable.h"
 #include "glm/gtx/transform.hpp"
 
-uint32_t gee::Drawable::count{};
+gee::IdDispenser<size_t> gee::Drawable::idDispenser_{};
 
-gee::Drawable::Drawable(const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos, const glm::vec3& rot)
-	: Drawable{ std::string{ "Drawable : " } + std::to_string(count), geometry, materialInstance, pos, rot }
-{
-}
-
-gee::Drawable::Drawable(const std::string& name, const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos, const glm::vec3& rot) 
+gee::Drawable::Drawable(const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos, const glm::vec3& rot) 
  : geometry{geometry}, materialInstance{ materialInstance }, position{pos}, rotation(rot)
 {
+	id = idDispenser_.get();
+
 	//scaleFactor = normalizedScaleFactor(mesh);
 	if (scaleFactor == 0.0f)
 	{
 		scaleFactor = 1.0f;
 	}
 	size /= scaleFactor;
+}
+
+gee::Drawable::~Drawable()
+{
+	idDispenser_.consumed(id);
 }
 
 const glm::mat4& gee::Drawable::getTransform()
