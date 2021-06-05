@@ -143,12 +143,12 @@ void vkn::Material::getPackedTextures_and_transforms(TextureMemoryHolder& imageH
 	{
 		auto& materialInstance = materialInstanceRef.get();
 
-		auto& color = materialInstance.textureSlots.find(TEXTURE_SLOT::COLOR);
+		auto color = materialInstance.textureSlots.find(TEXTURE_SLOT::COLOR);
 		if (color != std::end(materialInstance.textureSlots))
 		{
 			textureSlots_[TEXTURE_SLOT::COLOR].emplace_back(imageHolder.get(gee::ID<gee::Texture>::get(color->second.get()), color->second.get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
 		}
-		auto& normal = materialInstance.textureSlots.find(TEXTURE_SLOT::NORMAL);
+		auto normal = materialInstance.textureSlots.find(TEXTURE_SLOT::NORMAL);
 		if (normal != std::end(materialInstance.textureSlots))
 		{
 			textureSlots_[TEXTURE_SLOT::NORMAL].emplace_back(imageHolder.get(gee::ID<gee::Texture>::get(normal->second.get()), normal->second.get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));

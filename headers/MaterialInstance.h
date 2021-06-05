@@ -1,16 +1,12 @@
 #pragma once
+#include "enums.h"
 #include "Mesh.h"
 #include "Material.h"
 #include "Texture.h"
 
+#include "impl/vulkan/Material.h"
 namespace gee
 {
-	enum class TEXTURE_SLOT
-	{
-		COLOR,
-		NORMAL,
-		SPECULAR
-	};
 	class MaterialInstance
 	{
 	public:
@@ -46,7 +42,7 @@ namespace gee
 			}
 		}
 		template<class Iterator>
-		size_t copy_geometries_to(Iterator& dst)
+		size_t copy_geometries_to(Iterator dst)
 		{
 			auto geometryOffset = 0u;
 			const auto transformSize = vkn::Material::max_object_per_instance();
@@ -63,5 +59,4 @@ namespace gee
 		gee::MaterialRef materialRef_;
 	};
 	MAKE_REFERENCE(MaterialInstance)
-	MAKE_UNIQUE_PTR(MaterialInstance)
 }

@@ -10,7 +10,7 @@ vkn::Renderpass::Renderpass(Context& context, const VkExtent2D& extent, std::vec
 {
 	createRenderpass();
 	createFramebuffers(framebufferCount, extent);
-	auto& uniqueRenderTargets = getUniqueRenderTargets();
+	auto uniqueRenderTargets = getUniqueRenderTargets();
 	bool presentClearInserted{ false };
 	for (const auto& renderTargetRef : uniqueRenderTargets)
 	{
@@ -88,10 +88,10 @@ std::vector<vkn::RenderTargetRef> vkn::Renderpass::getUniqueRenderTargets()
 
 void vkn::Renderpass::createRenderpass()
 {
-	auto& uniqueRenderTargets = getUniqueRenderTargets();
-	auto& [attachments, renderTargetAttachmentMap] = getAttachments(uniqueRenderTargets);
+	auto uniqueRenderTargets = getUniqueRenderTargets();
+	auto [attachments, renderTargetAttachmentMap] = getAttachments(uniqueRenderTargets);
 	auto subpassesDatas = getSubpassesDatas(uniqueRenderTargets, renderTargetAttachmentMap, std::size(attachments));
-	auto& dependencies = findDependencies(uniqueRenderTargets);
+	auto dependencies = findDependencies(uniqueRenderTargets);
 
 	std::vector<VkSubpassDescription> subpasses;
 	for (const auto& subpassData : subpassesDatas)
@@ -180,7 +180,7 @@ const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDa
 
 		for (const auto& inputTarget : pass.inputTargets())
 		{
-			auto& attachmentIndex = renderTargetAttachmentMap.find(inputTarget.get().id());
+			auto attachmentIndex = renderTargetAttachmentMap.find(inputTarget.get().id());
 			assert(attachmentIndex != std::end(renderTargetAttachmentMap) && "missing match between render target and renderpass attachment");
 
 			VkAttachmentReference ref;
@@ -193,7 +193,7 @@ const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDa
 		}
 		for (const auto& colorTarget : pass.colorTargets())
 		{
-			auto& attachmentIndex = renderTargetAttachmentMap.find(colorTarget.get().id());
+			auto attachmentIndex = renderTargetAttachmentMap.find(colorTarget.get().id());
 			assert(attachmentIndex != std::end(renderTargetAttachmentMap) && "missing match between render target and renderpass attachment");
 
 			VkAttachmentReference ref;
@@ -220,7 +220,7 @@ const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDa
 		}
 		for (const auto& depthStencilTarget : pass.depthStencilTargets())
 		{
-			auto& attachmentIndex = renderTargetAttachmentMap.find(depthStencilTarget.get().id());
+			auto attachmentIndex = renderTargetAttachmentMap.find(depthStencilTarget.get().id());
 			assert(attachmentIndex != std::end(renderTargetAttachmentMap) && "missing match between render target and renderpass attachment");
 
 			VkAttachmentReference ref;
@@ -245,7 +245,7 @@ const std::vector<VkSubpassDependency> vkn::Renderpass::findDependencies(const s
 
 void vkn::Renderpass::createFramebuffers(const uint32_t framebufferCount, const VkExtent2D& extent)
 {
-	auto& renderTargets = getUniqueRenderTargets();
+	auto renderTargets = getUniqueRenderTargets();
 
 	std::vector<RenderTargetRef> presentableTargets;
 	std::vector<RenderTargetRef> nonPresentableTargets;

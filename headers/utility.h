@@ -38,7 +38,7 @@ namespace gee
         IdDispenser() = default;
         IdDispenser(IdDispenser&&) = default;
 
-        const T& get()
+        const T get()
         {
             if (!std::empty(recyclableIDs_))
             {

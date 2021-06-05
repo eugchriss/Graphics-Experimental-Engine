@@ -10,7 +10,7 @@ namespace gee
 	{
 		using Container_t = std::unordered_map<Key, Resource>;
 	public:
-		ResourceHolder(Factory& f);
+		ResourceHolder(Factory&& f);
 		~ResourceHolder() = default;
 
 		Resource& get(const Key& key);
@@ -24,7 +24,7 @@ namespace gee
 }
 
 template<class Factory, class Resource, class Key>
-inline gee::ResourceHolder<Factory, Resource, Key>::ResourceHolder(Factory& f) : factory_{ std::move(f) }
+inline gee::ResourceHolder<Factory, Resource, Key>::ResourceHolder(Factory&& f) : factory_{ std::move(f) }
 {
 }
 
@@ -47,24 +47,24 @@ inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key
 		{
 			throw std::runtime_error{ "The specified element doesn t exist yet and can t be default constructed" };
 		}
-	}	
+	}
 }
 
 template<class Factory, class Resource, class Key>
 template< class ...Args>
 inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key, Args& ...args)
 {
-	auto& result = resources_.find(key);
+	auto result = resources_.find(key);
 	if (result == std::end(resources_))
 	{
 		if constexpr (std::is_copy_constructible<Resource>::value)
 		{
-			auto& resource = resources_.emplace(key, factory_.create(std::forward<Args>(args)...));
+			auto resource = resources_.emplace(key, factory_.create(std::forward<Args>(args)...));
 			return resource.first->second;
 		}
 		else
 		{
-			auto& resource = resources_.emplace(key, std::move(factory_.create(std::forward<Args>(args)...)));
+			auto resource = resources_.emplace(key, std::move(factory_.create(std::forward<Args>(args)...)));
 			return resource.first->second;
 		}
 	}

@@ -10,6 +10,7 @@
 #include "Drawable.h"
 #include "EventDispatcher.h"
 #include "MaterialInstance.h"
+#include "Renderpass.h"
 #include "ResourceHolder.h"
 #include "Timer.h"
 #include "Window.h"
@@ -38,7 +39,8 @@ namespace gee
 		void setSkybox(Drawable& skybox);
 		void draw(Drawable& drawable);
 		void addCamera(const Camera& camera);
-
+		void start_renderpass(const Renderpass& rp);
+		void use_shader_technique(const ShaderTechnique& technique);
 	private:
 
 		gee::Window window_;

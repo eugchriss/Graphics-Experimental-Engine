@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "../../camera.h"
-#include "../../materialInstance.h"
+#include "../../enums.h"
 #include "../../Optics.h"
 #include "../../ResourceHolder.h"
 
@@ -19,8 +19,8 @@
 
 namespace gee
 {
-	MAKE_UNIQUE_PTR(MaterialInstance);
-
+	class MaterialInstance;
+	using MaterialInstanceRef = std::reference_wrapper<MaterialInstance>;
 	namespace vkn
 	{
 		enum RENDERPASS_USAGE

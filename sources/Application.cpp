@@ -87,6 +87,14 @@ void gee::Application::addCamera(const Camera& camera)
 {
 }
 
+void gee::Application::start_renderpass(const Renderpass& rp)
+{
+}
+
+void gee::Application::use_shader_technique(const ShaderTechnique& technique)
+{
+}
+
 void gee::Application::updateGui()
 {
 	ImGui_ImplVulkan_NewFrame();
@@ -285,7 +293,7 @@ void gee::Application::batch_materials()
 		auto materialID = ID<Material>::get(material);
 		materials_.try_emplace(materialID, *context_, material.vertexShaderPath(), material.fragmentShaderPath());
 
-		auto& batch = materialBatches_.try_emplace(materialID);
+		auto batch = materialBatches_.try_emplace(materialID);
 		batch.first->second.emplace_back(std::ref(materialInstance));
 	}
 }
@@ -327,7 +335,7 @@ bool gee::Application::isRunning()
 				batch_material_instances();
 				for (auto& [materialID, materialInstances] : materialBatches_)
 				{
-					auto& materialIt = materials_.find(materialID);
+					auto materialIt = materials_.find(materialID);
 					if (materialIt == std::end(materials_))
 					{
 						//this should never happen

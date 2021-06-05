@@ -62,7 +62,7 @@ void vkn::Buffer::moveTo(Queue& queue, DeviceMemory& memory)
 	vkCmdCopyBuffer(cb.commandBuffer(), buffer, dst.buffer, 1, &copy);
 	cb.end();
 
-	auto& completedFence = queue.submit(cb);
+	auto completedFence = queue.submit(cb);
 	completedFence->wait();
 
 	memory_ = Observer_ptr<vkn::DeviceMemory>{ memory };

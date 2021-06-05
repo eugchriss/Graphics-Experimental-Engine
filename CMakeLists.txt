@@ -100,8 +100,11 @@ set(SOURCES
 			"sources/material.cpp"
 			"sources/mesh.cpp"
 			"sources/modelLoader.cpp"
+			"sources/pass.cpp"
 			"sources/optics.cpp"
+			"sources/renderpass.cpp"	 
 			"sources/resourceHolder.cpp"
+			"sources/shaderTechnique.cpp"
 			"sources/SpatialTransformation.cpp"
 			"sources/timer.cpp"
 			"sources/texture.cpp"
@@ -115,15 +118,20 @@ set(SOURCES
 set(HEADERS
 			"headers/application.h"
 			"headers/camera.h"
-			"headers/eventDispatcher.h"
 			"headers/drawable.h"
+			"headers/enums.h"
+			"headers/eventDispatcher.h"
 			"headers/material.h"
 			"headers/materialInstance.h"
 			"headers/mesh.h"
 			"headers/modelLoader.h"
 			"headers/optics.h"
+			"headers/pass.h"
+			"headers/renderpass.h"
+			"headers/renderTarget.h"
 			"headers/resourceHolder.h"
 			"headers/SpatialTransformation.h"
+			"headers/shaderTechnique.h"
 			"headers/texture.h"
 			"headers/timer.h" 
 			"headers/units.h"
@@ -150,7 +158,7 @@ target_link_libraries(gee glfw)
 target_link_libraries(gee ${Vulkan_LIBRARY})
 target_link_libraries(gee spirv-cross-cpp)
 
-set_target_properties(gee PROPERTIES CXX_STANDARD 17)
+set_target_properties(gee PROPERTIES CXX_STANDARD 20)
 
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES})
