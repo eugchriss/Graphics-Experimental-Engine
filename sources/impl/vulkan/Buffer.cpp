@@ -82,3 +82,8 @@ const std::vector<float> vkn::Buffer::rawContent() const
 {
 	return memory_->rawContent(memoryOffset_, size_);
 }
+
+void vkn::Buffer::update(const VkDeviceSize offset, void* datas, const size_t size)
+{
+	memory_->update(memoryOffset_ + offset, datas, size);
+}

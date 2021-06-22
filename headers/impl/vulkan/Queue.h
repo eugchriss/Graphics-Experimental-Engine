@@ -19,7 +19,7 @@ namespace gee
 			Queue(const vkn::Device& device, const QueueFamily& familyIndex, const uint32_t index);
 			const uint32_t& familyIndex() const;
 			std::shared_ptr<Fence> submit(CommandBuffer& cb, const bool signalSemaphore = true);
-			void present(CommandBuffer& cb, const vkn::Swapchain& swapchain);
+			void present(CommandBuffer& cb, vkn::Swapchain& swapchain);
 			void idle();
 			const VkQueue queue() const;
 			const uint32_t timestampValidBits() const;

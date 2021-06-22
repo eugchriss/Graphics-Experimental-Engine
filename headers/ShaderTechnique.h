@@ -4,6 +4,9 @@
 #include "utility.h"
 namespace gee
 {
+	namespace vkn { class Pipeline; }
+
+	template<class T> struct ResourceLoader;
 	class ShaderTechnique
 	{
 	public:
@@ -13,11 +16,14 @@ namespace gee
 		const std::string& fragmentShaderPath() const;
 		void wireframe_on(const bool value);
 	private:
+		friend class Pass;
+		friend ResourceLoader<vkn::Pipeline>;
 		bool hasChanged_{ true };
 		std::string vertexShaderPath_{};
 		std::string geometryShaderPath_{};
 		std::string fragmentShaderPath_{};
 		bool useWireFrame_{ false };
+		size_t passIndex_{};
 
 		friend ID<ShaderTechnique>;
 	};

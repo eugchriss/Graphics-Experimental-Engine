@@ -70,8 +70,7 @@ const glm::mat4 gee::Camera::pointOfView() const
 }
 
 const glm::mat4 gee::Camera::perspectiveProjection(const float aspectRatio) const
-{
-	
+{	
 	return glm::perspective(fov_, aspectRatio, 0.1f, viewRange_);
 }
 

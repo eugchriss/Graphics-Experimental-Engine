@@ -44,13 +44,14 @@ namespace gee
 			~Pipeline();
 			void bind(vkn::CommandBuffer& cb);
 			void bind_set(CommandBuffer& cb, const uint32_t firstSet, const size_t setCount, const std::vector<uint32_t>& dynamicOffset = {});
-			void updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view);
-			void updateTextures(const std::string& resourceName, const VkSampler sampler, std::vector<VkImageView>& views);
 			const std::vector<Uniform> uniforms() const;
 			template<class T>
 			void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
 			template<class T>
 			void updateBuffer(const std::string& resourceName, const T& datas);
+			void update_shader_value(const gee::ShaderValue& val);
+			void update_shader_texture(const vkn::ShaderTexture& tex);
+			void update_shader_array_texture(const vkn::ShaderArrayTexture& tex);
 			void updateUniforms();
 		private:
 
@@ -122,7 +123,14 @@ namespace gee
 			}
 			else
 			{
-				vkCmdPushConstants(cb.commandBuffer(), layout_.layout, result->stageFlag, result->offsets[0], result->size, &datas);
+				if constexpr (std::is_pointer<T>::value)
+				{
+					vkCmdPushConstants(cb.commandBuffer(), layout_.layout, result->stageFlag, static_cast<uint32_t>(result->offsets[0]), static_cast<uint32_t>(result->size), datas);
+				}
+				else
+				{
+					vkCmdPushConstants(cb.commandBuffer(), layout_.layout, result->stageFlag, result->offsets[0], result->size, &datas);
+				}
 			}
 		}
 	}

@@ -115,16 +115,59 @@ void vkn::Pipeline::bind_set(CommandBuffer& cb, const uint32_t firstSet, const s
 	vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.layout, firstSet, setCount, std::data(boundSets_), std::size(dynamicOffset), std::data(dynamicOffset));
 }
 
-void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampler sampler, const VkImageView view)
+const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const
 {
-	auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == resourceName; });
+	return uniforms_;
+}
+
+void gee::vkn::Pipeline::update_shader_value(const gee::ShaderValue& val)
+{
+	auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == val.name; });
 	if (uniform == std::end(uniforms_))
 	{
 		throw std::runtime_error{ "There is no such uniform name within this pipeline" };
 	}
+
+	auto bufferInfo = std::make_shared<VkDescriptorBufferInfo>();
+	bufferInfo->buffer = buffer_->buffer;
+	//update the memory
+	if (uniform->dynamicType == UNIFORM_TYPE::DYNAMIC)
+	{
+		buffer_->update(uniformTypeBufferOffsets_[DYNAMIC] + uniform->offset, val.address, val.size);
+
+		//update the descriptor
+		bufferInfo->offset = uniform->offset;
+		bufferInfo->range = uniform->range;
+	}
+	else
+	{
+		buffer_->update(uniformTypeBufferOffsets_[uniform->dynamicType] + uniform->offset, val.address, val.size);
+	}
+
+
+	bufferInfos_.emplace_back(bufferInfo);
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.pNext = nullptr;
+	write.dstSet = uniform->set;
+	write.dstBinding = uniform->binding;
+	write.descriptorType = uniform->type;
+	write.descriptorCount = uniform->size;
+	write.pBufferInfo = bufferInfo.get();
+
+	uniformsWrites_.emplace_back(write);
+}
+
+void gee::vkn::Pipeline::update_shader_texture(const vkn::ShaderTexture& tex)
+{
+	auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == tex.name; });
+	if (uniform == std::end(uniforms_))
+	{
+		throw std::runtime_error{ "There is no such texture name within this pipeline" };
+	}
 	auto imageInfo = std::make_shared<VkDescriptorImageInfo>();
-	imageInfo->sampler = sampler;
-	imageInfo->imageView = view;
+	imageInfo->sampler = tex.sampler;
+	imageInfo->imageView = tex.view;
 	imageInfo->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfos_.emplace_back(imageInfo);
 
@@ -140,31 +183,35 @@ void vkn::Pipeline::updateTexture(const std::string& resourceName, const VkSampl
 	uniformsWrites_.emplace_back(write);
 }
 
-void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSampler sampler, std::vector<VkImageView>& views)
+void gee::vkn::Pipeline::update_shader_array_texture(const vkn::ShaderArrayTexture& tex)
 {
-	auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == resourceName; });
-	if (uniform == std::end(uniforms_))
+	auto arrayTexture = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == tex.name; });
+	if (arrayTexture == std::end(uniforms_))
 	{
-		throw std::runtime_error{ "There is no such uniform name within this pipeline" };
+		throw std::runtime_error{ "There is no such texture name within this pipeline" };
 	}
 
 	auto imagesInfos = std::make_shared<std::vector<VkDescriptorImageInfo>>();
-	imagesInfos->reserve(uniform->size);
+	imagesInfos->reserve(arrayTexture->size);
 
 	/* nullDescriptor feature isn t available on macOs so we fill in views with non VK_NULL_HANDLE (aka dummyImage_)*/
-	auto viewsSize = std::size(views);
-	if (viewsSize < uniform->size)
+	std::vector<VkImageView> views(tex.views);
+	auto dummyView = dummyImage_->getView(VK_IMAGE_ASPECT_COLOR_BIT);
+	for (auto i = std::size(tex.views); i < arrayTexture->size; ++i)
 	{
-		auto view = dummyImage_->getView(VK_IMAGE_ASPECT_COLOR_BIT);
-		for (auto i = viewsSize; i < uniform->size; ++i)
+		views.emplace_back(dummyView);
+	}
+	for (auto& view : views)
+	{
+		if (view == VK_NULL_HANDLE)
 		{
-			views.emplace_back(view);
+			view = dummyView;
 		}
 	}
 
 	for (const auto view : views)
 	{
-		imagesInfos->emplace_back(VkDescriptorImageInfo{ sampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+		imagesInfos->emplace_back(VkDescriptorImageInfo{ tex.sampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 	}
 	auto infoSize = std::size(*imagesInfos);
 
@@ -172,18 +219,13 @@ void vkn::Pipeline::updateTextures(const std::string& resourceName, const VkSamp
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.pNext = nullptr;
-	write.dstSet = uniform->set;
-	write.dstBinding = uniform->binding;
-	write.descriptorType = uniform->type;
+	write.dstSet = arrayTexture->set;
+	write.dstBinding = arrayTexture->binding;
+	write.descriptorType = arrayTexture->type;
 	write.pImageInfo = std::data(*imagesInfos);
 	write.descriptorCount = std::size(*imagesInfos);
 
 	uniformsWrites_.emplace_back(write);
-}
-
-const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const
-{
-	return uniforms_;
 }
 
 void vkn::Pipeline::updateUniforms()

@@ -10,15 +10,15 @@ vkn::ContextBuilder::ContextBuilder(const VkDebugUtilsMessageSeverityFlagsEXT se
 
 vkn::Context vkn::ContextBuilder::build(const gee::Window& window) const
 {
-    auto instance = std::make_shared<vkn::Instance>(instanceLayers_);
+    auto instance = std::make_shared<vkn::Instance>(instanceLayers_, instanceExtensions_);
     auto messenger = std::make_unique<vkn::DebugMessenger>( instance, severity_, messageType_);
     VkSurfaceKHR surface{ VK_NULL_HANDLE };
     vkn::error_check(glfwCreateWindowSurface(instance->instance, window.window(), nullptr, &surface), "unable to create a presentable surface for the window");
     auto gpu = std::make_shared<Gpu>(Gpu::getAvailbleGpus(*instance)[0]);
     auto queueFamily = std::make_shared<vkn::QueueFamily>(*gpu, queueType_, surface, queueCount_);
-    auto device = std::make_unique<vkn::Device>(*gpu, deviceExtensions_, *queueFamily);
+    auto device = std::make_unique<vkn::Device>(*gpu, deviceExtensions_, *queueFamily); 
 
-    return Context{ instance, std::move(messenger), surface, gpu, queueFamily, std::move(device)};
+    return vkn::Context{instance, std::move(messenger), surface, gpu, queueFamily, std::move(device)};
 }
 
 void vkn::ContextBuilder::addInstanceLayer(const std::string& layerName)

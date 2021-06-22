@@ -1,8 +1,10 @@
 #pragma once
 #include <queue>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
-#include "Mesh.h"
+#include "Vertex.h"
 #include "glm/glm.hpp"
 
 namespace gee
@@ -11,8 +13,9 @@ namespace gee
 #define MAKE_CONST_REFERENCE(object) using object##ConstRef = std::reference_wrapper<const object>;
 #define MAKE_UNIQUE_PTR(object) using object##Ptr = std::unique_ptr<object>;
 
-	template<class T>
-	struct ID {};
+    template<class T>
+    struct ID {};
+
 	inline void hash_combine(std::size_t& seed) { }
 	template <typename T, typename... Rest>
 	inline void hash_combine(std::size_t& seed, const T& v, Rest... rest)

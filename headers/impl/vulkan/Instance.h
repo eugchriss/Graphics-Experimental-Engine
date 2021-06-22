@@ -9,7 +9,7 @@ namespace gee
 	{
 		struct Instance
 		{
-			Instance(const std::vector<std::string>& requestedLayers);
+			Instance(const std::vector<std::string>& requestedLayers, const std::vector<std::string>& extensions = {});
 			Instance(Instance&& other);
 			~Instance();
 			std::vector<const char*> availableLayers;

@@ -2,12 +2,12 @@
 
 gee::Pass::Pass(const ShaderTechnique& technique): shaderTechnique_{technique}
 {
-
 }
 
 void gee::Pass::add_screen_target()
 {
 	useSwapchainTarget_ = true;
+	screenTargetIndex_ = std::size(colorTargets_);
 }
 
 void gee::Pass::add_color_target(const RenderTarget& target)
@@ -25,21 +25,7 @@ void gee::Pass::add_input_target(const RenderTarget& target)
 	inputTargets_.emplace_back(target);
 }
 
-const std::vector<gee::RenderTarget>& gee::Pass::color_targets() const
+void gee::Pass::set_index(const size_t index)
 {
-	return colorTargets_;
-}
-
-const std::vector<gee::RenderTarget>& gee::Pass::depth_targets() const
-{
-	return depthTargets_;
-}
-
-const std::vector<gee::RenderTarget>& gee::Pass::input_targets() const
-{
-	return inputTargets_;
-}
-const bool gee::Pass::use_screen_target() const
-{
-	return useSwapchainTarget_;
+	const_cast<ShaderTechnique&>(shaderTechnique_.get()).passIndex_ = index;
 }

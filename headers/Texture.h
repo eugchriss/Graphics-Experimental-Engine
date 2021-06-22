@@ -37,6 +37,7 @@ namespace gee
 		friend ID<Texture>;
 	};
 	MAKE_REFERENCE(Texture);
+	MAKE_CONST_REFERENCE(Texture);
 
 	template<>
 	struct ID<Texture>

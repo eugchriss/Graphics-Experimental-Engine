@@ -71,7 +71,7 @@ void vkn::Swapchain::swapBuffers(const uint64_t timeout)
 	ready.wait();
 }
 
-const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(Semaphore& waitOnSemaphore) const
+const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(Semaphore& waitOnSemaphore)
 {
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -81,7 +81,7 @@ const VkPresentInfoKHR vkn::Swapchain::imagePresentInfo(Semaphore& waitOnSemapho
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &swapchain_;
 	presentInfo.pImageIndices = &availableImageIndex_;
-	presentInfo.pResults = nullptr;
+	presentInfo.pResults = &presentResult_;
 
 	return presentInfo;
 }
@@ -124,7 +124,10 @@ void vkn::Swapchain::retrieveTargets()
 	renderTargets_.clear();
 	for (auto image : images)
 	{
-		renderTargets_.emplace_back(context_, image, swapchainInfo_.imageFormat);
+		auto& target = renderTargets_.emplace_back(context_, image, swapchainInfo_.imageFormat);
+		target.loadOperation = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		target.storeOperation = VK_ATTACHMENT_STORE_OP_STORE;
+
 		//TODO: copy all metadata of the old renderTarget to the new one
 	}
 }

@@ -28,6 +28,8 @@ namespace gee
 			template<class T>
 			void update(const VkDeviceSize offset, const T& data);
 
+			void update(const VkDeviceSize offset, void* datas, const size_t size);
+
 			VkBuffer buffer{ VK_NULL_HANDLE };
 
 		private:

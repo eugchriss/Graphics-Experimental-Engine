@@ -36,20 +36,11 @@ vkn::Image::Image(Context& context, VkImageUsageFlags usage, VkFormat format, Vk
 	vkGetImageMemoryRequirements(context_.device->device, image, &memRequirements);
 	memory_ = std::make_unique<vkn::DeviceMemory>(context_.gpu->device, *context_.device, memRequirements.memoryTypeBits, memRequirements.size);
 	memory_->bind(image);
-
-#ifndef NDEBUG
-	name_ = "Owned image";
-	setDebugName(name_ + getStringUsage(usage));
-#endif
 }
 
 vkn::Image::Image(Context& context, const VkImage image, const VkFormat format, const uint32_t layerCount, bool owned) : context_{ context }, owned_{ owned }, format_{ format }, layerCount_{ layerCount }
 {
 	this->image = image;
-#ifndef NDEBUG
-	name_ = "Non owned image";
-	setDebugName(name_);
-#endif
 }
 
 vkn::Image::Image(Image&& other) : context_{ other.context_ }
@@ -109,16 +100,6 @@ VkImageView vkn::Image::createView(const vkn::Image::ViewType& viewType)
 
 	VkImageView view{};
 	vkn::error_check(vkCreateImageView(context_.device->device, &viewInfo, nullptr, &view), "Failed to create the view");
-
-#ifndef NDEBUG
-	VkDebugUtilsObjectNameInfoEXT nameInfo{};
-	nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-	nameInfo.pNext = nullptr;
-	nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
-	nameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
-	nameInfo.pObjectName = std::string{ name_ + getStringViewType(viewType.type) }.c_str();
-	context_.device->setDebugOjectName(nameInfo);
-#endif
 	return view;
 }
 
@@ -128,19 +109,7 @@ const VkMemoryRequirements vkn::Image::getMemoryRequirement() const
 	vkGetImageMemoryRequirements(context_.device->device, image, &requirements);
 	return requirements;
 }
-#ifndef NDEBUG
-void vkn::Image::setDebugName(const std::string& name)
-{
-	VkDebugUtilsObjectNameInfoEXT nameInfo{};
-	nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-	nameInfo.pNext = nullptr;
-	nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
-	nameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
-	nameInfo.pObjectName = name.c_str();
 
-	context_.device->setDebugOjectName(nameInfo);
-}
-#endif
 const std::vector<vkn::Pixel> vkn::Image::content(const vkn::Gpu& gpu, const VkImageAspectFlags& aspect)
 {
 	auto& raw = rawContent(gpu, aspect);

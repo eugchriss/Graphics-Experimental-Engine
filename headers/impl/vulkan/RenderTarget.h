@@ -3,9 +3,12 @@
 #include <memory>
 #include <vector>
 
+#include "../../headers/RenderTarget.h"
+
 #include "CommandBuffer.h"
 #include "Image.h"
 #include "vulkanContext.h"
+#include "vulkan_utils.h"
 #include "glm/glm.hpp"
 
 namespace gee
@@ -44,4 +47,17 @@ namespace gee
 
 		MAKE_REFERENCE(RenderTarget);
 	}
+
+	template<class T> struct ResourceLoader;
+	template<>
+	struct ResourceLoader<vkn::RenderTarget>
+	{
+		static vkn::RenderTarget load(vkn::Context& context, const RenderTarget& target)
+		{
+			 vkn::RenderTarget rt{context, vkn::Mapping::format(target.format), VkExtent2D{.width = target.size.x, .height = target.size.y }, vkn::Mapping::usage(target.usage), vkn::Mapping::layout(target.usage) };
+			 rt.loadOperation = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			 rt.storeOperation = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			 return std::move(rt);
+		}
+	};
 }

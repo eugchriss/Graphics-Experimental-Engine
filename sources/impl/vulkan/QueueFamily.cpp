@@ -74,7 +74,6 @@ vkn::QueueFamily::QueueFamily(const vkn::Gpu& gpu, const VkQueueFlags queueType,
 	vkGetPhysicalDeviceQueueFamilyProperties(gpu.device, &familyPropertyCount, nullptr);
 	std::vector<VkQueueFamilyProperties> familyProperties(familyPropertyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(gpu.device, &familyPropertyCount, std::data(familyProperties));
-
 	bool queueFamilyFound{ false };
 	VkBool32 presentSupported{ VK_FALSE };
 	do

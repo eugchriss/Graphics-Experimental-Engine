@@ -34,7 +34,7 @@ std::shared_ptr<vkn::Fence> vkn::Queue::submit(CommandBuffer& cb, const bool sig
 	return fence;
 }
 
-void vkn::Queue::present(vkn::CommandBuffer& cb, const vkn::Swapchain& swapchain)
+void vkn::Queue::present(vkn::CommandBuffer& cb, vkn::Swapchain& swapchain)
 {
 	auto presentInfo = swapchain.imagePresentInfo(cb.completedSemaphore);
 	vkn::error_check(vkQueuePresentKHR(queue_, &presentInfo), "Failed to present images");

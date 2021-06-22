@@ -2,9 +2,12 @@
 #include <memory>
 #include <unordered_map>
 
+#include "../../headers/utility.h"
+#include "../../headers/texture.h"
+
 #include "Buffer.h"
 #include "DeviceMemory.h"
-#include "CommandBuffer.h"
+#include "CommandPool.h"
 #include "vulkanContext.h"
 #include "vulkan/vulkan.hpp"
 
@@ -28,9 +31,6 @@ namespace gee
 			Image(Image&& image);
 			~Image();
 
-#ifndef NDEBUG
-			void setDebugName(const std::string& name);
-#endif
 			const std::vector<Pixel> content(const vkn::Gpu& gpu, const VkImageAspectFlags& apect = VK_IMAGE_ASPECT_COLOR_BIT);
 			const float rawContentAt(const vkn::Gpu& gpu, const VkDeviceSize offset, const VkImageAspectFlags& apect = VK_IMAGE_ASPECT_COLOR_BIT);
 			const std::vector<float> rawContent(const vkn::Gpu& gpu, const VkImageAspectFlags& apect = VK_IMAGE_ASPECT_COLOR_BIT);
@@ -68,4 +68,38 @@ namespace gee
 			const std::string getStringViewType(const VkImageViewType type)const;
 		};
 	}
+	
+	template<class T> struct ResourceLoader;
+	template<>
+	struct ResourceLoader<vkn::Image>
+	{
+		static vkn::Image load(vkn::Context& context, vkn::CommandPool& cmdPool, const Texture& texture)
+		{
+			const auto& datas = texture.pixels();
+			const auto textureSize = std::size(datas);
+			vkn::Buffer temp{ context, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, textureSize };
+			vkn::DeviceMemory memory{ *context.gpu, *context.device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, temp.getMemorySize() };
+			temp.bind(memory);
+			temp.add(datas);
+
+			VkFormat imageFormat{ VK_FORMAT_R8G8B8A8_SRGB };
+			if (texture.colorSpace() == gee::Texture::ColorSpace::LINEAR)
+			{
+				imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+			}
+
+			const uint32_t layerCount = static_cast<uint32_t>(std::size(texture.offsets()));
+			vkn::Image image{ context, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, imageFormat, VkExtent3D{texture.width(), texture.height(), 1}, layerCount };
+
+			auto& cb = cmdPool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+			cb.begin();
+			image.copyFromBuffer(cb, VK_IMAGE_ASPECT_COLOR_BIT, temp, 0);
+			image.transitionLayout(cb, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			cb.end();
+
+			auto completedFence = context.transferQueue->submit(cb);
+			completedFence->wait();
+			return std::move(image);
+		}
+	};
 }

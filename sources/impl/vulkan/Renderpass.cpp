@@ -107,7 +107,6 @@ void vkn::Renderpass::createRenderpass()
 		subpass.pResolveAttachments = nullptr;
 		subpass.preserveAttachmentCount = std::size(subpassData.preservedAttachments);
 		subpass.pPreserveAttachments = std::data(subpassData.preservedAttachments);
-
 		subpasses.emplace_back(subpass);
 	}
 
@@ -306,8 +305,8 @@ vkn::Renderpass::Renderpass(Renderpass&& other) : context_{ other.context_ }
 	renderpass_ = other.renderpass_;
 	passes_ = std::move(other.passes_);
 	currentFramebuffer = other.currentFramebuffer;
-	framebuffers_ = std::move(framebuffers_);
-	clearValues_ = clearValues_;
+	framebuffers_ = std::move(other.framebuffers_);
+	clearValues_ = other.clearValues_;
 	other.renderpass_ = VK_NULL_HANDLE;
 }
 

@@ -3,10 +3,14 @@
 
 #include "Image.h"
 #include "Pass.h"
+#include "Swapchain.h"
 #include "vulkanContext.h"
 #include "glm/glm.hpp"
 #include "vulkan/vulkan.hpp"
 
+#include "../../headers/Renderpass.h"
+#include "../../headers/RenderTarget.h"
+#include "../../headers/ResourceHolder.h"
 namespace gee
 {
 	namespace vkn
@@ -57,4 +61,51 @@ namespace gee
 		};
 		MAKE_REFERENCE(Renderpass);
 	}
+
+	template <>
+	struct ResourceLoader<vkn::Renderpass>
+	{
+		static vkn::Renderpass load(vkn::Context& context, ResourceHolder<vkn::RenderTarget, ID<RenderTarget>::Type>& renderTargets, vkn::Swapchain& swapchain, const Renderpass& rp)
+		{
+			VkExtent2D frameSize{.width = std::numeric_limits<decltype(VkExtent2D::width)>::max(), .height = std::numeric_limits<decltype(VkExtent2D::height)>::max() };
+			std::vector<vkn::Pass> passes;
+			for (const auto& pass : rp.passes_)
+			{
+				vkn::Pass p{};
+				for (const auto& target : pass.colorTargets_)
+				{
+					p.usesColorTarget(renderTargets.get(ID<RenderTarget>::get(target), context, target));
+					frameSize = min(frameSize, VkExtent2D{.width = target.size.x, .height = target.size.y});
+				}
+				if (pass.useSwapchainTarget_)
+				{
+					auto& swapchainTargets = swapchain.renderTargets();
+					uint32_t swapchainIndex{};
+					for (auto& t : swapchainTargets)
+					{
+						p.usesColorTarget(t, pass.screenTargetIndex_ + swapchainIndex);
+						++swapchainIndex;
+					}
+					
+					frameSize = min(frameSize, swapchain.extent());
+				}
+				for (const auto& target : pass.depthTargets_)
+				{
+					p.usesDepthStencilTarget(renderTargets.get(ID<RenderTarget>::get(target), context, target));
+					frameSize = min(frameSize, VkExtent2D{ .width = target.size.x, .height = target.size.y });
+				}
+				for (const auto& target : pass.inputTargets_)
+				{
+					p.consumesTarget(renderTargets.get(ID<RenderTarget>::get(target), context, target));
+				}
+				passes.emplace_back(std::move(p));
+			}
+			return { context, frameSize, std::move(passes) };
+		}
+	private:
+		static VkExtent2D min(const VkExtent2D& lhs, const VkExtent2D rhs)
+		{
+			return VkExtent2D{ .width = std::min(lhs.width, rhs.width), .height = std::min(lhs.height, rhs.height) };
+		}
+	};
 }

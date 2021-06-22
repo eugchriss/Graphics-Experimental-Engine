@@ -12,6 +12,11 @@ void vkn::Pass::usesColorTarget(RenderTarget& target)
 	colorTargets_.emplace_back(std::ref(target));
 }
 
+void gee::vkn::Pass::usesColorTarget(RenderTarget& target, const size_t index)
+{
+	colorTargets_.insert(std::begin(colorTargets_) + index, std::ref(target));
+}
+
 void vkn::Pass::usesDepthStencilTarget(RenderTarget& target)
 {
 	depthStencilTargets_.emplace_back(std::ref(target));

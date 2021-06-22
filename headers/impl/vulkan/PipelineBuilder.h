@@ -4,7 +4,10 @@
 #include <utility>
 #include <vector>
 
+#include "../../headers/ShaderTechnique.h"
+
 #include "Pipeline.h"
+#include "renderpass.h"
 #include "Shader.h"
 #include "vulkanContext.h"
 
@@ -63,4 +66,24 @@ namespace gee
 			std::vector<vkn::Shader> shaders_{};
 		};
 	}
+
+	template<class T> struct ResourceLoader;
+	template<>
+	struct ResourceLoader<vkn::Pipeline>
+	{
+		static vkn::Pipeline load(vkn::Context& context, const vkn::Renderpass& rp, const gee::ShaderTechnique& technique)
+		{
+			vkn::PipelineBuilder builder{ technique.vertexShaderPath_, technique.fragmentShaderPath_};
+			builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
+			builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
+			builder.addDepthStage(VK_COMPARE_OP_LESS_OR_EQUAL);
+			builder.addColorBlendStage();
+			builder.addMultisampleStage(VK_SAMPLE_COUNT_1_BIT);
+			builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+			builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
+			builder.subpass = static_cast<uint32_t>(technique.passIndex_);
+			builder.renderpass = rp();
+			return builder.get(context);
+		}
+	};
 }

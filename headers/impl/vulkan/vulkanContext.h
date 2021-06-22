@@ -18,7 +18,6 @@ namespace gee
 			Context(Context&&);
 			Context(const Context&) = default;
 			~Context();
-			const bool pushDescriptorEnabled() const;
 			std::shared_ptr<vkn::Instance> instance;
 			std::unique_ptr<vkn::DebugMessenger> debugMessenger;
 			VkSurfaceKHR surface{ VK_NULL_HANDLE };
@@ -29,7 +28,7 @@ namespace gee
 			std::unique_ptr<vkn::Queue> transferQueue;
 		private:
 			friend class ContextBuilder;
-			Context(std::shared_ptr<vkn::Instance>& _instance, std::unique_ptr<vkn::DebugMessenger>& _debugMessenger, const VkSurfaceKHR _surface, std::shared_ptr<vkn::Gpu>& _gpu, std::shared_ptr<vkn::QueueFamily>& _queueFamily, std::unique_ptr<vkn::Device>& _device);
+			Context(std::shared_ptr<vkn::Instance>& _instance, std::unique_ptr<vkn::DebugMessenger> _debugMessenger, const VkSurfaceKHR _surface, std::shared_ptr<vkn::Gpu>& _gpu, std::shared_ptr<vkn::QueueFamily>& _queueFamily, std::unique_ptr<vkn::Device> _device);
 		};
 	}
 }

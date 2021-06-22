@@ -2,7 +2,7 @@
 
 using namespace gee;
 vkn::RenderTarget::RenderTarget(Context& context, const VkFormat fmt, const VkExtent2D& extent, const VkImageUsageFlags usage, const VkImageLayout finalLayout):
-	context_{context}, format{fmt},
+	context_{context}, format{fmt}, extent_{extent},
 	usage_{usage}, finalLayout{finalLayout}
 {
 	
@@ -76,7 +76,7 @@ const VkClearValue vkn::RenderTarget::get_clear_value() const
 	VkClearValue clearValue{};
 	if ((usage_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
 	{
-		clearValue.color = { clearColor.r, clearColor.g, clearColor.b, 1.0f };
+		clearValue.color = { clearColor.r, clearColor.g, clearColor.b, 0.0f };
 	}
 	else if ((usage_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 	{

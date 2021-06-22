@@ -27,6 +27,7 @@ namespace gee
 			Pass(Pass&&) = default;
 			~Pass() = default;
 			void usesColorTarget(RenderTarget& target);
+			void usesColorTarget(RenderTarget& target, const size_t index);
 			void usesDepthStencilTarget(RenderTarget& target);
 			void consumesTarget(RenderTarget& target);
 			std::vector<RenderTargetRef>& colorTargets();

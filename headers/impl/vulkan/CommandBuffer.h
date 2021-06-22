@@ -15,9 +15,6 @@ namespace gee
 		class CommandBuffer
 		{
 		public:
-#ifndef NDEBUG
-			void setDebugName(const std::string&);
-#endif
 			CommandBuffer(Context& context, const VkCommandBuffer cb);
 			CommandBuffer(CommandBuffer&) = delete;
 			CommandBuffer(CommandBuffer&&) = default;

@@ -2,36 +2,38 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 
 namespace gee
 {
-	template<class Factory, class Resource, class Key = std::string>
+	template<class T>
+	struct ResourceLoader
+	{
+		template<class ... Args>
+		static T load(Args&&... args)
+		{
+			return { std::forward<Args>(args)... };
+		}
+	};
+
+	template<class Resource, class Key = std::string>
 	class ResourceHolder
 	{
-		using Container_t = std::unordered_map<Key, Resource>;
 	public:
-		ResourceHolder(Factory&& f);
-		~ResourceHolder() = default;
-
 		Resource& get(const Key& key);
 		template<class ... Args>
-		Resource& get(const Key& key, Args& ...args);
+		Resource& get(const Key& key, Args&&... args);
 
 	private:
+		using Container_t = std::unordered_map<Key, Resource>;
 		Container_t resources_;
-		Factory factory_;
 	};
 }
 
-template<class Factory, class Resource, class Key>
-inline gee::ResourceHolder<Factory, Resource, Key>::ResourceHolder(Factory&& f) : factory_{ std::move(f) }
+template<class Resource, class Key>
+inline Resource& gee::ResourceHolder<Resource, Key>::get(const Key& key)
 {
-}
-
-template<class Factory, class Resource, class Key>
-inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key)
-{
-	auto& result = resources_.find(key);
+	auto result = resources_.find(key);
 	if (result != std::end(resources_))
 	{
 		return result->second;
@@ -40,7 +42,7 @@ inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key
 	{
 		if constexpr (std::is_default_constructible<Resource>::value)
 		{
-			auto& resource = resources_.emplace(key, Resource{});
+			auto resource = resources_.emplace(key, Resource{});
 			return resource.first->second;
 		}
 		else
@@ -49,24 +51,15 @@ inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key
 		}
 	}
 }
-
-template<class Factory, class Resource, class Key>
+template<class Resource, class Key>
 template< class ...Args>
-inline Resource& gee::ResourceHolder<Factory, Resource, Key>::get(const Key& key, Args& ...args)
+inline Resource& gee::ResourceHolder<Resource, Key>::get(const Key& key, Args&&... args)
 {
 	auto result = resources_.find(key);
 	if (result == std::end(resources_))
 	{
-		if constexpr (std::is_copy_constructible<Resource>::value)
-		{
-			auto resource = resources_.emplace(key, factory_.create(std::forward<Args>(args)...));
-			return resource.first->second;
-		}
-		else
-		{
-			auto resource = resources_.emplace(key, std::move(factory_.create(std::forward<Args>(args)...)));
-			return resource.first->second;
-		}
+		auto resource = resources_.emplace(key, std::move(gee::ResourceLoader<Resource>::load(std::forward<Args>(args)...)));
+		return resource.first->second;
 	}
 	else
 	{

@@ -72,7 +72,7 @@ const std::vector<vkn::Shader::PushConstant>& vkn::Shader::pushConstants() const
 
 const std::vector<VkDescriptorPoolSize> vkn::Shader::poolSize() const
 {
-	auto& resources = spirv_->get_shader_resources();
+	auto resources = spirv_->get_shader_resources();
 	std::vector<VkDescriptorPoolSize> poolSizes;
 	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , static_cast<uint32_t>(std::size(resources.uniform_buffers)) + 1 });
 	poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , static_cast<uint32_t>(std::size(resources.sampled_images)) + 10000 });
@@ -108,6 +108,7 @@ const std::pair<std::vector<VkVertexInputAttributeDescription>, uint32_t> vkn::S
 const std::vector<char> vkn::Shader::readFile(const std::string& path)
 {
 	std::ifstream file{ path, std::ios::ate | std::ios::binary };
+	assert(file && "failed to open file");
 	if (!file.is_open())
 	{
 		throw std::runtime_error("failed to open file!");
@@ -137,7 +138,7 @@ void vkn::Shader::getShaderResources(const std::string& path)
 
 void vkn::Shader::introspect(const VkShaderStageFlagBits stage)
 {
-	auto& resources = spirv_->get_shader_resources();
+	auto resources = spirv_->get_shader_resources();
 
 	for (const auto& resource : resources.uniform_buffers)
 	{

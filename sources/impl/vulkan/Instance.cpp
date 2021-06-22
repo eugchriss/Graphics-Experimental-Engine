@@ -7,7 +7,7 @@
 #include "GLFW/glfw3.h"
 
 using namespace gee;
-vkn::Instance::Instance(const std::vector<std::string>& requestedLayers)
+vkn::Instance::Instance(const std::vector<std::string>& requestedLayers, const std::vector<std::string>& extensions)
 {
 	uint32_t count{};
 	vkEnumerateInstanceLayerProperties(&count, nullptr);
@@ -16,14 +16,6 @@ vkn::Instance::Instance(const std::vector<std::string>& requestedLayers)
 	for (auto i = 0u; i < count; ++i)	
 		availableLayers.push_back(layersProps[i].layerName);
 
-	count = 0;
-	auto r = vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
-	std::vector<VkExtensionProperties> extensionsProps(count);
-	r = vkEnumerateInstanceExtensionProperties(nullptr, &count, std::data(extensionsProps));
-	std::vector<const char*> extensions;
-	for (auto i = 0u; i < count; ++i)
-		extensions.push_back(extensionsProps[i].extensionName);
-
 	std::vector<const char*> layers;
 	for (const auto& layer : requestedLayers)
 	{
@@ -31,11 +23,16 @@ vkn::Instance::Instance(const std::vector<std::string>& requestedLayers)
 	}
 	//checkLayerPresence(layers);
 
+	std::vector<const char*> ext;
+	for (auto& e : extensions)
+	{
+		ext.emplace_back(e.c_str());
+	}
 	VkInstanceCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	info.pApplicationInfo = nullptr;
-	info.enabledExtensionCount = std::size(extensions);
-	info.ppEnabledExtensionNames = std::data(extensions);
+	info.enabledExtensionCount = std::size(ext);
+	info.ppEnabledExtensionNames = std::data(ext);
 	info.enabledLayerCount = std::size(layers);
 	info.ppEnabledLayerNames = std::data(layers);
 	vkn::error_check(vkCreateInstance(&info, nullptr, &instance), "Unabled to create an instance");

@@ -1,21 +1,7 @@
 #include "../../headers/impl/vulkan/commandbuffer.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"	
 
-#ifndef NDEBUG
-
 using namespace gee;
-void vkn::CommandBuffer::setDebugName(const std::string& name)
-{
-	VkDebugUtilsObjectNameInfoEXT nameInfo{};
-	nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-	nameInfo.pNext = nullptr;
-	nameInfo.objectType = VK_OBJECT_TYPE_COMMAND_BUFFER;
-	nameInfo.objectHandle = reinterpret_cast<uint64_t>(cb_);
-	nameInfo.pObjectName = name.c_str();
-
-	context_.device->setDebugOjectName(nameInfo);
-}
-#endif 
 
 void vkn::CommandBuffer::attachFence(std::shared_ptr<Fence>& fence)
 {
