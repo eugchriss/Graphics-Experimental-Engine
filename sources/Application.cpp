@@ -130,8 +130,13 @@ bool gee::Application::isRunning()
 	renderer_.start_renderpass(renderpass_);
 	renderer_.use_shader_technique(phongTechnique_);
 	renderer_.update_shader_value(ShaderValue{ .name = "transform_matrices", .address = &mat_, .size = sizeof(glm::mat4) });
-	renderer_.update_shader_value(ShaderTexture{ .name = "colors", .sampler = Sampler{}, .texture = floorTex_});
+	ShaderArrayTexture arrayTexture{ .name = "colors", .sampler = Sampler{} };
+	arrayTexture.add(floorTex_);
+	arrayTexture.add(floorNormalTex_);
+	renderer_.update_shader_value(arrayTexture);
+	auto materialIndex = 1u;
 	renderer_.push_shader_constant(ShaderValue{ .name = "camera", .address = &viewProj, .size = sizeof(viewProj)});
+	renderer_.push_shader_constant(ShaderValue{ .name = "materialIndex", .address = &materialIndex, .size = sizeof(materialIndex)});
 	renderer_.draw(cube);
 	return renderer_.render();
 }

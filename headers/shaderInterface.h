@@ -21,9 +21,12 @@ namespace gee
     };
     struct ShaderArrayTexture
     {
-        ShaderArrayTexture(ShaderArrayTexture&&) = default;
         std::string name;
         Sampler sampler;
-        std::vector<std::optional<const Texture>> textures;
+        std::vector<std::optional<std::reference_wrapper<const Texture>>> textures;
+        void add(const Texture& texture)
+        {
+            textures.emplace_back(texture);
+        }
     };
 }

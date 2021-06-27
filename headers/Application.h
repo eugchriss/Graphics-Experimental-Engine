@@ -49,6 +49,7 @@ namespace gee
 		bool firstMouseUse_{ true };
 
 		Texture floorTex_{ "../assets/textures/floor.jpg" };
+		Texture floorNormalTex_{ "../assets/textures/Floor/normal.png" };
 		glm::vec2 lastPos_{};
 		glm::mat4 mat_{ 1.0f };
 		//functions only

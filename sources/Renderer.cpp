@@ -33,6 +33,7 @@ void gee::Renderer::use_shader_technique(const ShaderTechnique& technique)
 	shaderTechniqueValues_[currentShaderTechnique_] = {};
 	shaderTechniqueTextures_[currentShaderTechnique_] = {};
 	shaderTechniqueConstants_[currentShaderTechnique_] = {};
+	shaderTechniqueArrayTextures_[currentShaderTechnique_] = {};
 }
 
 void gee::Renderer::draw(const Geometry& geometry)
@@ -114,11 +115,11 @@ bool gee::Renderer::render()
 			{
 				auto& arrayTexture = arrayTextureRef.get();
 				vkn::ShaderArrayTexture images{ .name = arrayTexture.name };
-				for (const auto& texture : arrayTexture.textures)
+				for (const auto texture : arrayTexture.textures)
 				{
 					if (texture.has_value())
 					{
-						images.views.emplace_back(textures_.get(ID<Texture>::get(texture.value()), *context_, *cmdPool_, *texture).getView(VK_IMAGE_ASPECT_COLOR_BIT));
+						images.views.emplace_back(textures_.get(ID<Texture>::get(texture->get()), *context_, *cmdPool_, texture->get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
 					}
 					else
 					{
