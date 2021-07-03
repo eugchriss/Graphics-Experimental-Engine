@@ -64,7 +64,7 @@ void gee::Renderer::push_shader_constant(const ShaderValue& val)
 {
 	auto result = shaderTechniqueConstants_.find(currentShaderTechnique_);
 	assert(result != std::end(shaderTechniqueConstants_) && "No shader technique");
-	result->second.emplace_back(vkn::ShaderConstant{ .constant = val, .previousDrawCall = std::size(shaderTechniqueGeometries_[currentShaderTechnique_]) });
+	result->second.emplace_back(vkn::ShaderConstant{ .value = val, .previousDrawCall = std::size(shaderTechniqueGeometries_[currentShaderTechnique_]) });
 }
 
 void gee::Renderer::update_shader_value(const ShaderTexture& texture)
@@ -146,7 +146,7 @@ bool gee::Renderer::render()
 				{
 					for (const auto& pc : shaderTechniqueConstants_[pipelineID])
 					{
-						pipeline.pushConstant(cb, pc.constant.name, pc.constant.address);
+						pipeline.push_constant(cb, pc.value);
 					}
 				}
 

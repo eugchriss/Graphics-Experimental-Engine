@@ -1,26 +1,23 @@
 #include "../headers/Material.h"
 
-gee::Material::Material(const std::string& vertexShaderPath, const std::string& fragmentShaderPath) : vertexShaderPath_{vertexShaderPath}, fragmentShaderPath_{fragmentShaderPath}
+gee::IdDispenser<size_t> gee::Material::idDispenser_{};
+
+gee::Material::Material()
 {
+	id_ = idDispenser_.get();
 }
 
-const std::string& gee::Material::vertexShaderPath() const
+gee::Material::~Material()
 {
-	return vertexShaderPath_;
+	idDispenser_.consumed(id_);
 }
 
-const std::string& gee::Material::geometryShaderPath() const
+void gee::Material::set_property(const MaterialProperty& property, const Texture& texture)
 {
-	return geometryShaderPath_;
+	properties_.emplace(property, texture);
 }
 
-const std::string& gee::Material::fragmentShaderPath() const
+bool gee::Material::operator==(const Material& other) const
 {
-	return fragmentShaderPath_;
-}
-
-void gee::Material::wireframe_on(const bool value)
-{
-	hasChanged_ = true;
-	useWireFrame_ = value;
+	return id_ == other.id_;
 }

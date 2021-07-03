@@ -1,35 +1,42 @@
 #pragma once
-#include <string>
+#include <unordered_map>
 
+#include "ShaderTechnique.h"
+#include "Texture.h"
 #include "utility.h"
 namespace gee
 {
+	enum class MaterialProperty
+	{
+		COLOR,
+		NORMAL,
+		SPECULAR
+	};
 	class Material
 	{
 	public:
-		Material(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
-		const std::string& vertexShaderPath() const;
-		const std::string& geometryShaderPath() const;
-		const std::string& fragmentShaderPath() const;
-		void wireframe_on(const bool value);
+		Material();
+		~Material();
+		void set_property(const MaterialProperty& property, const Texture& texture);
+		const std::unordered_map<MaterialProperty, std::reference_wrapper<const Texture>>& properties() const
+		{
+			return properties_;
+		}
+		bool operator==(const Material& other) const;
 	private:
-		bool hasChanged_{ true };
-		std::string vertexShaderPath_{};
-		std::string geometryShaderPath_{};
-		std::string fragmentShaderPath_{};
-		bool useWireFrame_{ false };
-
 		friend ID<Material>;
+		static gee::IdDispenser<size_t> idDispenser_;
+		size_t id_;
+		std::unordered_map<MaterialProperty, std::reference_wrapper<const Texture>> properties_;
 	};
+
 	template<>
 	struct ID<Material>
 	{
 		using Type = size_t;
-		static auto get(const Material& m)
+		static auto get(const Material& material)
 		{
-			size_t seed{};
-			hash_combine(seed, std::hash<std::string>{}(m.vertexShaderPath_), std::hash<std::string>{}(m.fragmentShaderPath_));
-			return seed;
+			return material.id_;
 		}
 	};
 	MAKE_REFERENCE(Material);

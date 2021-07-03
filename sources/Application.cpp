@@ -60,7 +60,7 @@ void gee::Application::draw(Drawable& drawable)
 	auto result = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& drawableRef) { return ID<Drawable>::get(drawableRef.get()) == ID<Drawable>::get(drawable); });
 	if (result == std::end(drawables_))
 	{
-		drawables_.emplace_back(std::ref(drawable));
+		drawables_.emplace_back(drawable);
 	}
 }
 
@@ -121,22 +121,77 @@ void gee::Application::onMouseButtonEvent(uint32_t button, uint32_t action, uint
 	}
 }
 
+void gee::Application::sort_materials_drawables()
+{
+	for (auto i = 0u; i < std::size(drawables_); ++i)
+	{
+		auto& material = drawables_[i].get().material;
+		auto materialResult = std::find_if(std::begin(materials_), std::end(materials_), [&](auto& mat) {return mat == material; });
+		if (materialResult == std::end(materials_))
+		{
+			materials_.emplace_back(std::cref(material));
+		}
+		materialsDrawables_[ID<Material>::get(material)].emplace_back(i);
+	}
+}
+
+std::vector<gee::ShaderArrayTexture> gee::Application::get_arrayTextures()
+{
+	gee::Sampler sampler{};
+	gee::ShaderArrayTexture colorsArrayTexture{ .name = "colors", .sampler = sampler};
+	gee::ShaderArrayTexture normalsArrayTexture{ .name = "normals", .sampler = sampler};
+
+	drawablesTransforms_.reserve(std::size(drawables_));
+
+	for (const auto& [materialID, drawablesIndices] : materialsDrawables_)
+	{
+		const auto result = std::find_if(std::begin(materials_), std::end(materials_), [&](const auto& mat) {return ID<Material>::get(mat.get()) == materialID; });
+		assert(result != std::end(materials_) && "material ID not matching any actual material");
+
+		const auto& properties = result->get().properties();
+		auto colorPropertyExist = properties.find(MaterialProperty::COLOR);
+		colorPropertyExist != std::end(properties) ? colorsArrayTexture.add(colorPropertyExist->second) : colorsArrayTexture.add_empty_texture();
+		
+		auto normalPropertyExist = properties.find(MaterialProperty::NORMAL);
+		normalPropertyExist != std::end(properties) ? normalsArrayTexture.add(normalPropertyExist->second) : normalsArrayTexture.add_empty_texture();
+
+		for (const auto index : drawablesIndices)
+		{
+			drawablesTransforms_.emplace_back(drawables_[index].get().getTransform());
+		}
+	}
+	return { colorsArrayTexture, normalsArrayTexture };
+}
+
 bool gee::Application::isRunning()
 {
 	auto viewProj = camera_.perspectiveProjection(renderer_.aspect_ratio());
 	viewProj[1][1] *= -1;
 	viewProj *= camera_.pointOfView();
-	auto cube = gee::getCubeGeometry();
 	renderer_.start_renderpass(renderpass_);
 	renderer_.use_shader_technique(phongTechnique_);
-	renderer_.update_shader_value(ShaderValue{ .name = "transform_matrices", .address = &mat_, .size = sizeof(glm::mat4) });
-	ShaderArrayTexture arrayTexture{ .name = "colors", .sampler = Sampler{} };
-	arrayTexture.add(floorTex_);
-	arrayTexture.add(floorNormalTex_);
-	renderer_.update_shader_value(arrayTexture);
-	auto materialIndex = 1u;
-	renderer_.push_shader_constant(ShaderValue{ .name = "camera", .address = &viewProj, .size = sizeof(viewProj)});
-	renderer_.push_shader_constant(ShaderValue{ .name = "materialIndex", .address = &materialIndex, .size = sizeof(materialIndex)});
-	renderer_.draw(cube);
+
+	sort_materials_drawables();
+	auto arrayTextures = get_arrayTextures();
+	renderer_.push_shader_constant(ShaderValue{"camera", viewProj});
+	renderer_.update_shader_value(ShaderValue{ "transform_matrices", drawablesTransforms_ });
+	for (const auto& arrayTexture : arrayTextures)
+	{
+		renderer_.update_shader_value(arrayTexture);
+	}
+	
+	uint32_t materialIndex = 0u;
+	for (const auto& [materialID, drawableIndices] : materialsDrawables_)
+	{
+		renderer_.push_shader_constant(ShaderValue{"materialIndex", materialIndex});
+		for (const auto index : drawableIndices)
+		{
+			renderer_.draw(drawables_[index].get().geometry);
+		}
+		//++materialIndex;
+	}
+	drawables_.clear();
+	materialsDrawables_.clear();
+	drawablesTransforms_.clear();
 	return renderer_.render();
 }

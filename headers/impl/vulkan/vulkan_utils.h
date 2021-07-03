@@ -61,7 +61,7 @@ namespace gee
 	{
 		struct ShaderConstant
 		{
-			gee::ShaderValue constant;
+			gee::ShaderValue value;
 			size_t previousDrawCall{};
 		};
 

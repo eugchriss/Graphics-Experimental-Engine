@@ -120,9 +120,23 @@ const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const
 	return uniforms_;
 }
 
+void gee::vkn::Pipeline::push_constant(vkn::CommandBuffer& cb, const gee::ShaderValue& val)
+{
+	auto result = std::find_if(std::begin(pushConstants_), std::end(pushConstants_), [&](const auto& pc) { return pc.name == val.name(); });
+	if (result == std::end(pushConstants_))
+	{
+		throw std::runtime_error{ "There is no push constant with that name" };
+	}
+	else
+	{
+		assert(result->size == val.size() && "push constant size doesn t match shader's push constant size");
+		vkCmdPushConstants(cb.commandBuffer(), layout_.layout, result->stageFlag, result->offsets[0], result->size, val.datas());
+	}
+}
+
 void gee::vkn::Pipeline::update_shader_value(const gee::ShaderValue& val)
 {
-	auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == val.name; });
+	auto uniform = std::find_if(std::begin(uniforms_), std::end(uniforms_), [&](auto& uniform) { return uniform.name == val.name(); });
 	if (uniform == std::end(uniforms_))
 	{
 		throw std::runtime_error{ "There is no such uniform name within this pipeline" };
@@ -133,7 +147,7 @@ void gee::vkn::Pipeline::update_shader_value(const gee::ShaderValue& val)
 	//update the memory
 	if (uniform->dynamicType == UNIFORM_TYPE::DYNAMIC)
 	{
-		buffer_->update(uniformTypeBufferOffsets_[DYNAMIC] + uniform->offset, val.address, val.size);
+		buffer_->update(uniformTypeBufferOffsets_[DYNAMIC] + uniform->offset, val.datas(), val.size());
 
 		//update the descriptor
 		bufferInfo->offset = uniform->offset;
@@ -141,7 +155,7 @@ void gee::vkn::Pipeline::update_shader_value(const gee::ShaderValue& val)
 	}
 	else
 	{
-		buffer_->update(uniformTypeBufferOffsets_[uniform->dynamicType] + uniform->offset, val.address, val.size);
+		buffer_->update(uniformTypeBufferOffsets_[uniform->dynamicType] + uniform->offset, val.datas(), val.size());
 	}
 
 

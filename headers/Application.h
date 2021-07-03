@@ -10,7 +10,7 @@
 #include "impl/vulkan/CommandPool.h"
 #include "Drawable.h"
 #include "EventDispatcher.h"
-#include "MaterialInstance.h"
+#include "Material.h"
 #include "Renderer.h"
 #include "Renderpass.h"
 #include "ResourceHolder.h"
@@ -42,20 +42,23 @@ namespace gee
 		ShaderTechnique phongTechnique_;
 		gee::EventDispatcher eventDispatcher_;
 		std::vector<DrawableRef> drawables_;
+		std::vector<glm::mat4> drawablesTransforms_;
+		std::vector<std::reference_wrapper<const Material>> materials_;
+		std::unordered_map<ID<Material>::Type, std::vector<size_t>> materialsDrawables_;
 		Camera camera_;
 		//Mouse buttons
 		bool leftButtonPressed_{ false };
 		bool rightButtonPressed_{ false };
 		bool firstMouseUse_{ true };
 
-		Texture floorTex_{ "../assets/textures/floor.jpg" };
-		Texture floorNormalTex_{ "../assets/textures/Floor/normal.png" };
+
 		glm::vec2 lastPos_{};
-		glm::mat4 mat_{ 1.0f };
 		//functions only
 	private:
 		void onMouseMoveEvent(double x, double y);
 		void onMouseScrollEvent(double x, double y);
 		void onMouseButtonEvent(uint32_t button, uint32_t action, uint32_t mods);
+		void sort_materials_drawables();
+		std::vector<gee::ShaderArrayTexture> get_arrayTextures();
 	};
 }

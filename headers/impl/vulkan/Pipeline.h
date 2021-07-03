@@ -45,8 +45,8 @@ namespace gee
 			void bind(vkn::CommandBuffer& cb);
 			void bind_set(CommandBuffer& cb, const uint32_t firstSet, const size_t setCount, const std::vector<uint32_t>& dynamicOffset = {});
 			const std::vector<Uniform> uniforms() const;
-			template<class T>
-			void pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas);
+			void push_constant(vkn::CommandBuffer& cb, const gee::ShaderValue& val);
+
 			template<class T>
 			void updateBuffer(const std::string& resourceName, const T& datas);
 			void update_shader_value(const gee::ShaderValue& val);
@@ -111,27 +111,6 @@ namespace gee
 			write.pBufferInfo = bufferInfo.get();
 
 			uniformsWrites_.emplace_back(write);
-		}
-
-		template<class T>
-		void vkn::Pipeline::pushConstant(vkn::CommandBuffer& cb, const std::string& name, const T& datas)
-		{
-			auto result = std::find_if(std::begin(pushConstants_), std::end(pushConstants_), [&](const auto& pc) { return pc.name == name; });
-			if (result == std::end(pushConstants_))
-			{
-				throw std::runtime_error{ "There is no push constant with that name" };
-			}
-			else
-			{
-				if constexpr (std::is_pointer<T>::value)
-				{
-					vkCmdPushConstants(cb.commandBuffer(), layout_.layout, result->stageFlag, static_cast<uint32_t>(result->offsets[0]), static_cast<uint32_t>(result->size), datas);
-				}
-				else
-				{
-					vkCmdPushConstants(cb.commandBuffer(), layout_.layout, result->stageFlag, result->offsets[0], result->size, &datas);
-				}
-			}
 		}
 	}
 }

@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 
-#include "MaterialInstance.h"
+#include "Material.h"
 #include "Mesh.h"
 #include "Optics.h"
 #include "SpatialTransformation.h"
@@ -14,13 +14,13 @@ namespace gee
 {
 	struct Drawable
 	{
-		Drawable(const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos = glm::vec3{ 0.0f }, const glm::vec3& rot = glm::vec3{ 0.0f });
+		Drawable(const gee::Geometry& geometry, gee::Material& mat, const glm::vec3& pos = glm::vec3{ 0.0f }, const glm::vec3& rot = glm::vec3{ 0.0f });
 		Drawable(Drawable&&) = default;
 		~Drawable();
 		const glm::mat4& getTransform();
 		float scaleFactor{ 1.0f };
+		gee::Material& material;
 		gee::GeometryConstRef geometry;
-		gee::MaterialInstanceRef materialInstance;
 		glm::vec3 position{};
 		glm::vec3 size{ 1.0f };
 		glm::vec3 rotation{};
@@ -37,6 +37,7 @@ namespace gee
 		const float normalizedScaleFactor(const gee::Mesh& mesh);
 	};
 	MAKE_REFERENCE(Drawable);
+	MAKE_CONST_REFERENCE(Drawable);
 
 	template<>
 	struct ID<Drawable>

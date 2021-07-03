@@ -4,8 +4,8 @@
 
 gee::IdDispenser<size_t> gee::Drawable::idDispenser_{};
 
-gee::Drawable::Drawable(const gee::Geometry& geometry, gee::MaterialInstance& materialInstance, const glm::vec3& pos, const glm::vec3& rot) 
- : geometry{geometry}, materialInstance{ materialInstance }, position{pos}, rotation(rot)
+gee::Drawable::Drawable(const gee::Geometry& geometry, gee::Material& mat, const glm::vec3& pos, const glm::vec3& rot) 
+ : geometry{geometry}, material{ mat }, position{pos}, rotation(rot)
 {
 	id = idDispenser_.get();
 

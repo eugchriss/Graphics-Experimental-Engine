@@ -20,8 +20,17 @@ namespace gee
 
 			const VkDeviceSize bind(const VkBuffer buffer);
 			const VkDeviceSize bind(const VkImage image);
-			template<class T>
-			void update(const VkDeviceSize offset, const T data, const VkDeviceSize size);
+			void update(const VkDeviceSize offset, const void* data, const VkDeviceSize size)
+			{
+				if (((location_ & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT)))
+				{
+					memcpy(static_cast<VkDeviceSize*>(baseOffset_) + offset / 8, data, size);
+				}
+				else
+				{
+					throw std::runtime_error{ "Attempting to map a non mappable memory type" };
+				}
+			}
 
 			const float rawContentAt(const VkDeviceSize offset) const;
 			const std::vector<float> rawContent(const VkDeviceSize offset, const VkDeviceSize size) const;
@@ -39,18 +48,5 @@ namespace gee
 
 			static uint32_t allocationCount;
 		};
-		template<class T>
-		inline void DeviceMemory::update(const VkDeviceSize offset, const T datas, const VkDeviceSize size)
-		{
-			if (((location_ & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) || ((location_ & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT)))
-			{
-				assert(std::is_pointer<T>::value && "This function requires a pointer to the datas to update with");
-				memcpy(static_cast<VkDeviceSize*>(baseOffset_) + offset / 8, datas, size);
-			}
-			else
-			{
-				throw std::runtime_error{ "Attempting to map a non mappable memory type" };
-			}
-		}
 	}
 }
