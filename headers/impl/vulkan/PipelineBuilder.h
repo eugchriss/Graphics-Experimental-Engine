@@ -42,6 +42,7 @@ namespace gee
 			void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment);
 			void addDynamicState(const VkDynamicState state);
 			void setPolygonMode(const VkPolygonMode mode);
+			void set_dynamic_alignments(const std::unordered_map<uint32_t, std::vector<size_t>>& dynamicAlignments);
 
 			VkFrontFace frontFace;
 			VkCullModeFlags cullMode;
@@ -64,6 +65,7 @@ namespace gee
 			std::vector<VkDynamicState> dynamicStates_{};
 			std::unordered_map<VkShaderStageFlagBits, std::string> shaderStages_;
 			std::vector<vkn::Shader> shaders_{};
+			std::unordered_map<uint32_t, std::vector<size_t>> setDynamicAlignments_;
 		};
 	}
 
@@ -73,6 +75,7 @@ namespace gee
 	{
 		static vkn::Pipeline load(vkn::Context& context, const vkn::Renderpass& rp, const gee::ShaderTechnique& technique)
 		{
+			const_cast<bool&>(technique.isGPUInitialized_) = true;
 			vkn::PipelineBuilder builder{ technique.vertexShaderPath_, technique.fragmentShaderPath_};
 			builder.addAssemblyStage(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
 			builder.addRaterizationStage(VK_POLYGON_MODE_FILL);
@@ -83,6 +86,7 @@ namespace gee
 			builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 			builder.subpass = static_cast<uint32_t>(technique.passIndex_);
 			builder.renderpass = rp();
+			builder.set_dynamic_alignments(technique.dynamic_alignments());
 			return builder.get(context);
 		}
 	};

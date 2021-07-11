@@ -12,6 +12,8 @@
 gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : renderer_{ name, width, height }, eventDispatcher_{ renderer_.window_handle() }, phongTechnique_{ "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv" }
 {
 	std::cout << "The application has been launched.\n";
+	phongTechnique_.set_dynamic_alignments(0, { 1024 * sizeof(glm::mat4) } );
+
 	RenderTarget depthTarget{ .size = {width, height},
 								.format = D24_UNORM_S8_UINT,
 								.usage = DEPTH,
@@ -44,6 +46,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 				onMouseMoveEvent(x, y);
 			});
 	}
+	drawablesTransforms_.resize(1024*15);
 }
 
 gee::Application::~Application()
@@ -141,8 +144,9 @@ std::vector<gee::ShaderArrayTexture> gee::Application::get_arrayTextures()
 	gee::ShaderArrayTexture colorsArrayTexture{ .name = "colors", .sampler = sampler};
 	gee::ShaderArrayTexture normalsArrayTexture{ .name = "normals", .sampler = sampler};
 
-	drawablesTransforms_.reserve(std::size(drawables_));
+	//drawablesTransforms_.reserve(std::size(drawables_));
 
+	uint32_t materialIndex = 0u;
 	for (const auto& [materialID, drawablesIndices] : materialsDrawables_)
 	{
 		const auto result = std::find_if(std::begin(materials_), std::end(materials_), [&](const auto& mat) {return ID<Material>::get(mat.get()) == materialID; });
@@ -155,10 +159,14 @@ std::vector<gee::ShaderArrayTexture> gee::Application::get_arrayTextures()
 		auto normalPropertyExist = properties.find(MaterialProperty::NORMAL);
 		normalPropertyExist != std::end(properties) ? normalsArrayTexture.add(normalPropertyExist->second) : normalsArrayTexture.add_empty_texture();
 
+		auto drawableIndex = 0u;
 		for (const auto index : drawablesIndices)
 		{
-			drawablesTransforms_.emplace_back(drawables_[index].get().getTransform());
+			drawablesTransforms_[materialIndex * 1024 + drawableIndex] = drawables_[index].get().getTransform();
+			//drawablesTransforms_.emplace_back(drawables_[index].get().getTransform());
+			++drawableIndex;
 		}
+		++materialIndex;
 	}
 	return { colorsArrayTexture, normalsArrayTexture };
 }
@@ -173,7 +181,6 @@ bool gee::Application::isRunning()
 
 	sort_materials_drawables();
 	auto arrayTextures = get_arrayTextures();
-	renderer_.push_shader_constant(ShaderValue{"camera", viewProj});
 	renderer_.update_shader_value(ShaderValue{ "transform_matrices", drawablesTransforms_ });
 	for (const auto& arrayTexture : arrayTextures)
 	{
@@ -183,15 +190,17 @@ bool gee::Application::isRunning()
 	uint32_t materialIndex = 0u;
 	for (const auto& [materialID, drawableIndices] : materialsDrawables_)
 	{
+		renderer_.new_batch();
+		renderer_.push_shader_constant(ShaderValue{"camera", viewProj});
 		renderer_.push_shader_constant(ShaderValue{"materialIndex", materialIndex});
 		for (const auto index : drawableIndices)
 		{
 			renderer_.draw(drawables_[index].get().geometry);
 		}
-		//++materialIndex;
+		++materialIndex;
 	}
 	drawables_.clear();
 	materialsDrawables_.clear();
-	drawablesTransforms_.clear();
+	//drawablesTransforms_.clear();
 	return renderer_.render();
 }

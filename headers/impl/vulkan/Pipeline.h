@@ -19,6 +19,8 @@ namespace gee
 		class Image;
 		class Pipeline
 		{
+			using Set = uint32_t;
+			using Alignments = std::vector<size_t>;
 		public:
 
 			enum UNIFORM_TYPE
@@ -39,11 +41,17 @@ namespace gee
 				UNIFORM_TYPE dynamicType;
 			};
 
-			Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders);
+			struct DescriptorSetOffsets
+			{
+				uint32_t set;
+				std::vector<size_t> offsets;
+			};
+
+			Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders, std::unordered_map<Set, Alignments>&& dynamicAlignments);
 			Pipeline(Pipeline&& other);
 			~Pipeline();
 			void bind(vkn::CommandBuffer& cb);
-			void bind_set(CommandBuffer& cb, const uint32_t firstSet, const size_t setCount, const std::vector<uint32_t>& dynamicOffset = {});
+			void bind_set(CommandBuffer& cb, std::vector<DescriptorSetOffsets>& descriptorSetOffsets);
 			const std::vector<Uniform> uniforms() const;
 			void push_constant(vkn::CommandBuffer& cb, const gee::ShaderValue& val);
 
@@ -70,7 +78,7 @@ namespace gee
 			std::vector<std::shared_ptr<std::vector<VkDescriptorImageInfo>>> imagesInfos_;
 			std::vector<std::shared_ptr<VkDescriptorBufferInfo>> bufferInfos_;
 			std::unique_ptr<Image> dummyImage_;
-
+			std::unordered_map<Set, Alignments> setDynamicAlignments_{};
 			void createBuffers(const VkDeviceSize nonDynamicSize, const VkDeviceSize dynamicSize);
 		};
 

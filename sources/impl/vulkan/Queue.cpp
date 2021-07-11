@@ -29,7 +29,7 @@ std::shared_ptr<vkn::Fence> vkn::Queue::submit(CommandBuffer& cb, const bool sig
 	}
 
 	auto fence = std::make_shared<Fence>(cb.context(), false);
-	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, (*fence)()), "Unabled to command buffer");
+	vkn::error_check(vkQueueSubmit(queue_, 1, &submitInfo, (*fence)()), "Unabled to submit command buffer");
 	cb.attachFence(fence);
 	return fence;
 }

@@ -162,7 +162,7 @@ vkn::Pipeline vkn::PipelineBuilder::get(Context& context)
 		vkn::error_check(vkCreateGraphicsPipelines(context.device->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "Failed to create the pipeline");
 	}
 	shaderStages_.clear();
-	return vkn::Pipeline{ context, pipeline, std::move(pipelineLayout), std::move(shaders_) };
+	return vkn::Pipeline{ context, pipeline, std::move(pipelineLayout), std::move(shaders_), std::move(setDynamicAlignments_) };
 }
 
 void vkn::PipelineBuilder::setShaderVertexStage(const std::string& path)
@@ -277,4 +277,9 @@ void vkn::PipelineBuilder::addDynamicState(const VkDynamicState state)
 void vkn::PipelineBuilder::setPolygonMode(const VkPolygonMode mode)
 {
 	rasterizationCI_.polygonMode = mode;
+}
+
+void gee::vkn::PipelineBuilder::set_dynamic_alignments(const std::unordered_map<uint32_t, std::vector<size_t>>& dynamicAlignments)
+{
+	setDynamicAlignments_ = dynamicAlignments;
 }

@@ -5,7 +5,7 @@
 #include "../../headers/impl/vulkan/Pipeline.h"
 
 using namespace gee;
-vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders) : context_{ context }, pipeline_{ pipeline }, layout_{ std::move(pipelineLayout) }, shaders_{ std::move(shaders) }
+vkn::Pipeline::Pipeline(Context& context, const VkPipeline pipeline, vkn::PipelineLayout&& pipelineLayout, std::vector<vkn::Shader>&& shaders, std::unordered_map<Set, Alignments>&& dynamicAligments) : context_{ context }, pipeline_{ pipeline }, layout_{ std::move(pipelineLayout) }, shaders_{ std::move(shaders) }, setDynamicAlignments_{std::move(dynamicAligments)}
 {
 	dummyImage_ = std::make_unique<vkn::Image>(context_, VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R16_SFLOAT, VkExtent3D{ 1,1,1 });
 	{
@@ -81,6 +81,7 @@ vkn::Pipeline::Pipeline(vkn::Pipeline&& other) : context_{ other.context_ }, lay
 	uniforms_ = std::move(other.uniforms_);
 	pushConstants_ = std::move(other.pushConstants_);
 	dummyImage_ = std::move(other.dummyImage_);
+	setDynamicAlignments_ = std::move(other.setDynamicAlignments_);
 
 	other.pipeline_ = VK_NULL_HANDLE;
 }
@@ -103,16 +104,33 @@ void vkn::Pipeline::bind(vkn::CommandBuffer& cb)
 	vkCmdBindPipeline(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
 }
 
-void vkn::Pipeline::bind_set(CommandBuffer& cb, const uint32_t firstSet, const size_t setCount, const std::vector<uint32_t>& dynamicOffset)
+void vkn::Pipeline::bind_set(CommandBuffer& cb, std::vector<DescriptorSetOffsets>& descriptorSetOffsets)
 {
-	auto& sets = layout_.sets();
-	assert(std::size(sets) >= (firstSet + setCount));
-	boundSets_.clear();
-	for (auto i = firstSet; i < setCount; ++i)
+	if (!std::empty(descriptorSetOffsets))
 	{
-		boundSets_.emplace_back(sets[i]);
+		auto& sets = layout_.sets();
+		assert(std::size(sets) >= (std::size(descriptorSetOffsets)) && "trying to bind more descriptor set than written in the shader");
+		std::sort(std::begin(descriptorSetOffsets), std::end(descriptorSetOffsets), [](const auto& lhs, const auto& rhs) {return lhs.set <= rhs.set; });
+		boundSets_.clear();
+		std::vector<uint32_t> dynamicOffsets;
+		for (const auto descriptorSet : descriptorSetOffsets)
+		{
+			assert(descriptorSet.set <= std::size(sets) && "unknown set");
+			boundSets_.emplace_back(sets[descriptorSet.set]);
+			if (!std::empty(descriptorSet.offsets))
+			{
+				for (auto i = 0u; i < std::size(descriptorSet.offsets); ++i)
+				{
+					auto setHasDynamicAlignment = setDynamicAlignments_.find(descriptorSet.set);
+					assert(setHasDynamicAlignment != std::end(setDynamicAlignments_) && "there is no dynamic alignment for this set");
+
+					assert(i <= std::size(setHasDynamicAlignment->second) && "the number of alignment and offset doesn t match");
+					dynamicOffsets.emplace_back(setHasDynamicAlignment->second[i] * descriptorSet.offsets[i]);
+				}
+			}
+		}
+		vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.layout, descriptorSetOffsets[0].set, std::size(boundSets_), std::data(boundSets_), std::size(dynamicOffsets), std::data(dynamicOffsets));
 	}
-	vkCmdBindDescriptorSets(cb.commandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.layout, firstSet, setCount, std::data(boundSets_), std::size(dynamicOffset), std::data(dynamicOffset));
 }
 
 const std::vector<vkn::Pipeline::Uniform> vkn::Pipeline::uniforms() const

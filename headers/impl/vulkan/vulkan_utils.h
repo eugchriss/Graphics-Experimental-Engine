@@ -62,7 +62,7 @@ namespace gee
 		struct ShaderConstant
 		{
 			gee::ShaderValue value;
-			size_t previousDrawCall{};
+			size_t batchIndex{};
 		};
 
 		struct ShaderTexture

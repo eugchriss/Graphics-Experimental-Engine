@@ -28,6 +28,7 @@ namespace gee
 		~Renderer();
 		void start_renderpass(const Renderpass& rp);
 		void use_shader_technique(const ShaderTechnique& technique);
+		void new_batch();
 		void draw(const Geometry& geometry);
 		void update_shader_value(const ShaderValue& val);
 		void update_shader_value(const ShaderTexture& texture);
@@ -46,6 +47,7 @@ namespace gee
 		std::unique_ptr<vkn::CommandPool> cmdPool_;
 		ID<Renderpass>::Type currentRenderpass_;
 		ID<ShaderTechnique>::Type currentShaderTechnique_;
+		size_t currentBatchIndex_{};
 		ResourceHolder<vkn::Pipeline, ID<ShaderTechnique>::Type> shaderTechniques_;
 		ResourceHolder<vkn::Renderpass, ID<Renderpass>::Type> renderpasses_;
 		ResourceHolder<vkn::RenderTarget, ID<RenderTarget>::Type> renderTargets_;
@@ -53,13 +55,12 @@ namespace gee
 		ResourceHolder<vkn::Image, ID<Texture>::Type> textures_;
 		ResourceHolder<vkn::Sampler, ID<Sampler>::Type> samplers_;
 		std::unordered_map<ID<Renderpass>::Type, std::vector<ID<ShaderTechnique>::Type>> drawList_;
-		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<GeometryConstRef>> shaderTechniqueGeometries_;
+		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<std::vector<std::pair<GeometryConstRef, uint32_t>>>> shaderTechniqueGeometriesBatchs_;
 		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<ShaderValue>> shaderTechniqueValues_;
 		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<vkn::ShaderConstant>> shaderTechniqueConstants_;
 		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<ShaderTexture>> shaderTechniqueTextures_;
 		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<std::reference_wrapper<const ShaderArrayTexture>>> shaderTechniqueArrayTextures_;
-		std::unordered_map<ID<GeometryConstRef>::Type, size_t> geometriesOccurences_;
-
+	
 		Observer_ptr<vkn::CommandBuffer> previousCmdBuffer_{};
 		void create_context();
 	};

@@ -29,27 +29,38 @@ void gee::Renderer::use_shader_technique(const ShaderTechnique& technique)
 	drawList_[currentRenderpass_].emplace_back(currentShaderTechnique_);
 
 	shaderTechniques_.get(currentShaderTechnique_, *context_, renderpasses_.get(currentRenderpass_), technique);
-	shaderTechniqueGeometries_[currentShaderTechnique_] = {};
+	shaderTechniqueGeometriesBatchs_[currentShaderTechnique_] = {};
 	shaderTechniqueValues_[currentShaderTechnique_] = {};
 	shaderTechniqueTextures_[currentShaderTechnique_] = {};
 	shaderTechniqueConstants_[currentShaderTechnique_] = {};
 	shaderTechniqueArrayTextures_[currentShaderTechnique_] = {};
 }
 
+void gee::Renderer::new_batch()
+{
+	currentBatchIndex_ = 0;
+	auto result = shaderTechniqueGeometriesBatchs_.find(currentShaderTechnique_);
+	assert(result != std::end(shaderTechniqueGeometriesBatchs_) && "No shader technique");
+	shaderTechniqueGeometriesBatchs_[currentShaderTechnique_].emplace_back();
+}
+
 void gee::Renderer::draw(const Geometry& geometry)
 {
 	auto geometryID = ID<GeometryConstRef>::get(std::cref(geometry));
-	auto result = shaderTechniqueGeometries_.find(currentShaderTechnique_);
-	assert(result != std::end(shaderTechniqueGeometries_) && "No shader technique");
-	auto alreadyExist = std::find_if(std::begin(result->second), std::end(result->second), [&](auto& geomRef) {return ID<GeometryConstRef>::get(geomRef) == geometryID; });
-	if (alreadyExist != std::end(result->second))
+	auto result = shaderTechniqueGeometriesBatchs_.find(currentShaderTechnique_);
+	assert(result != std::end(shaderTechniqueGeometriesBatchs_) && "No shader technique");
+	auto& batches = shaderTechniqueGeometriesBatchs_[currentShaderTechnique_];
+	assert(!std::empty(batches) && "need to call new_batch() first");
+
+	auto& currentBatch = batches.back();
+	auto alreadyExist = std::find_if(std::begin(currentBatch), std::end(currentBatch), [&](auto& pair) {return ID<GeometryConstRef>::get(pair.first) == geometryID; });
+	if (alreadyExist != std::end(currentBatch))
 	{
-		++geometriesOccurences_[geometryID];
+		alreadyExist->second++;
 	}
 	else
 	{
-		result->second.emplace_back(geometry);
-		geometriesOccurences_[geometryID] = 1;
+		currentBatch.emplace_back(geometry, 1);
 	}
 }
 
@@ -64,7 +75,7 @@ void gee::Renderer::push_shader_constant(const ShaderValue& val)
 {
 	auto result = shaderTechniqueConstants_.find(currentShaderTechnique_);
 	assert(result != std::end(shaderTechniqueConstants_) && "No shader technique");
-	result->second.emplace_back(vkn::ShaderConstant{ .value = val, .previousDrawCall = std::size(shaderTechniqueGeometries_[currentShaderTechnique_]) });
+	result->second.emplace_back(vkn::ShaderConstant{ .value = val, .batchIndex = std::size(shaderTechniqueGeometriesBatchs_[currentShaderTechnique_]) - 1 });
 }
 
 void gee::Renderer::update_shader_value(const ShaderTexture& texture)
@@ -142,25 +153,31 @@ bool gee::Renderer::render()
 				auto& pipeline = shaderTechniques_.get(pipelineID);
 				pipeline.updateUniforms();
 				pipeline.bind(cb);
-				if (!std::empty(shaderTechniqueConstants_[pipelineID]))
+
+				for (auto i = 0u; i < std::size(shaderTechniqueGeometriesBatchs_[pipelineID]); ++i)
 				{
-					for (const auto& pc : shaderTechniqueConstants_[pipelineID])
+					vkn::Pipeline::DescriptorSetOffsets boundSet{ .set = 0 };
+					boundSet.offsets.emplace_back(i);
+					std::vector<vkn::Pipeline::DescriptorSetOffsets> v{ boundSet };
+					pipeline.bind_set(cb, v);
+					const auto& pushConstants = shaderTechniqueConstants_[pipelineID];
+					for (const auto& pushConstant : pushConstants)
 					{
-						pipeline.push_constant(cb, pc.value);
+						if (pushConstant.batchIndex == i)
+						{
+							pipeline.push_constant(cb, pushConstant.value);
+						}
 					}
-				}
+					for (auto& [geometryRef, occurenceCount]  : shaderTechniqueGeometriesBatchs_[pipelineID][i])
+					{
+						auto geometryID = ID<gee::GeometryConstRef>::get(geometryRef);
+						auto& geometry = geometryMemories_.get(geometryID, *context_, geometryRef);
 
-				for (auto geometryRef : shaderTechniqueGeometries_[pipelineID])
-				{
-					auto geometryID = ID<decltype(geometryRef)>::get(geometryRef);
-					auto& geometry = geometryMemories_.get(geometryID, *context_, geometryRef);
+						vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &geometry.vertexBuffer.buffer, &offset);
+						vkCmdBindIndexBuffer(cb.commandBuffer(), geometry.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-					vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &geometry.vertexBuffer.buffer, &offset);
-					vkCmdBindIndexBuffer(cb.commandBuffer(), geometry.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-					//material set = 0 and no dynamic alignment
-					pipeline.bind_set(cb, 0, 1, {0});
-					vkCmdDrawIndexed(cb.commandBuffer(), geometry.indicesCount, static_cast<uint32_t>(geometriesOccurences_[geometryID]), 0, 0, 0);
+						vkCmdDrawIndexed(cb.commandBuffer(), geometry.indicesCount, occurenceCount, 0, 0, 0);
+					}
 				}
 			}
 			rp.end(cb);
@@ -171,6 +188,7 @@ bool gee::Renderer::render()
 		context_->graphicsQueue->present(cb, *swapchain_);
 
 		drawList_.clear();
+		shaderTechniqueGeometriesBatchs_.clear();
 		previousCmdBuffer_.reset(&cb);
 	}
 	return window_.isOpen();
