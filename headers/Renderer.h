@@ -29,6 +29,7 @@ namespace gee
 		void start_renderpass(const Renderpass& rp);
 		void use_shader_technique(const ShaderTechnique& technique);
 		void new_batch();
+		void render_gui();
 		void draw(const Geometry& geometry);
 		void update_shader_value(const ShaderValue& val);
 		void update_shader_value(const ShaderTexture& texture);
@@ -41,6 +42,7 @@ namespace gee
 		float aspect_ratio() const;
 	private:
 		gee::Window window_;
+		bool renderGui_{ false };
 		VkRect2D windowExtent_;
 		std::unique_ptr<vkn::Context> context_;
 		std::unique_ptr<vkn::Swapchain> swapchain_;

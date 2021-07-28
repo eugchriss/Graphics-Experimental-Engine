@@ -5,8 +5,8 @@
 #include <sstream>
 
 #include "../headers/Application.h"
-#include "../headers/impl/vulkan/imgui_impl_glfw.h"
-#include "../headers/impl/vulkan/imgui_impl_vulkan.h"
+#include "../libs/imgui/backends/imgui_impl_glfw.h"
+#include "../libs/imgui/backends/imgui_impl_vulkan.h"
 #include "../headers/impl/vulkan/vulkanContextBuilder.h"
 
 gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : renderer_{ name, width, height }, eventDispatcher_{ renderer_.window_handle() }, phongTechnique_{ "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv" }
@@ -24,6 +24,7 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 	colorPass.add_depth_target(depthTarget);
 
 	renderpass_.add_pass(colorPass);
+	renderpass_.add_gui_pass();
 
 	{
 		eventDispatcher_.addWindowResizeCallback([&](const uint32_t w, const uint32_t h)
@@ -33,17 +34,29 @@ gee::Application::Application(const std::string& name, const uint32_t width, con
 			});
 		eventDispatcher_.addMouseScrollCallback([&](double x, double y)
 			{
-				onMouseScrollEvent(x, y);
+				ImGuiIO& io = ImGui::GetIO();
+				if (!io.WantCaptureMouse)
+				{
+					onMouseScrollEvent(x, y);
+				}
 			});
 		eventDispatcher_.addMouseButtonCallback([&](uint32_t button, uint32_t action, uint32_t mods)
 			{
-				onMouseButtonEvent(button, action, mods);
-				firstMouseUse_ = true;
+				ImGuiIO& io = ImGui::GetIO();
+				if (!io.WantCaptureMouse)
+				{
+					onMouseButtonEvent(button, action, mods);
+					firstMouseUse_ = true;
+				}
 
 			});
 		eventDispatcher_.addMouseMoveCallback([&](double x, double y)
 			{
-				onMouseMoveEvent(x, y);
+				ImGuiIO& io = ImGui::GetIO();
+				if (!io.WantCaptureMouse)
+				{
+					onMouseMoveEvent(x, y);
+				}
 			});
 	}
 	drawablesTransforms_.resize(1024*15);
@@ -60,7 +73,7 @@ void gee::Application::setCameraPosition(const glm::vec3& position)
 
 void gee::Application::draw(Drawable& drawable)
 {
-	auto result = std::find_if(std::begin(drawables_), std::end(drawables_), [&](const auto& drawableRef) { return ID<Drawable>::get(drawableRef.get()) == ID<Drawable>::get(drawable); });
+	auto result = std::find(std::begin(drawables_), std::end(drawables_), drawable);
 	if (result == std::end(drawables_))
 	{
 		drawables_.emplace_back(drawable);
@@ -155,7 +168,7 @@ std::vector<gee::ShaderArrayTexture> gee::Application::get_arrayTextures()
 		const auto& properties = result->get().properties();
 		auto colorPropertyExist = properties.find(MaterialProperty::COLOR);
 		colorPropertyExist != std::end(properties) ? colorsArrayTexture.add(colorPropertyExist->second) : colorsArrayTexture.add_empty_texture();
-		
+
 		auto normalPropertyExist = properties.find(MaterialProperty::NORMAL);
 		normalPropertyExist != std::end(properties) ? normalsArrayTexture.add(normalPropertyExist->second) : normalsArrayTexture.add_empty_texture();
 
@@ -163,7 +176,6 @@ std::vector<gee::ShaderArrayTexture> gee::Application::get_arrayTextures()
 		for (const auto index : drawablesIndices)
 		{
 			drawablesTransforms_[materialIndex * 1024 + drawableIndex] = drawables_[index].get().getTransform();
-			//drawablesTransforms_.emplace_back(drawables_[index].get().getTransform());
 			++drawableIndex;
 		}
 		++materialIndex;
@@ -186,7 +198,7 @@ bool gee::Application::isRunning()
 	{
 		renderer_.update_shader_value(arrayTexture);
 	}
-	
+
 	uint32_t materialIndex = 0u;
 	for (const auto& [materialID, drawableIndices] : materialsDrawables_)
 	{
@@ -199,6 +211,16 @@ bool gee::Application::isRunning()
 		}
 		++materialIndex;
 	}
+	{
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		ImGui::Begin("test");
+		ImGui::LabelText("size", "label");
+		ImGui::End();
+	}
+	renderer_.render_gui();
+
 	drawables_.clear();
 	materialsDrawables_.clear();
 	//drawablesTransforms_.clear();

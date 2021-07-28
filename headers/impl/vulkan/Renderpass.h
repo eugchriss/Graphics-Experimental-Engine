@@ -25,23 +25,26 @@ namespace gee
 		class Renderpass
 		{
 		public:
-			Renderpass(Context& context, const VkExtent2D& extent, std::vector<Pass>&& passes, const uint32_t framebufferCount = 2);
+			Renderpass(Context& context, const VkExtent2D& extent, std::vector<Pass>&& passes, bool usesGui = false, const uint32_t framebufferCount = 2);
 			Renderpass(Renderpass&&);
 			~Renderpass();
-			const VkRenderPass& operator()() const;
-			const uint32_t passesCount() const;
 			void resize(const glm::u32vec2& newSize);
 			void begin(vkn::CommandBuffer& cb, const VkRect2D& renderArea, const VkSubpassContents subpassContent = VK_SUBPASS_CONTENTS_INLINE);
 			void end(vkn::CommandBuffer& cb);
+			VkRenderPass get() const;
+			void render_gui(vkn::CommandBuffer& cb);
+			void next_pass(vkn::CommandBuffer& cb);
 		private:
 			Context& context_;
 			VkRenderPass renderpass_{ VK_NULL_HANDLE };
+			bool usesGui_;
 			uint32_t currentFramebuffer{};
 			uint32_t currentPass_{};
 			std::vector<VkFramebuffer> framebuffers_;
 			std::vector<Pass> passes_;
 			std::vector<VkClearValue> clearValues_;
 			std::vector<VkWriteDescriptorSet> shaderWrites_;
+			VkDescriptorPool imGuiDescriptorPool_{ VK_NULL_HANDLE };
 
 			std::vector<RenderTargetRef> getUniqueRenderTargets();
 			void createRenderpass();
@@ -56,8 +59,9 @@ namespace gee
 			using RenderTargetAttachmentMap = std::unordered_map<size_t, size_t>;
 			const std::tuple<AttachmentDescriptions, RenderTargetAttachmentMap> getAttachments(const std::vector<RenderTargetRef>& targets) const;
 			const std::vector<SubpassDatas> getSubpassesDatas(const std::vector<RenderTargetRef>& targets, const RenderTargetAttachmentMap& renderTargetAttachmentMap, const uint32_t attachmentCount);
-			const std::vector<VkSubpassDependency> findDependencies(const std::vector<RenderTargetRef>& targets);
+			const std::vector<VkSubpassDependency> findDependencies(const std::vector<SubpassDatas>& subpasses, const std::vector<RenderTargetRef>& renderTargets);
 			void createFramebuffers(const uint32_t framebufferCount, const VkExtent2D& extent);
+			void create_imgui_context();
 		};
 		MAKE_REFERENCE(Renderpass);
 	}
@@ -100,7 +104,19 @@ namespace gee
 				}
 				passes.emplace_back(std::move(p));
 			}
-			return { context, frameSize, std::move(passes) };
+			if (rp.usesGui_)
+			{
+				vkn::Pass guiPass{};
+				auto & swapchainTargets = swapchain.renderTargets();
+				uint32_t swapchainIndex{};
+				for (auto& t : swapchainTargets)
+				{
+					guiPass.usesColorTarget(t, swapchainIndex);
+					++swapchainIndex;
+				};
+				passes.emplace_back(std::move(guiPass));
+			}
+			return { context, frameSize, std::move(passes), rp.usesGui_ };
 		}
 	private:
 		static VkExtent2D min(const VkExtent2D& lhs, const VkExtent2D rhs)

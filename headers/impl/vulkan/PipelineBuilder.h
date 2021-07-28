@@ -85,7 +85,7 @@ namespace gee
 			builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 			builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 			builder.subpass = static_cast<uint32_t>(technique.passIndex_);
-			builder.renderpass = rp();
+			builder.renderpass = rp.get();
 			builder.set_dynamic_alignments(technique.dynamic_alignments());
 			return builder.get(context);
 		}

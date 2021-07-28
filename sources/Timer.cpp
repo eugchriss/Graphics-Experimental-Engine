@@ -1,30 +1,40 @@
 #include "../headers/Timer.h"
 
-gee::Timer::Timer(const std::string& name): name_{name}
+gee::Timer::Timer()
 {
 	reset();
 }
-
-const std::string& gee::Timer::name() const
+void gee::Timer::set_timestamp()
 {
-	return name_;
+	timestampTime_ = std::chrono::system_clock::now();
 }
 
 void gee::Timer::reset()
 {
 	referenceTime_ = std::chrono::system_clock::now();
+	timestampTime_ = referenceTime_;
 }
 
-const float gee::Timer::ellapsedMs() const
+const double gee::Timer::ellapsed_time_ms() const
 {
-	auto now = std::chrono::system_clock::now();
-	auto ellapsed = now - referenceTime_;
-	return std::chrono::duration_cast<std::chrono::nanoseconds>(ellapsed).count() / 1000000.0f;
+	std::chrono::duration<double, std::milli> ellapsed = std::chrono::system_clock::now() - timestampTime_;
+	return ellapsed.count();
 }
 
-const long long gee::Timer::ellapsedSec() const
+const double gee::Timer::ellapsed_time_s() const
 {
-	auto now = std::chrono::system_clock::now();
-	auto ellapsed = now - referenceTime_;
-	return std::chrono::duration_cast<std::chrono::seconds>(ellapsed).count();
+	std::chrono::duration<double> ellapsed = std::chrono::system_clock::now() - timestampTime_;
+	return ellapsed.count();
+}
+
+const double gee::Timer::absolute_time_ms() const
+{
+	std::chrono::duration<double, std::milli> ellapsed = std::chrono::system_clock::now() - referenceTime_;
+	return ellapsed.count();
+}
+
+const double gee::Timer::absolute_time_s() const
+{
+	std::chrono::duration<double> ellapsed = std::chrono::system_clock::now() - referenceTime_;
+	return ellapsed.count();
 }

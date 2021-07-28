@@ -2,13 +2,19 @@
 #include <optional>
 #include <unordered_map>
 
+#include "../../libs/imgui/backends/imgui_impl_glfw.h"
+#include "../../libs/imgui/backends/imgui_impl_vulkan.h"
 #include "../../headers/impl/vulkan/Renderpass.h"
 
 using namespace gee;
-vkn::Renderpass::Renderpass(Context& context, const VkExtent2D& extent, std::vector<Pass>&& passes, const uint32_t framebufferCount) : 
-	context_{ context }, passes_{std::move(passes)}
+vkn::Renderpass::Renderpass(Context& context, const VkExtent2D& extent, std::vector<Pass>&& passes, bool usesGui, const uint32_t framebufferCount) :
+	context_{ context }, passes_{std::move(passes)}, usesGui_{usesGui}
 {
 	createRenderpass();
+	if (usesGui_)
+	{
+		create_imgui_context();
+	}
 	createFramebuffers(framebufferCount, extent);
 	auto uniqueRenderTargets = getUniqueRenderTargets();
 	bool presentClearInserted{ false };
@@ -58,6 +64,38 @@ void vkn::Renderpass::end(vkn::CommandBuffer& cb)
 	vkCmdEndRenderPass(cb.commandBuffer());
 	++currentFramebuffer;
 	currentFramebuffer %= std::size(framebuffers_);
+	currentPass_ = 0;
+}
+
+VkRenderPass gee::vkn::Renderpass::get() const
+{
+	return renderpass_;
+}
+
+void gee::vkn::Renderpass::render_gui(vkn::CommandBuffer& cb)
+{
+	if (usesGui_)
+	{
+		while (currentPass_ < std::size(passes_) - 1)
+		{
+			next_pass(cb);
+		}
+		ImGui::Render();
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb.commandBuffer());
+	}
+}
+
+void gee::vkn::Renderpass::next_pass(vkn::CommandBuffer& cb)
+{
+	if (currentPass_ < std::size(passes_) - 1)
+	{
+		vkCmdNextSubpass(cb.commandBuffer(), VK_SUBPASS_CONTENTS_INLINE);
+		++currentPass_;
+	}
+	else
+	{
+		throw std::runtime_error{ "Reached the renderpass'passes count" };
+	}
 }
 
 std::vector<vkn::RenderTargetRef> vkn::Renderpass::getUniqueRenderTargets()
@@ -91,7 +129,7 @@ void vkn::Renderpass::createRenderpass()
 	auto uniqueRenderTargets = getUniqueRenderTargets();
 	auto [attachments, renderTargetAttachmentMap] = getAttachments(uniqueRenderTargets);
 	auto subpassesDatas = getSubpassesDatas(uniqueRenderTargets, renderTargetAttachmentMap, std::size(attachments));
-	auto dependencies = findDependencies(uniqueRenderTargets);
+	auto dependencies = findDependencies(subpassesDatas, uniqueRenderTargets);
 
 	std::vector<VkSubpassDescription> subpasses;
 	for (const auto& subpassData : subpassesDatas)
@@ -110,6 +148,7 @@ void vkn::Renderpass::createRenderpass()
 		subpasses.emplace_back(subpass);
 	}
 
+	//TODO : add subpasses dependencies
 	VkRenderPassCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	info.pNext = nullptr;
@@ -235,10 +274,57 @@ const std::vector<vkn::Renderpass::SubpassDatas> vkn::Renderpass::getSubpassesDa
 	return subpassesDatas;
 }
 
-const std::vector<VkSubpassDependency> vkn::Renderpass::findDependencies(const std::vector<RenderTargetRef>& targets)
+const std::vector<VkSubpassDependency> vkn::Renderpass::findDependencies(const std::vector<SubpassDatas>& subpasses, const std::vector<RenderTargetRef>& targets)
 {
 	std::vector<VkSubpassDependency> dependencies;
+	std::unordered_map<uint32_t, std::vector<SubpassAttachmentUsage>> attachmentUsages;
 
+	for (auto i = 0u; i < std::size(passes_); ++i)
+	{
+		const auto& pass = subpasses[i];
+		vkn::SubpassAttachmentUsage usage{};
+		usage.subpassIndex = i;
+		for (const auto& attachment : pass.inputAttachments)
+		{
+			usage.stageFlag = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; //Assuming that for now all input attachments are consumed in the frag shader
+			usage.accessFlag = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+			attachmentUsages[attachment.attachment].push_back(usage);
+		}
+		for (const auto& attachment : pass.colorAttachments)
+		{
+			usage.stageFlag = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			usage.accessFlag = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			attachmentUsages[attachment.attachment].push_back(usage);
+		}
+		for (const auto& attachment : pass.depthStencilAttachments)
+		{
+			usage.stageFlag = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			usage.accessFlag = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			attachmentUsages[attachment.attachment].push_back(usage);
+		}
+	}
+
+	for (const auto& [attachment, usages] : attachmentUsages)
+	{
+		if (std::size(usages) > 1)
+		{
+			for (auto i = 0u; i < std::size(usages) - 1; ++i)
+			{
+				auto& src = usages[i];
+				auto& dst = usages[i + 1];
+
+				VkSubpassDependency dependency{};
+				dependency.srcSubpass = src.subpassIndex;
+				dependency.srcStageMask = src.stageFlag;
+				dependency.srcAccessMask = src.accessFlag;
+				dependency.dstSubpass = dst.subpassIndex;
+				dependency.dstStageMask = dst.stageFlag;
+				dependency.dstAccessMask = dst.accessFlag;
+				dependency.dependencyFlags = 0;
+				dependencies.push_back(dependency);
+			}
+		}
+	}
 	return dependencies;
 }
 
@@ -267,7 +353,7 @@ void vkn::Renderpass::createFramebuffers(const uint32_t framebufferCount, const 
 	{
 		presentAttachmentIndex.emplace(std::distance(std::begin(renderpassAttachments), result));
 	}
-	
+
 	VkFramebufferCreateInfo fbInfo{};
 	fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	fbInfo.pNext = nullptr;
@@ -300,14 +386,70 @@ void vkn::Renderpass::createFramebuffers(const uint32_t framebufferCount, const 
 	}
 }
 
+void gee::vkn::Renderpass::create_imgui_context()
+{
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+
+	VkDescriptorPoolSize pool_sizes[] =
+	{
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
+
+	VkDescriptorPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.pNext = nullptr;
+	poolInfo.flags = 0;
+	poolInfo.maxSets = 1000 * std::size(pool_sizes);
+	poolInfo.poolSizeCount = std::size(pool_sizes);
+	poolInfo.pPoolSizes = std::data(pool_sizes);
+	vkn::error_check(vkCreateDescriptorPool(context_.device->device, &poolInfo, nullptr, &imGuiDescriptorPool_), "Unabled to create imgui descriptor pool");
+
+	const auto imageCount = 3;
+	ImGui_ImplVulkan_InitInfo initInfo{};
+	initInfo.Instance = context_.instance->instance;
+	initInfo.PhysicalDevice = context_.gpu->device;
+	initInfo.Device = context_.device->device;
+	initInfo.QueueFamily = context_.queueFamily->familyIndex();
+	initInfo.Queue = context_.graphicsQueue->queue();
+	initInfo.PipelineCache = VK_NULL_HANDLE;
+	initInfo.DescriptorPool = imGuiDescriptorPool_;
+	initInfo.Allocator = nullptr;
+	initInfo.MinImageCount = imageCount;
+	initInfo.ImageCount = imageCount;
+	initInfo.CheckVkResultFn = nullptr;
+	initInfo.Subpass = std::size(passes_) - 1;
+	ImGui_ImplVulkan_Init(&initInfo, renderpass_);
+
+	CommandPool pool{ context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT };
+	auto& cb = pool.getCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	cb.begin();
+	ImGui_ImplVulkan_CreateFontsTexture(cb.commandBuffer());
+	cb.end();
+	auto completedFence = context_.transferQueue->submit(cb);
+	completedFence->wait();
+}
+
 vkn::Renderpass::Renderpass(Renderpass&& other) : context_{ other.context_ }
 {
 	renderpass_ = other.renderpass_;
+	imGuiDescriptorPool_ = other.imGuiDescriptorPool_;
 	passes_ = std::move(other.passes_);
 	currentFramebuffer = other.currentFramebuffer;
 	framebuffers_ = std::move(other.framebuffers_);
 	clearValues_ = other.clearValues_;
 	other.renderpass_ = VK_NULL_HANDLE;
+	other.imGuiDescriptorPool_ = VK_NULL_HANDLE;
 }
 
 vkn::Renderpass::~Renderpass()
@@ -320,16 +462,13 @@ vkn::Renderpass::~Renderpass()
 	{
 		vkDestroyFramebuffer(context_.device->device, fb, nullptr);
 	}
-}
-
-const VkRenderPass& vkn::Renderpass::operator()() const
-{
-	return renderpass_;
-}
-
-const uint32_t vkn::Renderpass::passesCount() const
-{
-	return static_cast<uint32_t>(std::size(passes_));
+	if (imGuiDescriptorPool_ != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorPool(context_.device->device, imGuiDescriptorPool_, nullptr);
+		ImGui_ImplVulkan_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+	}
 }
 
 void vkn::Renderpass::resize(const glm::u32vec2& newSize)

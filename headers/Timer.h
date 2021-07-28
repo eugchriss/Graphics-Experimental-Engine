@@ -1,19 +1,20 @@
 #pragma once
 #include <chrono>
-#include <string>
 
 namespace gee
 {
 	class Timer
 	{
 	public:
-		Timer(const std::string& name);
-		const std::string& name() const;
+		Timer();
+		void set_timestamp();
 		void reset();
-		const float ellapsedMs() const;
-		const long long ellapsedSec() const;
+		const double ellapsed_time_ms() const;
+		const double ellapsed_time_s() const;
+		const double absolute_time_ms() const;
+		const double absolute_time_s() const;
 	private:
-		std::string name_;
 		std::chrono::system_clock::time_point referenceTime_{};
+		std::chrono::system_clock::time_point timestampTime_{};
 	};
 }

@@ -17,16 +17,43 @@ gee::Drawable::Drawable(const gee::Geometry& geometry, gee::Material& mat, const
 	size /= scaleFactor;
 }
 
+gee::Drawable::Drawable(Drawable&& other): geometry{std::move(other.geometry)}, material{other.material}
+{
+	other.shouldDeleteId_ = false;
+	position = other.position;
+	rotation = other.rotation;
+	size = other.size;
+	scaleFactor = other.scaleFactor;
+	lastPosition_ = other.lastPosition_;
+	lastRotation_ = other.lastRotation_;
+	lastSize_ = other.lastSize_;
+	id = other.id;
+}
+
 gee::Drawable::~Drawable()
 {
-	idDispenser_.consumed(id);
+	if (shouldDeleteId_)
+	{
+		idDispenser_.consumed(id);
+	}
 }
 
 const glm::mat4& gee::Drawable::getTransform()
 {
 	if (position != lastPosition_)
 	{
-		transform_.translate(position);
+		if (position.x != lastPosition_.x)
+		{
+			transform_.translate(glm::vec3{ position.x - lastPosition_.x, 0.0f, 0.0f});
+		}
+		if (position.y != lastPosition_.y)
+		{
+			transform_.translate(glm::vec3{ 0.0f, position.y - lastPosition_.y, 0.0f});
+		}
+		if (position.z != lastPosition_.z)
+		{
+			transform_.translate(glm::vec3{ 0.0f, 0.0f, position.z - lastPosition_.z });
+		}
 		lastPosition_ = position;
 	}
 	if (size != lastSize_)
@@ -43,6 +70,11 @@ const glm::mat4& gee::Drawable::getTransform()
 		lastRotation_ = rotation;
 	}
 	return transform_.value();
+}
+
+bool gee::Drawable::operator==(const Drawable& other) const 
+{
+	return id == other.id;
 }
 
 const float gee::Drawable::normalizedScaleFactor(const gee::Mesh& mesh)

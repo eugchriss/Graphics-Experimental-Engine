@@ -1,8 +1,15 @@
 #include "..\headers\Renderer.h"
-
+#include "../../headers/impl/vulkan/imgui_impl_glfw.h"
+#include "../../headers/impl/vulkan/imgui_impl_vulkan.h"
 #include "../headers/impl/vulkan/vulkanContextBuilder.h"
+
 gee::Renderer::Renderer(const std::string& windowTitle, const uint32_t width, const uint32_t height) : window_{ windowTitle, width, height }
 {
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui_ImplGlfw_InitForVulkan(window_.window(), true);
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	windowExtent_ = VkRect2D{ .offset = {.x = 0, .y = 0},
 							  .extent = {.width = width, .height = height} };
 	create_context();
@@ -42,6 +49,11 @@ void gee::Renderer::new_batch()
 	auto result = shaderTechniqueGeometriesBatchs_.find(currentShaderTechnique_);
 	assert(result != std::end(shaderTechniqueGeometriesBatchs_) && "No shader technique");
 	shaderTechniqueGeometriesBatchs_[currentShaderTechnique_].emplace_back();
+}
+
+void gee::Renderer::render_gui()
+{
+	renderGui_ = true;
 }
 
 void gee::Renderer::draw(const Geometry& geometry)
@@ -179,6 +191,10 @@ bool gee::Renderer::render()
 						vkCmdDrawIndexed(cb.commandBuffer(), geometry.indicesCount, occurenceCount, 0, 0, 0);
 					}
 				}
+			}
+			if (renderGui_)
+			{
+				rp.render_gui(cb);
 			}
 			rp.end(cb);
 		}
