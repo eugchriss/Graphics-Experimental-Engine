@@ -1,14 +1,16 @@
 #include <cassert>
+#include "../headers/MeshLoader.h"
+#include "../headers/StaticMesh.h"
 
-#include "../headers/ModelLoader.h"
-
-gee::ModelLoader::ModelLoader(unsigned int flags) : flags_{ flags }
+gee::MeshLoader::MeshLoader(gee::ResourceHolder<gee::Texture>& textureHolder, int flags) : textureHolder_{textureHolder}, flags_{flags}
 {
 }
 
-gee::Mesh gee::ModelLoader::load(const std::string& path)
+gee::MeshLoader::MeshLoader(int flags): flags_{flags}
+{}
+gee::StaticMesh gee::MeshLoader::load(const std::string& path)
 {
-	meshPath_ = path;
+	path_ = path;
 	Assimp::Importer importer{};
 	auto scene = importer.ReadFile(path, flags_);
 	if (!scene)
@@ -17,20 +19,11 @@ gee::Mesh gee::ModelLoader::load(const std::string& path)
 		throw std::runtime_error{ "Assimp loader failed: " + error };
 	}
 	processNode(scene, scene->mRootNode);
-	return Mesh{ scene->GetShortFilename(path.c_str()), std::move(vertices_), std::move(indices_)};
+	return StaticMesh{ std::move(gee::Geometry{std::move(vertices_), std::move(indices_)}), std::move(material_)};
 }
 
-gee::Mesh gee::ModelLoader::create(const std::string& path)
-{
-	return load(path);
-}
 
-gee::Mesh gee::ModelLoader::create(std::function<gee::Mesh()> customMesh)
-{
-	return customMesh();
-}
-
-void gee::ModelLoader::processNode(const aiScene* scene, const aiNode* node)
+void gee::MeshLoader::processNode(const aiScene* scene, const aiNode* node)
 {
 	for (auto i = 0u; i < node->mNumMeshes; ++i)
 	{
@@ -42,7 +35,7 @@ void gee::ModelLoader::processNode(const aiScene* scene, const aiNode* node)
 	}
 }
 
-void gee::ModelLoader::processMesh(const aiScene* scene, const aiMesh* mesh)
+void gee::MeshLoader::processMesh(const aiScene* scene, const aiMesh* mesh)
 {
 	for (auto i = 0u; i < mesh->mNumVertices; ++i)
 	{
@@ -81,14 +74,23 @@ void gee::ModelLoader::processMesh(const aiScene* scene, const aiMesh* mesh)
 	}
 }
 
-void gee::ModelLoader::processMaterial(const aiMaterial* mat)
+void gee::MeshLoader::processMaterial(const aiMaterial* mat)
 {
-	const auto& diffuseTexPath = getTexturePath(*mat, aiTextureType_DIFFUSE, "../assets/default_textures/diffuse.png");
-	const auto& normalTexPath = getTexturePath(*mat, aiTextureType_HEIGHT, "../assets/default_textures/normal.png");
-	const auto& specularTexPath = getTexturePath(*mat, aiTextureType_SPECULAR, "../assets/default_textures/specular.png");
+	if (textureHolder_)
+	{
+		material_.set_property(gee::MaterialProperty::COLOR, textureHolder_->get().get(path_.string() + "_color", getTexturePath(*mat, aiTextureType_DIFFUSE, "../assets/default_textures/diffuse.png")));
+		material_.set_property(gee::MaterialProperty::NORMAL, textureHolder_->get().get(path_.string() + "_normal", getTexturePath(*mat, aiTextureType_HEIGHT, "../assets/default_textures/normal.png")));
+		material_.set_property(gee::MaterialProperty::SPECULAR, textureHolder_->get().get(path_.string() + "_specular", getTexturePath(*mat, aiTextureType_SPECULAR, "../assets/default_textures/specular.png")));
+	}
+	else
+	{
+		material_.set_property(gee::MaterialProperty::COLOR, gee::Texture{ getTexturePath(*mat, aiTextureType_DIFFUSE, "../assets/default_textures/diffuse.png") });
+		material_.set_property(gee::MaterialProperty::NORMAL, gee::Texture{ getTexturePath(*mat, aiTextureType_HEIGHT, "../assets/default_textures/normal.png") });
+		material_.set_property(gee::MaterialProperty::SPECULAR, gee::Texture{ getTexturePath(*mat, aiTextureType_SPECULAR, "../assets/default_textures/specular.png") });
+	}
 }
 
-const std::string gee::ModelLoader::getTexturePath(const aiMaterial& material, const aiTextureType type, const std::string& defaultTexPath) const
+const std::string gee::MeshLoader::getTexturePath(const aiMaterial& material, const aiTextureType type, const std::string& defaultTexPath) const
 {
 	const auto textCount = material.GetTextureCount(type);
 	if (textCount == 0)
@@ -103,7 +105,7 @@ const std::string gee::ModelLoader::getTexturePath(const aiMaterial& material, c
 	aiString relativeTexturePath;
 	//only using the first texture for now
 	material.GetTexture(type, 0, &relativeTexturePath);
-	fs::path texturePath{ meshPath_.parent_path() };
+	fs::path texturePath{ path_.parent_path() };
 	texturePath += "/";
 	texturePath += relativeTexturePath.C_Str();
 	return texturePath.string();

@@ -7,9 +7,19 @@ gee::Material::Material()
 	id_ = idDispenser_.get();
 }
 
+gee::Material::Material(Material&& other)
+{
+	id_ = other.id_;
+	properties_ = std::move(other.properties_);
+	shouldDeleteID_ = true;
+	other.shouldDeleteID_ = false;
+}
 gee::Material::~Material()
 {
-	idDispenser_.consumed(id_);
+	if (shouldDeleteID_)
+	{
+		idDispenser_.consumed(id_);
+	}
 }
 
 void gee::Material::set_property(const MaterialProperty& property, const Texture& texture)

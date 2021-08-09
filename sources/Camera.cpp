@@ -1,6 +1,5 @@
 #include <iostream>
 #include "../headers/Camera.h"
-#include "../../headers/impl/vulkan/imgui_impl_glfw.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/rotate_vector.hpp"
@@ -79,21 +78,6 @@ const glm::mat4 gee::Camera::orhtogonalProjection() const
 	return glm::ortho(-viewRange_, viewRange_, -viewRange_, viewRange_, 0.1f, viewRange_);
 }
 
-void gee::Camera::imguiDisplay()
-{
-	bool open{ true };
-	ImGui::Begin("Camera Settings", &open, 0);
-	ImGui::InputFloat("Maximum speed", &speed, 0.0f, viewRange_, "%.1f meters/step"); ImGui::SameLine();
-	ImGui::Checkbox("Synchronize ", &synchronizeSensibility_);
-	if (synchronizeSensibility_)
-	{
-		synchronizeSensibility(speed);
-	}
-	ImGui::SliderFloat("Forward sensibility", &sensibility.forward, 0.0f, speed, " %.1f meters/step");
-	ImGui::SliderFloat("Backward sensibility", &sensibility.backward, 0.0f, speed, " %.1f meters/step");
-	ImGui::End();
-
-}
 
 const gee::Camera::ShaderInfo& gee::Camera::get_shader_info(const float aspectRatio)
 {

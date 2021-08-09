@@ -17,6 +17,7 @@ namespace gee
 	public:
 		Material();
 		~Material();
+		Material(Material&& other);
 		void set_property(const MaterialProperty& property, const Texture& texture);
 		const std::unordered_map<MaterialProperty, std::reference_wrapper<const Texture>>& properties() const
 		{
@@ -26,6 +27,7 @@ namespace gee
 	private:
 		friend ID<Material>;
 		static gee::IdDispenser<size_t> idDispenser_;
+		bool shouldDeleteID_{ true };
 		size_t id_;
 		std::unordered_map<MaterialProperty, std::reference_wrapper<const Texture>> properties_;
 	};

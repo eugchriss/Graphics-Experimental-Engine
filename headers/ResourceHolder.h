@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -20,6 +21,8 @@ namespace gee
 	class ResourceHolder
 	{
 	public:
+		ResourceHolder() = default;
+		ResourceHolder(ResourceHolder&&) = default;
 		Resource& get(const Key& key);
 		template<class ... Args>
 		Resource& get(const Key& key, Args&&... args);

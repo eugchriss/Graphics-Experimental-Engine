@@ -86,7 +86,6 @@ namespace gee
 		{
 			return viewFrustum_.isInside(pos);
 		}
-		void imguiDisplay();
 		const ShaderInfo& get_shader_info(const float aspectRatio);
 		glm::vec3 position_;
 		glm::vec3 front_;

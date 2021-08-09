@@ -141,7 +141,7 @@ void gee::Application::sort_materials_drawables()
 {
 	for (auto i = 0u; i < std::size(drawables_); ++i)
 	{
-		auto& material = drawables_[i].get().material;
+		auto& material = drawables_[i].get().material();
 		auto materialResult = std::find_if(std::begin(materials_), std::end(materials_), [&](auto& mat) {return mat == material; });
 		if (materialResult == std::end(materials_))
 		{
@@ -207,7 +207,7 @@ bool gee::Application::isRunning()
 		renderer_.push_shader_constant(ShaderValue{"materialIndex", materialIndex});
 		for (const auto index : drawableIndices)
 		{
-			renderer_.draw(drawables_[index].get().geometry);
+			renderer_.draw(drawables_[index].get().geometry());
 		}
 		++materialIndex;
 	}

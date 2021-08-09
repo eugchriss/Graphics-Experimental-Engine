@@ -26,9 +26,9 @@ namespace gee
 	struct ID<GeometryConstRef>
 	{
 		using Type = size_t;
-		static Type get(GeometryConstRef g)
+		static Type get(GeometryConstRef geometryRef)
 		{
-			return Type{};
+			return geometryRef.get().hash;
 		}
 	};
 }

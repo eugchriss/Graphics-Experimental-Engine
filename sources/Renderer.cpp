@@ -1,11 +1,11 @@
 #include "..\headers\Renderer.h"
-#include "../../headers/impl/vulkan/imgui_impl_glfw.h"
-#include "../../headers/impl/vulkan/imgui_impl_vulkan.h"
 #include "../headers/impl/vulkan/vulkanContextBuilder.h"
+#include "../libs/imgui/imgui.h"
+#include "../libs/imgui/backends/imgui_impl_glfw.h"
 
 gee::Renderer::Renderer(const std::string& windowTitle, const uint32_t width, const uint32_t height) : window_{ windowTitle, width, height }
 {
-	// Setup Dear ImGui context
+	//Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForVulkan(window_.window(), true);
@@ -230,14 +230,15 @@ void gee::Renderer::create_context()
 	uint32_t glfwExtensionCount = 0;
 	auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	std::vector<const char*> instanceExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-	instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
 	VkDebugUtilsMessageSeverityFlagsEXT severityFlags = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 	VkDebugUtilsMessageTypeFlagsEXT messageTypeFlags = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
 	vkn::ContextBuilder contextBuilder{ severityFlags, messageTypeFlags };
+//#ifndef NDEBUG
+	instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
 	contextBuilder.addInstanceLayer("VK_LAYER_KHRONOS_validation");
 	contextBuilder.addInstanceLayer("VK_LAYER_LUNARG_monitor");
+//#endif
 	for (const auto& instanceExtension : instanceExtensions)
 	{
 		contextBuilder.addInstanceExtention(instanceExtension);

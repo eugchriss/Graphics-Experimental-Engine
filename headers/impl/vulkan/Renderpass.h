@@ -90,7 +90,7 @@ namespace gee
 						p.usesColorTarget(t, pass.screenTargetIndex_ + swapchainIndex);
 						++swapchainIndex;
 					}
-					
+
 					frameSize = min(frameSize, swapchain.extent());
 				}
 				for (const auto& target : pass.depthTargets_)

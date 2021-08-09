@@ -1,5 +1,4 @@
 #include <string>
-#include "../../headers/MaterialInstance.h"
 #include "../../headers/impl/vulkan/Material.h"
 #include "../../headers/impl/vulkan/vulkan_utils.h"
 

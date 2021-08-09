@@ -13,7 +13,7 @@ namespace gee
 	public:
 		enum class ColorSpace
 		{
-			LINEAR, 
+			LINEAR,
 			NON_LINEAR
 		};
 
@@ -38,6 +38,7 @@ namespace gee
 	};
 	MAKE_REFERENCE(Texture);
 	MAKE_CONST_REFERENCE(Texture);
+
 
 	template<>
 	struct ID<Texture>

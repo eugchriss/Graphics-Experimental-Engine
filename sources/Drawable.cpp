@@ -4,8 +4,8 @@
 
 gee::IdDispenser<size_t> gee::Drawable::idDispenser_{};
 
-gee::Drawable::Drawable(const gee::Geometry& geometry, gee::Material& mat, const glm::vec3& pos, const glm::vec3& rot) 
- : geometry{geometry}, material{ mat }, position{pos}, rotation(rot)
+gee::Drawable::Drawable(gee::StaticMesh& mesh, const glm::vec3& pos, const glm::vec3& rot)
+	: mesh{ mesh }, position{ pos }, rotation(rot)
 {
 	id = idDispenser_.get();
 
@@ -17,7 +17,7 @@ gee::Drawable::Drawable(const gee::Geometry& geometry, gee::Material& mat, const
 	size /= scaleFactor;
 }
 
-gee::Drawable::Drawable(Drawable&& other): geometry{std::move(other.geometry)}, material{other.material}
+gee::Drawable::Drawable(Drawable&& other) : mesh{other.mesh}
 {
 	other.shouldDeleteId_ = false;
 	position = other.position;
@@ -36,6 +36,16 @@ gee::Drawable::~Drawable()
 	{
 		idDispenser_.consumed(id);
 	}
+}
+
+const gee::Material& gee::Drawable::material() const
+{
+	return mesh.get().material();
+}
+
+const gee::Geometry& gee::Drawable::geometry() const
+{
+	return mesh.get().geometry();
 }
 
 const glm::mat4& gee::Drawable::getTransform()
@@ -72,11 +82,11 @@ const glm::mat4& gee::Drawable::getTransform()
 	return transform_.value();
 }
 
-bool gee::Drawable::operator==(const Drawable& other) const 
+bool gee::Drawable::operator==(const Drawable& other) const
 {
 	return id == other.id;
 }
-
+/*
 const float gee::Drawable::normalizedScaleFactor(const gee::Mesh& mesh)
 {
 	float minX{}, maxX{};
@@ -101,3 +111,4 @@ const float gee::Drawable::normalizedScaleFactor(const gee::Mesh& mesh)
 	size = glm::vec3{ x, y, z };
 	return glm::pow(volume, 1 / 3.0f);
 }
+*/

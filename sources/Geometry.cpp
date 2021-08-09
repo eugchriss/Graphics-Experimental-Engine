@@ -1,7 +1,7 @@
 #include "../headers/Geometry.h"
 
-gee::Geometry::Geometry(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices) :
-	vertices{ std::move(vertices) }, indices{ std::move(indices) }
+gee::Geometry::Geometry(std::vector<Vertex>&& vertices_, std::vector<uint32_t>&& indices_) :
+	vertices{ std::move(vertices_) }, indices{ std::move(indices_) }
 {
 	gee::hash_combine(hash, std::size(vertices), std::size(indices));
 }
