@@ -9,7 +9,7 @@
 #include "../libs/imgui/backends/imgui_impl_vulkan.h"
 #include "../headers/impl/vulkan/vulkanContextBuilder.h"
 
-gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : renderer_{ name, width, height }, eventDispatcher_{ renderer_.window_handle() }, phongTechnique_{ "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv" }
+gee::Application::Application(const std::string& name, const uint32_t width, const uint32_t height) : window_{ name, width, height }, vulkanContext_{ window_ }, renderer_{ vulkanContext_, window_ }, eventDispatcher_{window_.window()}, phongTechnique_{ "../assets/shaders/triangleShader.spv", "../assets/shaders/greenColoredShader.spv" }
 {
 	std::cout << "The application has been launched.\n";
 	phongTechnique_.set_dynamic_alignments(0, { 1024 * sizeof(glm::mat4) } );
@@ -90,7 +90,7 @@ void gee::Application::onMouseMoveEvent(double x, double y)
 			lastPos_.y = y;
 			firstMouseUse_ = false;
 		}
-		auto windowSize = renderer_.window_size();
+		auto windowSize = window_.size();
 		auto yaw = (x - lastPos_.x) * 2.0f * 360.0f / windowSize.x;
 		auto pitch = (lastPos_.y - y) * 2.0f * 360.0f / windowSize.y;
 		lastPos_ = glm::vec2{ x, y };
@@ -185,7 +185,7 @@ std::vector<gee::ShaderArrayTexture> gee::Application::get_arrayTextures()
 
 bool gee::Application::isRunning()
 {
-	auto viewProj = camera_.perspectiveProjection(renderer_.aspect_ratio());
+	auto viewProj = camera_.perspectiveProjection(window_.aspectRatio());
 	viewProj[1][1] *= -1;
 	viewProj *= camera_.pointOfView();
 	renderer_.start_renderpass(renderpass_);
@@ -224,5 +224,6 @@ bool gee::Application::isRunning()
 	drawables_.clear();
 	materialsDrawables_.clear();
 	//drawablesTransforms_.clear();
-	return renderer_.render();
+	renderer_.render();
+	return window_.isOpen();
 }

@@ -3,29 +3,28 @@
 #include "../libs/imgui/imgui.h"
 #include "../libs/imgui/backends/imgui_impl_glfw.h"
 
-gee::Renderer::Renderer(const std::string& windowTitle, const uint32_t width, const uint32_t height) : window_{ windowTitle, width, height }
+gee::Renderer::Renderer(gee::VulkanContext& context, gee::Window& window): context_{context}
 {
 	//Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGui_ImplGlfw_InitForVulkan(window_.window(), true);
+	ImGui_ImplGlfw_InitForVulkan(window.window(), true);
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	windowExtent_ = VkRect2D{ .offset = {.x = 0, .y = 0},
-							  .extent = {.width = width, .height = height} };
-	create_context();
-	cmdPool_ = std::make_unique<vkn::CommandPool>(*context_, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-	swapchain_ = std::make_unique<vkn::Swapchain>(*context_);
+							  .extent = {.width = window.size().x, .height = window.size().y} };
+	cmdPool_ = std::make_unique<vkn::CommandPool>(*context_.context, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	swapchain_ = std::make_unique<vkn::Swapchain>(*context_.context);
 }
 
 gee::Renderer::~Renderer()
 {
-	context_->device->idle();
+	context_.context->device->idle();
 }
 
 void gee::Renderer::start_renderpass(const Renderpass& renderpass)
 {
 	auto rp = ID<Renderpass>::get(renderpass);
-	renderpasses_.get(rp, *context_, renderTargets_, *swapchain_, renderpass);
+	renderpasses_.get(rp, *context_.context, renderTargets_, *swapchain_, renderpass);
 	drawList_[rp] = {};
 	currentRenderpass_ = rp;
 }
@@ -35,7 +34,7 @@ void gee::Renderer::use_shader_technique(const ShaderTechnique& technique)
 	currentShaderTechnique_ = ID<ShaderTechnique>::get(technique);
 	drawList_[currentRenderpass_].emplace_back(currentShaderTechnique_);
 
-	shaderTechniques_.get(currentShaderTechnique_, *context_, renderpasses_.get(currentRenderpass_), technique);
+	shaderTechniques_.get(currentShaderTechnique_, *context_.context, renderpasses_.get(currentRenderpass_), technique);
 	shaderTechniqueGeometriesBatchs_[currentShaderTechnique_] = {};
 	shaderTechniqueValues_[currentShaderTechnique_] = {};
 	shaderTechniqueTextures_[currentShaderTechnique_] = {};
@@ -104,13 +103,9 @@ void gee::Renderer::update_shader_value(const ShaderArrayTexture& arrayTexture)
 	result->second.emplace_back(arrayTexture);
 }
 
-void gee::Renderer::resize()
+void gee::Renderer::render()
 {
-}
-
-bool gee::Renderer::render()
-{
-	if (window_.isVisible() && (!previousCmdBuffer_ || !previousCmdBuffer_->isPending()))
+	if (!previousCmdBuffer_ || !previousCmdBuffer_->isPending())
 	{
 		for (const auto& [pipelineID, shaderValues] : shaderTechniqueValues_)
 		{
@@ -126,8 +121,8 @@ bool gee::Renderer::render()
 			for (auto& texture : shaderTextures)
 			{
 				vkn::ShaderTexture image{ .name = texture.name };
-				image.view = textures_.get(ID<Texture>::get(texture.texture), *context_, *cmdPool_, texture.texture).getView(VK_IMAGE_ASPECT_COLOR_BIT);
-				image.sampler = samplers_.get(ID<Sampler>::get(texture.sampler), *context_, texture.sampler).sampler;
+				image.view = textures_.get(ID<Texture>::get(texture.texture), *context_.context, *cmdPool_, texture.texture).getView(VK_IMAGE_ASPECT_COLOR_BIT);
+				image.sampler = samplers_.get(ID<Sampler>::get(texture.sampler), *context_.context, texture.sampler).sampler;
 				pipeline.update_shader_texture(image);
 			}
 		}
@@ -142,14 +137,14 @@ bool gee::Renderer::render()
 				{
 					if (texture.has_value())
 					{
-						images.views.emplace_back(textures_.get(ID<Texture>::get(texture->get()), *context_, *cmdPool_, texture->get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
+						images.views.emplace_back(textures_.get(ID<Texture>::get(texture->get()), *context_.context, *cmdPool_, texture->get()).getView(VK_IMAGE_ASPECT_COLOR_BIT));
 					}
 					else
 					{
 						images.views.emplace_back(VkImageView{ VK_NULL_HANDLE });
 					}
 				}
-				images.sampler = samplers_.get(ID<Sampler>::get(arrayTexture.sampler), *context_, arrayTexture.sampler).sampler;
+				images.sampler = samplers_.get(ID<Sampler>::get(arrayTexture.sampler), *context_.context, arrayTexture.sampler).sampler;
 				pipeline.update_shader_array_texture(images);
 			}
 		}
@@ -183,7 +178,7 @@ bool gee::Renderer::render()
 					for (auto& [geometryRef, occurenceCount]  : shaderTechniqueGeometriesBatchs_[pipelineID][i])
 					{
 						auto geometryID = ID<gee::GeometryConstRef>::get(geometryRef);
-						auto& geometry = geometryMemories_.get(geometryID, *context_, geometryRef);
+						auto& geometry = geometryMemories_.get(geometryID, *context_.context, geometryRef);
 
 						vkCmdBindVertexBuffers(cb.commandBuffer(), 0, 1, &geometry.vertexBuffer.buffer, &offset);
 						vkCmdBindIndexBuffer(cb.commandBuffer(), geometry.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -200,53 +195,11 @@ bool gee::Renderer::render()
 		}
 		cb.end();
 		swapchain_->swapBuffers();
-		context_->graphicsQueue->submit(cb);
-		context_->graphicsQueue->present(cb, *swapchain_);
+		context_.context->graphicsQueue->submit(cb, true);
+		context_.context->graphicsQueue->present(cb, *swapchain_);
 
 		drawList_.clear();
 		shaderTechniqueGeometriesBatchs_.clear();
 		previousCmdBuffer_.reset(&cb);
 	}
-	return window_.isOpen();
-}
-
-GLFWwindow* gee::Renderer::window_handle()
-{
-	return window_.window();
-}
-
-const glm::u32vec2 gee::Renderer::window_size() const
-{
-	return window_.size();
-}
-
-float gee::Renderer::aspect_ratio() const
-{
-	return window_.aspectRatio();
-}
-
-void gee::Renderer::create_context()
-{
-	uint32_t glfwExtensionCount = 0;
-	auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-	std::vector<const char*> instanceExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-	VkDebugUtilsMessageSeverityFlagsEXT severityFlags = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-	VkDebugUtilsMessageTypeFlagsEXT messageTypeFlags = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	vkn::ContextBuilder contextBuilder{ severityFlags, messageTypeFlags };
-//#ifndef NDEBUG
-	instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-	contextBuilder.addInstanceLayer("VK_LAYER_KHRONOS_validation");
-	contextBuilder.addInstanceLayer("VK_LAYER_LUNARG_monitor");
-//#endif
-	for (const auto& instanceExtension : instanceExtensions)
-	{
-		contextBuilder.addInstanceExtention(instanceExtension);
-	}
-	contextBuilder.addDeviceExtention("VK_KHR_swapchain");
-	contextBuilder.addQueueFlag(VK_QUEUE_GRAPHICS_BIT);
-	contextBuilder.addQueueFlag(VK_QUEUE_TRANSFER_BIT);
-	contextBuilder.setQueueCount(2);
-
-	context_ = std::make_unique<vkn::Context>(std::move(contextBuilder.build(window_)));
 }

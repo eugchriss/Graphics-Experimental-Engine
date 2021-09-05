@@ -8,6 +8,7 @@
 #include "Renderpass.h"
 #include "ResourceHolder.h"
 #include "Texture.h"
+#include "VulkanContext.h"
 #include "Window.h"
 
 #include "impl/vulkan/commandPool.h"
@@ -24,7 +25,7 @@ namespace gee
 	class Renderer
 	{
 	public:
-		Renderer(const std::string& windowTitle, const uint32_t width, const uint32_t height);
+		Renderer(gee::VulkanContext& context, gee::Window& window);
 		~Renderer();
 		void start_renderpass(const Renderpass& rp);
 		void use_shader_technique(const ShaderTechnique& technique);
@@ -35,16 +36,11 @@ namespace gee
 		void update_shader_value(const ShaderTexture& texture);
 		void update_shader_value(const ShaderArrayTexture& arrayTexture);
 		void push_shader_constant(const ShaderValue& val);
-		void resize();
-		bool render();
-		GLFWwindow* window_handle();
-		const glm::u32vec2 window_size() const;
-		float aspect_ratio() const;
+		void render();
 	private:
-		gee::Window window_;
 		bool renderGui_{ false };
 		VkRect2D windowExtent_;
-		std::unique_ptr<vkn::Context> context_;
+		gee::VulkanContext& context_;
 		std::unique_ptr<vkn::Swapchain> swapchain_;
 		std::unique_ptr<vkn::CommandPool> cmdPool_;
 		ID<Renderpass>::Type currentRenderpass_;
@@ -62,8 +58,7 @@ namespace gee
 		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<vkn::ShaderConstant>> shaderTechniqueConstants_;
 		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<ShaderTexture>> shaderTechniqueTextures_;
 		std::unordered_map<ID<ShaderTechnique>::Type, std::vector<std::reference_wrapper<const ShaderArrayTexture>>> shaderTechniqueArrayTextures_;
-	
+
 		Observer_ptr<vkn::CommandBuffer> previousCmdBuffer_{};
-		void create_context();
 	};
 }

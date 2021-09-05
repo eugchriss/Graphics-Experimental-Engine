@@ -18,7 +18,7 @@ namespace gee
 		public:
 			Queue(const vkn::Device& device, const QueueFamily& familyIndex, const uint32_t index);
 			const uint32_t& familyIndex() const;
-			std::shared_ptr<Fence> submit(CommandBuffer& cb, const bool signalSemaphore = true);
+			std::shared_ptr<Fence> submit(CommandBuffer& cb, const bool signalSemaphore = false);
 			void present(CommandBuffer& cb, vkn::Swapchain& swapchain);
 			void idle();
 			const VkQueue queue() const;

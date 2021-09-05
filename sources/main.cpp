@@ -18,19 +18,19 @@ int main()
 	gee::Application app{ s, 800, 800 };
 	app.setCameraPosition(glm::vec3{ 0.0f, 1.0f, 5.0f });
 
-	auto& floorTex = textureHolder.get("floorTexture", "../assets/textures/floor.jpg");
+	/*auto& floorTex = textureHolder.get("floorTexture", "../assets/textures/floor.jpg");
 	auto& floorNormalTex = textureHolder.get("normalTexture", "../assets/textures/Floor/normal.png");
 	auto& floorSpecularTex = textureHolder.get("specularTexture", "../assets/textures/Floor/specular.jpg");
-
+	*/
 	const auto cubeCount = 3u;
 	std::vector<gee::Drawable> cubes;
 	cubes.reserve(cubeCount);
-
+	/*
 	gee::Material floorMaterial{};
 	floorMaterial.set_property(gee::MaterialProperty::COLOR, floorTex);
 	floorMaterial.set_property(gee::MaterialProperty::NORMAL, floorNormalTex);
 
-	gee::StaticMesh cubeMesh{ gee::getCubeGeometry(), std::move(floorMaterial) };
+	gee::StaticMesh cubeMesh{ gee::getCubeGeometry(), std::move(floorMaterial) };*/
 	auto& backpackMesh = meshHolder.get("backpack", textureHolder, "../assets/Meshs/backpack/backpack.obj");
 	for (auto i = 0; i < cubeCount; ++i)
 	{

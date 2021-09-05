@@ -17,6 +17,7 @@
 #include "sampler.h"
 #include "Timer.h"
 #include "Texture.h"
+#include "VulkanContext.h"
 #include "Window.h"
 
 
@@ -37,6 +38,8 @@ namespace gee
 		void setCameraPosition(const glm::vec3& position);
 		void draw(Drawable& drawable);
 	private:
+		gee::Window window_;
+		VulkanContext vulkanContext_;
 		Renderer renderer_;
 		Renderpass renderpass_;
 		ShaderTechnique phongTechnique_;

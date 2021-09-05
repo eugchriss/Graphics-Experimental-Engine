@@ -114,6 +114,7 @@ set(SOURCES
 			"sources/texture.cpp"
 			"sources/units.cpp"
 			"sources/utility.cpp"
+			"sources/vulkanContext.cpp"
 			"sources/window.cpp"
 
 			${sources_impl_vulkan_files}
@@ -145,6 +146,7 @@ set(HEADERS
 			"headers/units.h"
 			"headers/utility.h"
 			"headers/vertex.h"
+			"headers/vulkanContext.h"
 			"headers/window.h"
 			${headers_impl_vulkan_files}
 
